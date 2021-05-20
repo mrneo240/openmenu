@@ -1,3 +1,6 @@
-*.o
 *.ini
+
+*.o
 example
+*.bin
+*.elf
