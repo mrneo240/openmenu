@@ -14,14 +14,18 @@
 
 #include "../backend/gd_list.h"
 
-FUNCTION(UI_NAME, setup) {
-  printf("%s\n", __func__);
+FUNCTION(UI_NAME, init) {
+  printf("%s()\n", __func__);
 }
 
-FUNCTION(UI_NAME, handle_input) {
-  printf("%s\n", __func__);
+FUNCTION(UI_NAME, setup) {
+  printf("%s()\n", __func__);
+}
+
+FUNCTION_INPUT(UI_NAME, handle_input) {
+  printf("%s(%d)\n", __func__, button);
 }
 
 FUNCTION(UI_NAME, draw) {
-  printf("%s\n", __func__);
+  printf("%s()\n", __func__);
 }

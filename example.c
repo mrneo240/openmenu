@@ -38,7 +38,8 @@ int main(int argc, char** argv) {
   LIST_LARGE_draw();
   */
 
+  LIST_DESC_init();
   LIST_DESC_setup();
-  LIST_DESC_handle_input();
+  LIST_DESC_handle_input(1);
   LIST_DESC_draw();
 }
