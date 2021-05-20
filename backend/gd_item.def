@@ -1,0 +1,10 @@
+/* CFG(section, name, default) */
+/* CFG(OPENMENU, num_items, "0") */
+CFG(ITEMS, name, "OpenMenu")
+CFG(ITEMS, disc, "1/1")
+CFG(ITEMS, vga, "1")
+CFG(ITEMS, region, "JUE")
+CFG(ITEMS, version, "v1.001")
+CFG(ITEMS, date, "19990909")
+CFG(ITEMS, product, "T-0000A")
+#undef CFG

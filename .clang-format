@@ -1,0 +1,14 @@
+﻿
+BasedOnStyle: Google
+AllowAllArgumentsOnNextLine: true
+AllowAllParametersOfDeclarationOnNextLine: true
+AllowShortBlocksOnASingleLine: false
+AllowShortIfStatementsOnASingleLine: false
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
+BinPackArguments: true
+BinPackParameters: true
+BreakBeforeBraces: Attach
+ColumnLimit: 0
+IndentWidth: 2
+UseTab: Never
