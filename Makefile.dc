@@ -1,0 +1,31 @@
+TARGET = themeMenu.elf
+# Can be: ui/draw_console.c OR  ui/draw_kos.c OR ui/draw_gamejam.c
+OUTPUT := ui/draw_kos.c
+
+SRCS := backend/ini.c backend/gd_list.c ui/ui_line_large.c ui/ui_line_desc.c ui/dc/font.c ui/dc/pvr_texture.c ui/dc/input.c $(OUTPUT) main.c
+OBJS = $(subst .c,.o,$(SRCS))
+
+all: rm-elf $(TARGET)
+
+include $(KOS_BASE)/Makefile.rules
+
+clean:
+	-@rm -f $(TARGET) $(OBJS) *.bin *.BIN
+
+rm-elf:
+	-@rm -f $(TARGET)
+
+$(TARGET): $(OBJS)
+	kos-cc -o $(TARGET) $(OBJS) -lkosutils
+	sh-elf-objcopy -R .stack -O binary  $@ $(basename $@).bin
+
+.PHONY:scramble
+scramble: $(TARGET)
+	scramble $(basename $(TARGET)).bin 1ST_READ.BIN
+
+run: $(TARGET)
+	$(KOS_LOADER) $(TARGET) -n
+
+dist:
+	-@rm -f $(OBJS)
+	$(KOS_STRIP) $(TARGET)

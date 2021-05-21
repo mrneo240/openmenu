@@ -1,6 +1,6 @@
 # put common definitions in here
 CC := gcc
-PRJCFLAGS :=
+PRJCFLAGS := -g
 LD := gcc
 LDFLAGS :=
 LDLIBS :=
