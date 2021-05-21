@@ -8,11 +8,27 @@
  * License: BSD 3-clause "New" or "Revised" License, http://www.opensource.org/licenses/BSD-3-Clause
  */
 
+#include "common.h"
+
+#ifdef _arch_dreamcast
+#include "draw_kos.h"
+#else
+#include "draw_console.h"
+#endif
+
 /* Called only once at start */
 void draw_init(void);
+
 /* called at the start of each frame */
 void draw_setup(void);
-/* Throws ID into id and returns something if needs to*/
-void *draw_load_texture(const char filename, unsigned int *id);
+
+/* Throws pass whatever is relevant to your platform as a pointer and it will filled + returned if successfull, otherwise NULL */
+void *draw_load_texture(const char *filename, void *user);
+
 /* draws an image at coords of a given size */
-void draw_draw_image(unsigned int id, unsigned int x, unsigned int y, float width, float height);
+void draw_draw_image(unsigned int x, unsigned int y, float width, float height, float alpha, void *user);
+/* draws an image at coords as a square */
+void draw_draw_square(unsigned int x, unsigned int y, float size, float alpha, void *user);
+
+/* exec proto */
+void dreamcast_rungd(unsigned int slot_num);
