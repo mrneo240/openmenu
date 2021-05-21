@@ -36,24 +36,22 @@ static gd_item* gd_slots_BASE = NULL;
 static gd_item** list_temp = NULL;
 
 size_t filelength(FILE* f) {
-  size_t pos;
   size_t end;
-
-  pos = ftell(f);
   fseek(f, 0, SEEK_END);
   end = ftell(f);
-  fseek(f, pos, SEEK_SET);
+  fseek(f, 0, SEEK_SET);
 
   return end;
 }
 
 static int read_openmenu_ini(void* user, const char* section, const char* name, const char* value) {
-  if (__builtin_expect(strcmp(section, "OPENMENU") == 0, 1)) {
-    if (strcmp(name, "num_items") == 0) {
-      num_items = atoi(value);
-      gd_slots_BASE = malloc(num_items * sizeof(struct gd_item));
-      list_temp = malloc(num_items * sizeof(struct gd_item*));
-    }
+  if ((strcmp(section, "OPENMENU") == 0) && (strcmp(name, "num_items") == 0)) {
+    num_items = atoi(value);
+    gd_slots_BASE = malloc(num_items * sizeof(struct gd_item));
+    list_temp = malloc(num_items * sizeof(struct gd_item*));
+
+    memset(gd_slots_BASE, '\0', num_items * sizeof(struct gd_item));
+    memset(list_temp, '\0', num_items * sizeof(struct gd_item*));
   } else {
     /* Parsing games */
     char slot_string[4] = {0, 0, 0, 0};
@@ -64,8 +62,13 @@ static int read_openmenu_ini(void* user, const char* section, const char* name, 
       int slot = atoi(slot_string);
 
       gd_item* item = &gd_slots_BASE[slot - 1];
-      //printf("[%d] %s: %s\n", slot, name + temp_len + 1, value);
+      if (!item->slot_num) {
+        item->slot_num = slot;
+      }
+
       const char* plain_name = name + temp_len + 1;
+
+      //printf("[%s] %s: %s\n", section, plain_name, value);
 
       if (0)
         ;
@@ -77,6 +80,8 @@ static int read_openmenu_ini(void* user, const char* section, const char* name, 
       printf("UNKNOWN! [%s] %s: %s\n", section, name, value);
     }
   }
+  //fflush(stdout);
+  return 1;
 }
 
 void list_print_slots(void) {
@@ -158,25 +163,44 @@ const gd_item** list_get_sort_product(void) {
   return (const gd_item**)list_temp;
 }
 
+const gd_item** list_get_sort_default(void) {
+  list_temp_reset();
+
+  return (const gd_item**)list_temp;
+}
+
 const struct gd_item** list_get(void) {
   return (const gd_item**)list_temp;
 }
 
-void list_read(void) {
+int list_length(void) {
+  return num_items - 1;
+}
+
+int list_read(void) {
   FILE* ini = fopen(PATH_PREFIX "OPENMENU.ini", "r");
+  if (!ini) {
+    printf("Error opening!!\n");
+    fflush(stdout);
+    /*exit or something */
+    return -1;
+  }
   size_t ini_size = filelength(ini);
   char* ini_buffer = malloc(ini_size);
-  fread(ini_buffer, ini_size, 1, ini);
+  fread(ini_buffer, 1, ini_size, ini);
   fclose(ini);
 
   if (ini_parse_string(ini_buffer, read_openmenu_ini, NULL) < 0) {
-    printf("Error!\n");
+    printf("Error Parsing!!\n");
+    fflush(stdout);
     /*exit or something */
-    return;
+    return -1;
   }
-  printf("Parsed list successfully!\n");
+  printf("Parsed list successfully (%d items)!\n", num_items);
   list_temp_reset();
   fflush(stdout);
+
+  return 0;
 }
 
 void list_destroy(void) {
@@ -188,6 +212,8 @@ void list_destroy(void) {
 }
 
 const gd_item* list_item_get(unsigned int idx) {
-  if (idx > num_items - 1)
+  if (idx < num_items - 1)
     return (const gd_item*)list_temp[idx];
+
+  return NULL;
 }

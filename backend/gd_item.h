@@ -19,6 +19,4 @@ typedef struct gd_item {
   char region[4];
   unsigned int slot_num;
   char vga[1];
-
 } gd_item;
-

@@ -10,7 +10,7 @@
 
 #pragma once
 struct gd_item;
-void list_read(void);
+int list_read(void);
 void list_destroy(void);
 void list_print_slots(void);
 void list_print_temp(void);
@@ -20,5 +20,7 @@ const struct gd_item **list_get(void);
 const struct gd_item **list_get_sort_name(void);
 const struct gd_item **list_get_sort_date(void);
 const struct gd_item **list_get_sort_product(void);
+const struct gd_item **list_get_sort_default(void);
+int list_length(void);
 
 const struct gd_item *list_item_get(unsigned int idx);
