@@ -1,31 +1,41 @@
-TARGET = themeMenu.elf
-# Can be: ui/draw_console.c OR  ui/draw_kos.c OR ui/draw_gamejam.c
+TARGET := themeMenu.elf
 OUTPUT := ui/draw_kos.c
 
-SRCS := backend/ini.c backend/gd_list.c ui/ui_line_large.c ui/ui_line_desc.c ui/dc/font.c ui/dc/pvr_texture.c ui/dc/input.c $(OUTPUT) main.c
-OBJS = $(subst .c,.o,$(SRCS))
+BACKEND_SRCS :=  backend/ini.c backend/gd_list.c backend/gdemu_sdk.c backend/gdemu_control.c
+UI_SRCS := ui/ui_line_large.c ui/ui_line_desc.c ui/dc/font.c ui/dc/pvr_texture.c ui/dc/input.c
 
-all: rm-elf $(TARGET)
+SRCS := $(BACKEND_SRCS) $(UI_SRCS) $(OUTPUT) main.c
+OBJS = $(subst .c,.o,$(SRCS)) backend/exec.o
 
-include $(KOS_BASE)/Makefile.rules
+DREAM_LIBS=-Wl,--gc-sections
+CC := kos-cc
+AS := kos-as
+OBJCOPY := $(KOS_OBJCOPY)
+RM := rm
 
-clean:
-	-@rm -f $(TARGET) $(OBJS) *.bin *.BIN
+CFLAGS  := -ffunction-sections -fdata-sections -std=c11 -Os -s
 
-rm-elf:
-	-@rm -f $(TARGET)
+all: clean-elf $(TARGET)
+
+%.o: %.s
+	@echo $(AS) $<
+	@$(CC) -x assembler-with-cpp $(CFLAGS) -c $< -o $@
+
+%.o: %.c
+	@echo $(CC) $<
+	@$(CC) -c $< -o $@ $(CFLAGS)
 
 $(TARGET): $(OBJS)
-	kos-cc -o $(TARGET) $(OBJS) -lkosutils
-	sh-elf-objcopy -R .stack -O binary  $@ $(basename $@).bin
+	@echo \> $(CC) -o $(TARGET)
+	@$(CC) -o $(TARGET) $(DREAM_LIBS) $(CFLAGS ) $(OBJS) -lkosutils
+	@echo $(notdir $(OBJCOPY)) -R .stack -O binary $@ $(basename $@).bin
+	@$(OBJCOPY) -R .stack -O binary  $@ $(basename $@).bin
 
-.PHONY:scramble
-scramble: $(TARGET)
-	scramble $(basename $(TARGET)).bin 1ST_READ.BIN
+.PHONY: clean
+.PHONY: clean-elf
 
-run: $(TARGET)
-	$(KOS_LOADER) $(TARGET) -n
+clean:
+	-@$(RM) -f $(TARGET) $(OBJS) *.bin *.BIN
 
-dist:
-	-@rm -f $(OBJS)
-	$(KOS_STRIP) $(TARGET)
+clean-elf:
+	-@$(RM) -f $(TARGET)

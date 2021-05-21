@@ -1,6 +1,5 @@
 include Makefile.inc
 
-# Can be: ui/draw_console.c OR  ui/draw_kos.c OR ui/draw_gamejam.c
 OUTPUT := ui/draw_console.c
 
 SRCS := backend/ini.c backend/gd_list.c ui/ui_line_large.c ui/ui_line_desc.c ui/pc/font.c $(OUTPUT) example.c
