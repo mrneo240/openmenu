@@ -13,11 +13,15 @@
 
 #include "../backend/gd_list.h"
 
+FUNCTION(UI_NAME, init) {
+  printf("%s\n", __func__);
+}
+
 FUNCTION(UI_NAME, setup) {
   printf("%s\n", __func__);
 }
 
-FUNCTION(UI_NAME, handle_input) {
+FUNCTION_INPUT(UI_NAME, handle_input) {
   printf("%s\n", __func__);
 }
 
