@@ -14,14 +14,20 @@
 
 #include "../dat_format.h"
 #include "draw_prototypes.h"
+#include "font_prototypes.h"
 
-static image img_empty_boxart;
+image txr_highlight, txr_bg; /* Highlight square and Background */
+image img_empty_boxart;
 
 /* Called only once at start */
 void draw_init(void) {
-  pvr_ptr_t txr;
 
-  txr = load_pvr("/cd/empty.pvr", &img_empty_boxart.width, &img_empty_boxart.height, &img_empty_boxart.format);
+  draw_load_texture("/cd/highlight.pvr", &txr_highlight);
+  draw_load_texture("/cd/bg_right.pvr", &txr_bg);
+
+  font_init();
+
+  pvr_ptr_t txr = load_pvr("/cd/empty.pvr", &img_empty_boxart.width, &img_empty_boxart.height, &img_empty_boxart.format);
   img_empty_boxart.texture = txr;
 }
 

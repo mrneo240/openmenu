@@ -16,17 +16,70 @@
 #include <string.h>
 
 #include "backend/gd_list.h"
-//#include "ui/ui_line_large.h"
-//#undef UI_NAME
 #include "ui/common.h"
 #include "ui/dc/input.h"
 #include "ui/draw_prototypes.h"
+
+/* UI Collection */
+#include "ui/ui_grid.h"
+#undef UI_NAME
 #include "ui/ui_line_desc.h"
 #undef UI_NAME
 
 #include "texture/txr_manager.h"
 
-static int init() {
+void (*current_ui_init)(void);
+void (*current_ui_setup)(void);
+void (*current_ui_draw)(void);
+void (*current_ui_handle_input)(unsigned int);
+
+typedef struct ui_template {
+  void (*init)(void);
+  void (*setup)(void);
+  void (*draw)(void);
+  void (*handle_input)(unsigned int);
+} ui_template;
+
+#define UI_TEMPLATE(name)                                                                                                                         \
+  (ui_template) {                                                                                                                                 \
+    .init = FUNC_NAME(name, init), .setup = FUNC_NAME(name, setup), .draw = FUNC_NAME(name, draw), .handle_input = FUNC_NAME(name, handle_input), \
+  }
+
+static ui_template ui_choices[] = {
+    UI_TEMPLATE(GRID_3),
+    UI_TEMPLATE(LIST_DESC),
+};
+
+static const int num_ui_choices = sizeof(ui_choices) / sizeof(ui_template);
+static int ui_choice_current = 0;
+
+void ui_set_choice(int choice) {
+  if (choice >= 0 && choice < num_ui_choices) {
+    current_ui_init = ui_choices[choice].init;
+    current_ui_setup = ui_choices[choice].setup;
+    current_ui_draw = ui_choices[choice].draw;
+    current_ui_handle_input = ui_choices[choice].handle_input;
+
+    ui_choice_current = choice;
+
+    /* Call setup but not init */
+    (*current_ui_setup)();
+  }
+}
+
+void ui_set_default(void) {
+  ui_set_choice(0);
+}
+
+void ui_cycle_next(void) {
+  ui_choice_current++;
+  if (ui_choice_current > num_ui_choices) {
+    ui_choice_current = 0;
+  }
+  ui_set_choice(ui_choice_current);
+}
+
+static int init(void) {
   int ret = 0;
 
   ret += txr_create_small_pool();
@@ -36,19 +89,29 @@ static int init() {
 
   draw_init();
 
-  LIST_DESC_init();
-  LIST_DESC_setup();
+  ui_set_default();
+
+  (*current_ui_init)();
+  (*current_ui_setup)();
+
+  //GRID_3_init();
+  //GRID_3_setup();
+
+  //LIST_DESC_init();
+  //LIST_DESC_setup();
 
   return ret;
 }
 
-static void draw() {
+static void draw(void) {
   pvr_wait_ready();
   pvr_scene_begin();
 
   pvr_list_begin(PVR_LIST_TR_POLY);
 
-  LIST_DESC_draw();
+  (*current_ui_draw)();
+  //GRID_3_draw();
+  //LIST_DESC_draw();
 
   pvr_list_finish();
 
@@ -134,8 +197,6 @@ static int translate_input(void) {
   return NONE;
 }
 
-extern int example_main(int argc, char **argv);
-
 int main(int argc, char *argv[]) {
   fflush(stdout);
   setbuf(stdout, NULL);
@@ -148,7 +209,9 @@ int main(int argc, char *argv[]) {
 
   for (;;) {
     enum control input = translate_input();
-    LIST_DESC_handle_input(input);
+    (*current_ui_handle_input)(input);
+    //GRID_3_handle_input(input);
+    //LIST_DESC_handle_input(input);
     draw();
   }
 

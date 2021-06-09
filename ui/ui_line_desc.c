@@ -20,18 +20,21 @@
 #include "draw_prototypes.h"
 #include "font_prototypes.h"
 
+extern void ui_cycle_next(void);
+
 /* List managment */
 static int current_selected_item = 0;
-enum control input_current;
 #define INPUT_TIMEOUT (10)
-static int navigate_timeout = -1;
-
-/* For drawing */
-static image txr_highlight, txr_bg;   /* Highlight square and Background */
-static image txr_icon_list[16];       /* Lower list of 9 icons */
-static image txr_focus;               /* current selected item, either lowres or hires */
+static int navigate_timeout = INPUT_TIMEOUT;
 #define FOCUSED_HIRES_FRAMES (60 * 1) /* 1 second load in */
 static int frames_focused = 0;
+
+/* For drawing */
+static image txr_icon_list[16]; /* Lower list of 9 icons */
+static image txr_focus;         /* current selected item, either lowres or hires */
+
+extern image txr_highlight, txr_bg; /* Highlight square and Background */
+extern image img_empty_boxart;
 
 /* Our actual gdemu items */
 static const gd_item **list_current;
@@ -41,10 +44,9 @@ enum sort_type { DEFAULT,
                  DATE,
                  PRODUCT,
                  SORT_END };
-enum sort_type sort_current = DEFAULT;
+static enum sort_type sort_current = DEFAULT;
 
-static void
-draw_bg_layers() {
+static void draw_bg_layers() {
   draw_draw_image(0, 0, 640, 480, 1.0f, &txr_bg);
 }
 
@@ -82,10 +84,22 @@ static void draw_small_boxes() {
 }
 
 FUNCTION(UI_NAME, init) {
+  /* Moved to global init */
+  /*
   draw_load_texture("/cd/highlight.pvr", &txr_highlight);
   draw_load_texture("/cd/bg_right.pvr", &txr_bg);
+
+  font_init();
+  */
+}
+
+FUNCTION(UI_NAME, setup) {
   list_current = list_get();
   list_len = list_length();
+
+  current_selected_item = 0;
+  sort_current = DEFAULT;
+  frames_focused = 0;
 
   /* Setup sensible defaults */
   txr_focus.format = (0 << 26) | (1 << 27); /* RGB565, Twiddled */
@@ -93,11 +107,7 @@ FUNCTION(UI_NAME, init) {
   txr_focus.height = 128;
   txr_focus.texture = NULL;
 
-  font_init();
-}
-
-FUNCTION(UI_NAME, setup) {
-  /* empty for now */
+  navigate_timeout = INPUT_TIMEOUT;
 }
 
 static void menu_decrement(void) {
@@ -157,6 +167,15 @@ static void menu_swap_sort(void) {
   frames_focused = 0;
 }
 
+static void menu_cycle_ui(void) {
+  if (navigate_timeout > 0) {
+    navigate_timeout--;
+    return;
+  }
+  ui_cycle_next();
+  navigate_timeout = INPUT_TIMEOUT;
+}
+
 FUNCTION_INPUT(UI_NAME, handle_input) {
   enum control input_current = button;
   switch (input_current) {
@@ -172,6 +191,9 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
     case START:
       menu_swap_sort();
       break;
+    case Y:
+      menu_cycle_ui();
+      break;
 
     /* These dont do anything */
     case UP:
@@ -181,8 +203,6 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
     case B:
       break;
     case X:
-      break;
-    case Y:
       break;
     /* Always nothing */
     case NONE:
@@ -194,6 +214,9 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
 static void update_data(void) {
   if (frames_focused > FOCUSED_HIRES_FRAMES) {
     txr_get_large(list_current[current_selected_item]->product, &txr_focus);
+    if (txr_focus.texture == img_empty_boxart.texture) {
+      txr_get_small(list_current[current_selected_item]->product, &txr_focus);
+    }
   } else {
     txr_get_small(list_current[current_selected_item]->product, &txr_focus);
   }
