@@ -30,6 +30,7 @@ static int init() {
   int ret = 0;
 
   ret += txr_create_small_pool();
+  ret += txr_load_DATs();
   ret += list_read();
 
   draw_init();

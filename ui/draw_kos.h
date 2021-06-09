@@ -22,6 +22,7 @@ typedef struct image {
 } image;
 
 /* defined in pvr_texture.c */
+void* pvr_get_internal_buffer(void);
 /* Convenience functions */
 extern pvr_ptr_t load_pvr(const char* filename, uint32_t* w, uint32_t* h, uint32_t* txrFormat);
 extern pvr_ptr_t load_pvr_to_buffer(const char* filename, uint32_t* w, uint32_t* h, uint32_t* txrFormat, void* buffer);

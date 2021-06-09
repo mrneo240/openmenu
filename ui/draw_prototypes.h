@@ -16,6 +16,8 @@
 #include "draw_console.h"
 #endif
 
+struct dat_file;
+
 /* Called only once at start */
 void draw_init(void);
 
@@ -27,6 +29,8 @@ void *draw_load_missing_icon(void *user);
 /* Throws pass whatever is relevant to your platform as a pointer and it will filled + returned if successfull, otherwise NULL */
 void *draw_load_texture(const char *filename, void *user);
 void *draw_load_texture_buffer(const char *filename, void *user, void *buffer);
+/* Loads from new DAT file using struct + ID of file requested */
+void *draw_load_texture_from_DAT_to_buffer(struct dat_file *bin, const char *ID, void *user, void *buffer);
 
 /* draws an image at coords of a given size */
 void draw_draw_image(unsigned int x, unsigned int y, float width, float height, float alpha, void *user);

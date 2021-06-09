@@ -12,6 +12,7 @@
 
 #include <stdio.h>
 
+#include "../dat_format.h"
 #include "draw_prototypes.h"
 
 static image img_empty_boxart;
@@ -70,6 +71,24 @@ void* draw_load_texture_buffer(const char* filename, void* user, void* buffer) {
   img->texture = txr;
 
   return user;
+}
+
+void* draw_load_texture_from_DAT_to_buffer(struct dat_file* bin, const char* ID, void* user, void* buffer) {
+  image* img = (image*)user;
+  pvr_ptr_t txr;
+  int ret = DAT_read_file_by_ID(bin, ID, pvr_get_internal_buffer());
+  if (!ret) {
+    img->texture = img_empty_boxart.texture;
+    img->width = img_empty_boxart.width;
+    img->height = img_empty_boxart.height;
+    img->format = img_empty_boxart.format;
+    return img;
+  } else {
+    txr = load_pvr_from_buffer_to_buffer(pvr_get_internal_buffer(), &img->width, &img->height, &img->format, buffer);
+    img->texture = txr;
+
+    return user;
+  }
 }
 
 /* draws an image at coords of a given size */

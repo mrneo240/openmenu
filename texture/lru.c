@@ -6,6 +6,12 @@
 
 #include "../uthash.h"
 
+#if DEBUG
+#define DBG_PRINT(...) printf(__VA_ARGS__)
+#else
+#define DBG_PRINT(...)
+#endif
+
 /* Missing on sh-elf-gcc 9.1 ? */
 char *strdup(const char *s);
 
@@ -42,7 +48,6 @@ void cache_callback_del(user_del_cb callback) {
 }
 
 int find_in_cache(const char *key) {
-  //printf("%s( %s )\n", __func__, key);
   struct CacheEntry *entry;
   HASH_FIND_STR(cache, key, entry);
   if (entry) {
@@ -55,7 +60,7 @@ int find_in_cache(const char *key) {
 }
 
 void add_to_cache(const char *key, int value) {
-  printf("+%s( %s )\n", __func__, key);
+  DBG_PRINT("+%s( %s )\n", __func__, key);
   struct CacheEntry *entry, *tmp_entry, *new_entry;
   unsigned int cb_return = 0xFFFFFFFF;
 
@@ -78,7 +83,7 @@ void add_to_cache(const char *key, int value) {
     HASH_ITER(hh, cache, entry, tmp_entry) {
       // prune the first entry (loop is based on insertion order so this deletes the oldest item)
       HASH_DELETE(hh, cache, entry);
-      printf("-del_from_cache( %s )\n", key);
+      DBG_PRINT("-del_from_cache( %s )\n", key);
       if (_callback_del) {
         (*_callback_del)(entry->key, &entry->value, _callback_data);
         if (_callback_add) {

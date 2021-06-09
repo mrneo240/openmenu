@@ -13,6 +13,7 @@
 #define PVR_HDR_SIZE 0x20
 
 static unsigned char* _internal_buf = NULL;
+static char filename_safe[128];
 
 static uint32_t pvr_get_texture_size(const void* input, uint32_t* w, uint32_t* h, uint32_t* txrFormat) {
   unsigned char* texBuf = (unsigned char*)input;
@@ -117,7 +118,7 @@ pvr_ptr_t load_pvr_from_buffer(const void* input, uint32_t* w, uint32_t* h, uint
   uint32_t txr_size = pvr_get_texture_size(input, w, h, txrFormat);
 
   if (!(rv = pvr_mem_malloc(txr_size))) {
-    /*printf("Couldn't allocate memory for texture!\n");*/
+    printf("PVR: Couldn't allocate memory for texture!\n");
     return NULL;
   }
   pvr_txr_load(texBuf + PVR_HDR_SIZE, rv, txr_size);
@@ -125,13 +126,20 @@ pvr_ptr_t load_pvr_from_buffer(const void* input, uint32_t* w, uint32_t* h, uint
   return rv;
 }
 
+void* pvr_get_internal_buffer(void) {
+  if (!_internal_buf) {
+    _internal_buf = malloc(512 * 512 * 2);
+  }
+  return _internal_buf;
+}
+
 static void pvr_read_to_internal(const char* filename) {
   unsigned int texSize;
-  FILE* tex = NULL;
+  FILE* tex_fd = NULL;
   const size_t filename_len = strlen(filename) + 1;
 
   /* replace all - with _ */
-  char* filename_safe = malloc(filename_len);
+  filename_safe[filename_len] = '\0';
   memcpy(filename_safe, filename, filename_len);
   char* iter = filename_safe;
   while (*iter++) {
@@ -139,22 +147,20 @@ static void pvr_read_to_internal(const char* filename) {
       *iter = '_';
   }
 
-  tex = fopen(filename_safe, "rb");
-  if (!tex) {
-    printf("Err: pvr load fail %s\n", filename_safe);
+  tex_fd = fopen(filename_safe, "rb");
+  if (!tex_fd) {
+    printf("PVR: pvr load fail %s\n", filename_safe);
     return;
   }
 
-  if (!_internal_buf) {
-    _internal_buf = malloc(512 * 512 * 2);
-  }
+  unsigned char* texBuf = pvr_get_internal_buffer();
 
-  fseek(tex, 0, SEEK_END);
-  texSize = ftell(tex);
+  fseek(tex_fd, 0, SEEK_END);
+  texSize = ftell(tex_fd);
 
-  fseek(tex, 0, SEEK_SET);
-  fread(_internal_buf, 1, texSize, tex);
-  fclose(tex);
+  fseek(tex_fd, 0, SEEK_SET);
+  fread(texBuf, 1, texSize, tex_fd);
+  fclose(tex_fd);
 }
 
 pvr_ptr_t load_pvr(const char* filename, uint32_t* w, uint32_t* h, uint32_t* txrFormat) {
