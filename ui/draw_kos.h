@@ -21,4 +21,9 @@ typedef struct image {
   pvr_ptr_t texture;
 } image;
 
-pvr_ptr_t load_pvr(char const* filename, uint32* w, uint32* h, uint32* txrFormat);
+/* defined in pvr_texture.c */
+
+extern pvr_ptr_t load_pvr(char const* filename, uint32_t* w, uint32_t* h, uint32_t* txrFormat);
+extern pvr_ptr_t load_pvr_to_buffer(char const* filename, uint32_t* w, uint32_t* h, uint32_t* txrFormat, void* buffer);
+extern pvr_ptr_t load_pvr_from_buffer(void* input, uint32_t* w, uint32_t* h, uint32_t* txrFormat);
+extern pvr_ptr_t load_pvr_from_buffer_to_buffer(void* input, uint32_t* w, uint32_t* h, uint32_t* txrFormat, void* buffer);

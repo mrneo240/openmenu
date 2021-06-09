@@ -24,9 +24,12 @@
 #include "ui/ui_line_desc.h"
 #undef UI_NAME
 
+#include "texture/txr_manager.h"
+
 static int init() {
   int ret = 0;
 
+  ret += txr_create_small_pool();
   ret += list_read();
 
   draw_init();
@@ -128,6 +131,8 @@ static int translate_input(void) {
 
   return NONE;
 }
+
+extern int example_main(int argc, char **argv);
 
 int main(int argc, char *argv[]) {
   fflush(stdout);

@@ -28,6 +28,15 @@ void draw_init(void) {
 void draw_setup(void) {
 }
 
+void* draw_load_missing_icon(void* user) {
+  image* img = (image*)user;
+  img->texture = img_empty_boxart.texture;
+  img->width = img_empty_boxart.width;
+  img->height = img_empty_boxart.height;
+  img->format = img_empty_boxart.format;
+  return img;
+}
+
 /* Throws ID into id and returns something if needs to*/
 void* draw_load_texture(const char* filename, void* user) {
   image* img = (image*)user;
@@ -35,6 +44,23 @@ void* draw_load_texture(const char* filename, void* user) {
   pvr_ptr_t txr;
 
   if (!(txr = load_pvr(filename, &img->width, &img->height, &img->format))) {
+    img->texture = img_empty_boxart.texture;
+    img->width = img_empty_boxart.width;
+    img->height = img_empty_boxart.height;
+    img->format = img_empty_boxart.format;
+    return img;
+  }
+  img->texture = txr;
+
+  return user;
+}
+
+void* draw_load_texture_buffer(const char* filename, void* user, void* buffer) {
+  image* img = (image*)user;
+
+  pvr_ptr_t txr;
+
+  if (!(txr = load_pvr_to_buffer(filename, &img->width, &img->height, &img->format, buffer))) {
     img->texture = img_empty_boxart.texture;
     img->width = img_empty_boxart.width;
     img->height = img_empty_boxart.height;

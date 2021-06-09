@@ -16,6 +16,7 @@
 
 #include "../backend/gd_item.h"
 #include "../backend/gd_list.h"
+#include "../texture/txr_manager.h"
 #include "draw_prototypes.h"
 #include "font_prototypes.h"
 
@@ -27,7 +28,7 @@ static int navigate_timeout = -1;
 
 /* For drawing */
 static image txr_highlight, txr_bg; /* Highlight square and Background */
-static image txr_icon_list[64];     /* Lower list of 9 icons */
+static image txr_icon_list[16];     /* Lower list of 9 icons */
 static image *txr_focus;            /* current selected item */
 
 /* Our actual gdemu items */
@@ -71,9 +72,13 @@ static void draw_small_boxes() {
 
   draw_draw_square(x_start + (icon_size + icon_spacing) * highlighted_icon - 4.0f, y_pos - 4.0f, icon_size + 8, 1.0f, &txr_highlight);
 
-  draw_draw_square(x_start, y_pos, icon_size, 1.0f, &txr_icon_list[list_current[starting_icon_idx + 0]->slot_num - LIST_ADJUST]);
+  /* attempt to use texture loader */
+  txr_get_small(list_current[starting_icon_idx + 0]->product, &txr_icon_list[0]);
+
+  draw_draw_square(x_start, y_pos, icon_size, 1.0f, &txr_icon_list[0]);
   for (i = 1; (i < num_icons - 1) && (i + starting_icon_idx < list_len); i++) {
-    draw_draw_square(x_start + (icon_size + icon_spacing) * i, y_pos, icon_size, 1.0f, &txr_icon_list[list_current[starting_icon_idx + i]->slot_num - LIST_ADJUST]);
+    txr_get_small(list_current[starting_icon_idx + i]->product, &txr_icon_list[i]);
+    draw_draw_square(x_start + (icon_size + icon_spacing) * i, y_pos, icon_size, 1.0f, &txr_icon_list[i]);
   }
 #undef LIST_ADJUST
 }
@@ -90,15 +95,7 @@ FUNCTION(UI_NAME, init) {
 }
 
 FUNCTION(UI_NAME, setup) {
-  char buffer[64] = {0};
-  for (int i = 0; i < list_len; i++) {
-    strcat(buffer, "/cd/box/");
-    strcat(buffer, list_current[i]->product);
-    strcat(buffer, ".pvr");
-    memset(&txr_icon_list[i], '\0', sizeof(image));
-    draw_load_texture(buffer, &txr_icon_list[i]);
-    buffer[0] = '\0';
-  }
+  /* empty for now */
 }
 
 static void menu_decrement(void) {
@@ -190,7 +187,7 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
 }
 
 static void update_data(void) {
-  txr_focus = &txr_icon_list[current_selected_item];
+  txr_get_small(list_current[current_selected_item]->product, txr_focus);
 }
 
 FUNCTION(UI_NAME, draw) {
