@@ -10,6 +10,8 @@
 
 #pragma once
 
+#include <sys/stat.h>
+
 enum control { NONE = 0,
                LEFT,
                RIGHT,
@@ -20,3 +22,8 @@ enum control { NONE = 0,
                X,
                Y,
                START };
+
+static inline int file_exists(const char *path) {
+  struct stat buffer;
+  return (stat(path, &buffer) == 0);
+}
