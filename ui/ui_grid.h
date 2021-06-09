@@ -24,6 +24,8 @@
 
 #define UI_NAME GRID_3
 
+#define FUNC_NAME(name, func) name##_##func
+
 #define MAKE_FN(name, func) void name##_##func(void)
 #define FUNCTION(signal, func) MAKE_FN(signal, func)
 
