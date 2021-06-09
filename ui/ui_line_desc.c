@@ -27,9 +27,11 @@ enum control input_current;
 static int navigate_timeout = -1;
 
 /* For drawing */
-static image txr_highlight, txr_bg; /* Highlight square and Background */
-static image txr_icon_list[16];     /* Lower list of 9 icons */
-static image *txr_focus;            /* current selected item */
+static image txr_highlight, txr_bg;   /* Highlight square and Background */
+static image txr_icon_list[16];       /* Lower list of 9 icons */
+static image txr_focus;               /* current selected item, either lowres or hires */
+#define FOCUSED_HIRES_FRAMES (60 * 1) /* 1 second load in */
+static int frames_focused = 0;
 
 /* Our actual gdemu items */
 static const gd_item **list_current;
@@ -47,7 +49,7 @@ draw_bg_layers() {
 }
 
 static void draw_big_box() {
-  draw_draw_image(92, 92, 208, 208, 1.0f, txr_focus);
+  draw_draw_image(92, 92, 208, 208, 1.0f, &txr_focus);
 }
 
 static void draw_small_boxes() {
@@ -70,16 +72,12 @@ static void draw_small_boxes() {
     num_icons++;
   }
 
-  draw_draw_square(x_start + (icon_size + icon_spacing) * highlighted_icon - 4.0f, y_pos - 4.0f, icon_size + 8, 1.0f, &txr_highlight);
-
-  /* attempt to use texture loader */
-  txr_get_small(list_current[starting_icon_idx + 0]->product, &txr_icon_list[0]);
-
-  draw_draw_square(x_start, y_pos, icon_size, 1.0f, &txr_icon_list[0]);
-  for (i = 1; (i < num_icons - 1) && (i + starting_icon_idx < list_len); i++) {
+  for (i = 0; (i < num_icons - 1) && (i + starting_icon_idx < list_len); i++) {
     txr_get_small(list_current[starting_icon_idx + i]->product, &txr_icon_list[i]);
     draw_draw_square(x_start + (icon_size + icon_spacing) * i, y_pos, icon_size, 1.0f, &txr_icon_list[i]);
   }
+  draw_draw_square(x_start + (icon_size + icon_spacing) * highlighted_icon - 4.0f, y_pos - 4.0f, icon_size + 8, 1.0f, &txr_highlight);
+
 #undef LIST_ADJUST
 }
 
@@ -89,7 +87,11 @@ FUNCTION(UI_NAME, init) {
   list_current = list_get();
   list_len = list_length();
 
-  txr_focus = &txr_icon_list[0];
+  /* Setup sensible defaults */
+  txr_focus.format = (0 << 26) | (1 << 27); /* RGB565, Twiddled */
+  txr_focus.width = 128;
+  txr_focus.height = 128;
+  txr_focus.texture = NULL;
 
   font_init();
 }
@@ -107,6 +109,7 @@ static void menu_decrement(void) {
     current_selected_item--;
   }
   navigate_timeout = INPUT_TIMEOUT;
+  frames_focused = 0;
 }
 
 static void menu_increment(void) {
@@ -118,6 +121,7 @@ static void menu_increment(void) {
     current_selected_item = list_len - 1;
   }
   navigate_timeout = INPUT_TIMEOUT;
+  frames_focused = 0;
 }
 
 static void menu_accept(void) {
@@ -150,6 +154,7 @@ static void menu_swap_sort(void) {
   }
   current_selected_item = 0;
   navigate_timeout = INPUT_TIMEOUT;
+  frames_focused = 0;
 }
 
 FUNCTION_INPUT(UI_NAME, handle_input) {
@@ -187,17 +192,21 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
 }
 
 static void update_data(void) {
-  txr_get_small(list_current[current_selected_item]->product, txr_focus);
+  if (frames_focused > FOCUSED_HIRES_FRAMES) {
+    txr_get_large(list_current[current_selected_item]->product, &txr_focus);
+  } else {
+    txr_get_small(list_current[current_selected_item]->product, &txr_focus);
+  }
+
+  frames_focused++;
 }
 
 FUNCTION(UI_NAME, draw) {
   update_data();
 
   draw_bg_layers();
-
-  draw_big_box();
-
   draw_small_boxes();
+  draw_big_box();
 
   font_begin_draw();
   font_draw_main(316, 92, 1.0f, list_current[current_selected_item]->name);

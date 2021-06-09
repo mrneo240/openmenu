@@ -14,19 +14,4 @@
 #include <dc/pvr.h>
 #include <stdint.h>
 
-typedef struct image {
-  char name[16];
-  uint32_t width, height;
-  uint32_t format;
-  pvr_ptr_t texture;
-} image;
-
-/* defined in pvr_texture.c */
-void* pvr_get_internal_buffer(void);
-/* Convenience functions */
-extern pvr_ptr_t load_pvr(const char* filename, uint32_t* w, uint32_t* h, uint32_t* txrFormat);
-extern pvr_ptr_t load_pvr_to_buffer(const char* filename, uint32_t* w, uint32_t* h, uint32_t* txrFormat, void* buffer);
-extern pvr_ptr_t load_pvr_from_buffer(const void* input, uint32_t* w, uint32_t* h, uint32_t* txrFormat);
-
-/* base method */
-extern pvr_ptr_t load_pvr_from_buffer_to_buffer(const void* input, uint32_t* w, uint32_t* h, uint32_t* txrFormat, void* buffer);
+#include "dc/pvr_texture.h"

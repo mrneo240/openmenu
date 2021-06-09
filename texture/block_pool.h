@@ -20,7 +20,7 @@ typedef struct block_pool {
   unsigned char *state;
 } block_pool;
 
-void pool_create(void *buffer, unsigned int size, unsigned int slots, block_pool *pool);
+void pool_create(block_pool *pool, void *buffer, unsigned int size, unsigned int slot);
 void pool_destroy(block_pool *pool);
 void pool_destroy_user(block_pool *pool, void (*user_free)(void *ptr));
 void pool_get_next_free(block_pool *pool, unsigned int *slot_num, void **ptr);

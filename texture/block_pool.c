@@ -22,7 +22,7 @@ static inline void _pool_mark_open(block_pool *pool, unsigned int slot_num) {
   pool->state[slot_num] = 0;
 }
 
-void pool_create(void *buffer, unsigned int size, unsigned int slots, block_pool *pool) {
+void pool_create(block_pool *pool, void *buffer, unsigned int size, unsigned int slots) {
   const unsigned int state_size = sizeof(unsigned char) * slots;
 
   pool->base = buffer;

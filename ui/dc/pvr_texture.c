@@ -8,7 +8,7 @@
  */
 #include <string.h>
 
-#include "common.h"
+#include "pvr_texture.h"
 
 #define PVR_HDR_SIZE 0x20
 
