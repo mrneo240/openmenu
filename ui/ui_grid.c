@@ -9,6 +9,7 @@
  */
 #include "ui_grid.h"
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -35,6 +36,39 @@ static const int items_per_row = 3;
 static const int rows = 3;
 
 static bool showing_large_art = false;
+
+static bool direction_last = false;
+static bool direction_current = false;
+#define direction_held (direction_last & direction_current)
+
+typedef struct vec2d {
+  float x;
+  float y;
+} vec2d;
+
+typedef struct anim2d {
+  int frame_len;
+  int frame_now;
+  vec2d start;
+  vec2d end;
+  vec2d cur;
+} anim2d;
+
+static vec2d pos_highlight = (vec2d){.x = 0, .y = 0};
+static anim2d anim_highlight = {0};
+static bool anim_active = false;
+
+#define ANIM_FRAMES (15)
+#define TILE_X_POS(col) (100 - 4 + ((40 + 120) * (col)))
+#define TILE_Y_POS(row) (20 - 4 + ((10 + 120) * (row)))
+
+static void update_anim(anim2d *anim) {
+  AHEasingFunction ease = CircularEaseOut;
+  const float dt = (float)anim->frame_now / (float)anim->frame_len;
+  const float dv = (*ease)(dt);
+  anim->cur.x = anim->start.x + (anim->end.x - anim->start.x) * dv;
+  anim->cur.y = anim->start.y + (anim->end.y - anim->start.y) * dv;
+}
 
 /* For drawing */
 //static image txr_highlight, txr_bg; /* Highlight square and Background */
@@ -73,9 +107,33 @@ static void draw_large_art(int x, int y, int width, int height) {
   }
 }
 
-  int gutter_top = 20;
+static void setup_highlight_animation(void) {
+  float start_x = pos_highlight.x;
+  float start_y = pos_highlight.y;
+  if (anim_active) {
+    start_x = anim_highlight.cur.x;
+    start_y = anim_highlight.cur.y;
+  }
+  anim_highlight.start.x = start_x;
+  anim_highlight.start.y = start_y;
+  anim_highlight.end.x = TILE_X_POS(screen_column);
+  anim_highlight.end.y = TILE_Y_POS(screen_row);
+  anim_highlight.frame_now = 0;
+  anim_highlight.frame_len = ANIM_FRAMES;
+  anim_active = true;
+}
 
-  int idx;
+static void draw_static_highlight(int size) {
+  draw_draw_square(pos_highlight.x, pos_highlight.y, size, 1.0f, &txr_highlight);
+}
+
+static void draw_animated_highlight(int size) {
+  /* Always draw on top */
+  float z = z_get();
+  z_set(512.0f);
+  draw_draw_square(anim_highlight.cur.x, anim_highlight.cur.y, size, 1.0f, &txr_highlight);
+  z_set(z);
+}
 
 static void draw_grid_boxes(void) {
   const int tile_size = 120;
@@ -101,27 +159,31 @@ static void draw_grid_boxes(void) {
       txr_get_small(list_current[current_starting_index + idx]->product, &txr_icon_list[idx]);
       draw_draw_square(x_pos, y_pos, tile_size, 1.0f, &txr_icon_list[idx]);
 
-      if ((current_starting_index + idx) == selected) {
-        /* Highlight */
-        draw_draw_square(x_pos - 4.0f, y_pos - 4.0f, tile_size + 8, 1.0f, &txr_highlight);
+      /* Highlight */
+      if ((current_starting_index + idx) == current_selected()) {
+        if (anim_active) {
+          draw_animated_highlight(tile_size + (highlight_overhang * 2));
+        } else {
+          pos_highlight.x = x_pos - highlight_overhang;
+          pos_highlight.y = y_pos - highlight_overhang;
+          draw_static_highlight(tile_size + (highlight_overhang * 2));
+        }
       }
     }
   }
-}
 
   /* If focused, draw large cover art */
   draw_large_art(gutter_side - 4, gutter_top - 4, (tile_size * items_per_row) + (horizontal_spacing * (items_per_row - 1)) + 8, (tile_size * items_per_row) + (vertical_spacing * (rows - 1)) + 8);
 }
 
-/* Reset variables sensibly */
-FUNCTION(UI_NAME, setup) {
-  list_current = list_get();
-  list_len = list_length();
-
-  screen_column = screen_row = 0;
-  current_starting_index = 0;
-  navigate_timeout = INPUT_TIMEOUT;
-  sort_current = DEFAULT;
+static void update_time(void) {
+  if (anim_active) {
+    anim_highlight.frame_now++;
+    if (anim_highlight.frame_now > anim_highlight.frame_len) {
+      anim_active = false;
+    }
+    update_anim(&anim_highlight);
+  }
 }
 
 static void menu_row_up(void) {
@@ -154,49 +216,59 @@ static void menu_row_down(void) {
 }
 
 static void menu_up(void) {
-  if (navigate_timeout > 0) {
+  if (direction_held && navigate_timeout > 0) {
     navigate_timeout--;
     return;
   }
   menu_row_up();
 
+  setup_highlight_animation();
+
+  frames_focused = 0;
   navigate_timeout = INPUT_TIMEOUT;
 }
 
 static void menu_down(void) {
-  if (navigate_timeout > 0) {
+  if (direction_held && navigate_timeout > 0) {
     navigate_timeout--;
     return;
   }
   menu_row_down();
 
+  setup_highlight_animation();
+
+  frames_focused = 0;
   navigate_timeout = INPUT_TIMEOUT;
 }
 
 static void menu_left(void) {
-  if (navigate_timeout > 0) {
+  if (direction_held && navigate_timeout > 0) {
     navigate_timeout--;
     return;
   }
 
   screen_column--;
-  if (current_starting_index == 0 && screen_column < 0) {
+  if (current_selected() < 0) {
     screen_column = 0;
   }
   if (screen_column < 0) {
     screen_column = items_per_row - 1;
     menu_row_up();
   }
+
+  setup_highlight_animation();
+
+  frames_focused = 0;
   navigate_timeout = INPUT_TIMEOUT;
 }
 
 static void menu_right(void) {
-  if (navigate_timeout > 0) {
+  if (direction_held && navigate_timeout > 0) {
     navigate_timeout--;
     return;
   }
   screen_column++;
-  if (current_starting_index + (screen_row * items_per_row) + screen_column >= list_len) {
+  if (current_selected() >= list_len) {
     screen_column--;
   }
   if (screen_column >= items_per_row) {
@@ -204,6 +276,7 @@ static void menu_right(void) {
     menu_row_down();
   }
 
+  setup_highlight_animation();
 
   frames_focused = 0;
   navigate_timeout = INPUT_TIMEOUT;
@@ -280,19 +353,26 @@ FUNCTION(UI_NAME, setup) {
 }
 
 FUNCTION_INPUT(UI_NAME, handle_input) {
+  direction_last = direction_current;
+  direction_current = false;
   showing_large_art = false;
+
   enum control input_current = button;
   switch (input_current) {
     case LEFT:
+      direction_current = true;
       menu_left();
       break;
     case RIGHT:
+      direction_current = true;
       menu_right();
       break;
     case UP:
+      direction_current = true;
       menu_up();
       break;
     case DOWN:
+      direction_current = true;
       menu_down();
       break;
     case A:
@@ -311,8 +391,6 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
     /* These dont do anything */
     case B:
       break;
-    case X:
-      break;
     /* Always nothing */
     case NONE:
     default:
@@ -327,6 +405,8 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
 }
 
 FUNCTION(UI_NAME, draw) {
+  update_time();
+
   draw_bg_layers();
   draw_grid_boxes();
 

@@ -12,6 +12,8 @@
 
 #include <sys/stat.h>
 
+#include "../external/easing.h"
+
 enum control { NONE = 0,
                LEFT,
                RIGHT,
