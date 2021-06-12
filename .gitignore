@@ -1,6 +1,8 @@
 *.ini
-
 *.o
-example
 *.bin
 *.elf
+*.map
+*loader*
+gdrom
+.vscode
