@@ -8,9 +8,11 @@
  * Copyright (c) 2019 Hayden Kowalchuk
  */
 
+#include <dc/flashrom.h>
 #include <dc/maple.h>
 #include <dc/maple/controller.h>
 #include <dc/pvr.h>
+#include <dc/video.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -178,6 +180,13 @@ static int translate_input(void) {
     return RIGHT;
   }
 
+  if (INPT_AnalogI(AXES_Y) < 128 - 24) {
+    return UP;
+  }
+  if (INPT_AnalogI(AXES_Y) > 128 + 24) {
+    return DOWN;
+  }
+
   if (INPT_Button(BTN_A)) {
     return A;
   }
@@ -197,10 +206,40 @@ static int translate_input(void) {
   return NONE;
 }
 
+static void init_gfx_pvr(void) {
+  /* BlueCrab (c) 2014,
+    This assumes that the video mode is initialized as KOS
+   normally does, that is to 640x480 NTSC IL or 640x480 VGA */
+  int dc_region, ct;
+
+  dc_region = flashrom_get_region();
+  ct = vid_check_cable();
+
+  /* Prompt the user for whether to run in PAL50 or PAL60 if the flashrom says
+       the Dreamcast is European and a VGA Box is not hooked up. */
+  if (dc_region == FLASHROM_REGION_EUROPE && ct != CT_VGA) {
+    if (/*pal_menu()*/ 1 == 1)
+      vid_set_mode(DM_640x480_NTSC_IL, PM_RGB565);
+    else
+      vid_set_mode(DM_640x480_PAL_IL, PM_RGB565);
+  }
+
+  pvr_init_params_t params = {
+      /* Enable opaque and translucent polygons with size 32 and 32 */
+      {PVR_BINSIZE_0, PVR_BINSIZE_0, PVR_BINSIZE_32, PVR_BINSIZE_0, PVR_BINSIZE_0}, /* Only TR */
+      256 * 1024,                                                                   /* 256kb Vertex buffer  */
+      0,                                                                            /* No DMA */
+      0,                                                                            /* No FSAA */
+      1                                                                             /* Enable TR autosort */
+  };
+
+  pvr_init(&params);
+}
+
 int main(int argc, char *argv[]) {
   fflush(stdout);
   setbuf(stdout, NULL);
-  pvr_init_defaults();
+  init_gfx_pvr();
 
   if (init()) {
     puts("Init error.");

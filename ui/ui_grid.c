@@ -22,20 +22,27 @@
 extern void ui_cycle_next(void);
 
 /* List managment */
+#define INPUT_TIMEOUT (10)
+#define FOCUSED_HIRES_FRAMES (60 * 1) /* 1 second load in */
+
 static int screen_row = 0;
 static int screen_column = 0;
 static int current_starting_index = 0;
-#define INPUT_TIMEOUT (10)
 static int navigate_timeout = INPUT_TIMEOUT;
+static int frames_focused = 0;
 
-static int items_per_row = 3;
-static int rows = 3;
+static const int items_per_row = 3;
+static const int rows = 3;
+
+static bool showing_large_art = false;
 
 /* For drawing */
 //static image txr_highlight, txr_bg; /* Highlight square and Background */
 static image txr_icon_list[9]; /* Lower list of 9 icons */
+static image txr_focus;
 
 extern image txr_highlight, txr_bg; /* Highlight square and Background */
+extern image img_empty_boxart;
 
 /* Our actual gdemu items */
 static const gd_item **list_current;
@@ -55,31 +62,41 @@ static inline int current_selected(void) {
   return current_starting_index + (screen_row * items_per_row) + (screen_column);
 }
 
-static void draw_grid_boxes(void) {
-  int tile_size = 120;
-  int gutter_side = 100;
-  int horizontal_spacing = 40;
-  int vertical_spacing = 10;
+static void draw_large_art(int x, int y, int width, int height) {
+  if (showing_large_art) {
+    txr_get_large(list_current[current_selected()]->product, &txr_focus);
+    if (txr_focus.texture == img_empty_boxart.texture) {
+      /* Only draw if large is present */
+      return;
+    }
+    draw_draw_image(x, y, width, height, 1.0f, &txr_focus);
+  }
+}
 
   int gutter_top = 20;
 
   int idx;
 
-  int selected = current_selected();
+static void draw_grid_boxes(void) {
+  const int tile_size = 120;
+  const int gutter_side = 100;
+  const int gutter_top = 20;
+  const int horizontal_spacing = 40;
+  const int vertical_spacing = 10;
+  const int highlight_overhang = 4;
 
   for (int row = 0; row < rows; row++) {
     for (int column = 0; column < items_per_row; column++) {
-      idx = (row * items_per_row) + column;
+      int idx = (row * items_per_row) + column;
 
       if (current_starting_index + idx < 0) {
         continue;
       }
       if (current_starting_index + idx >= list_len) {
-        return;
+        continue;
       }
-
-      int x_pos = gutter_side + ((horizontal_spacing + tile_size) * column);
-      int y_pos = gutter_top + ((vertical_spacing + tile_size) * row);
+      int x_pos = gutter_side + ((horizontal_spacing + tile_size) * column); /* 100 + ((40 + 120)*{0,1,2}) */
+      int y_pos = gutter_top + ((vertical_spacing + tile_size) * row);       /* 20 + ((10 + 120)*{0,1,2}) */
 
       txr_get_small(list_current[current_starting_index + idx]->product, &txr_icon_list[idx]);
       draw_draw_square(x_pos, y_pos, tile_size, 1.0f, &txr_icon_list[idx]);
@@ -92,14 +109,8 @@ static void draw_grid_boxes(void) {
   }
 }
 
-FUNCTION(UI_NAME, init) {
-  /* Moved to global init */
-  /*
-  draw_load_texture("/cd/highlight.pvr", &txr_highlight);
-  draw_load_texture("/cd/bg_right.pvr", &txr_bg);
-
-  font_init();
-  */
+  /* If focused, draw large cover art */
+  draw_large_art(gutter_side - 4, gutter_top - 4, (tile_size * items_per_row) + (horizontal_spacing * (items_per_row - 1)) + 8, (tile_size * items_per_row) + (vertical_spacing * (rows - 1)) + 8);
 }
 
 /* Reset variables sensibly */
@@ -193,6 +204,8 @@ static void menu_right(void) {
     menu_row_down();
   }
 
+
+  frames_focused = 0;
   navigate_timeout = INPUT_TIMEOUT;
 }
 
@@ -224,6 +237,10 @@ static void menu_swap_sort(void) {
       list_current = list_get_sort_default();
       break;
   }
+
+  frames_focused = 0;
+  screen_column = screen_row = 0;
+  current_starting_index = 0;
   navigate_timeout = INPUT_TIMEOUT;
 }
 
@@ -236,7 +253,34 @@ static void menu_cycle_ui(void) {
   navigate_timeout = INPUT_TIMEOUT;
 }
 
+static void menu_show_large_art(void) {
+  showing_large_art = true;
+}
+
+/* Base UI Methods */
+
+FUNCTION(UI_NAME, init) {
+  /* Moved to global init */
+  /*
+  draw_load_texture("HIGHLIGHT.PVR", &txr_highlight);
+  draw_load_texture("BG_RIGHT.PVR", &txr_bg);
+  font_init();
+  */
+}
+
+/* Reset variables sensibly */
+FUNCTION(UI_NAME, setup) {
+  list_current = list_get();
+  list_len = list_length();
+
+  screen_column = screen_row = 0;
+  current_starting_index = 0;
+  navigate_timeout = INPUT_TIMEOUT;
+  sort_current = DEFAULT;
+}
+
 FUNCTION_INPUT(UI_NAME, handle_input) {
+  showing_large_art = false;
   enum control input_current = button;
   switch (input_current) {
     case LEFT:
@@ -259,6 +303,9 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
       break;
     case Y:
       menu_cycle_ui();
+      break;
+    case X:
+      menu_show_large_art();
       break;
 
     /* These dont do anything */
@@ -284,5 +331,5 @@ FUNCTION(UI_NAME, draw) {
   draw_grid_boxes();
 
   font_begin_draw();
-  font_draw_main(20, 430, 1.0f, list_current[current_selected()]->name);
+  font_draw_centered(320, 430, 1.0f, list_current[current_selected()]->name);
 }

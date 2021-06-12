@@ -23,10 +23,11 @@
 extern void ui_cycle_next(void);
 
 /* List managment */
-static int current_selected_item = 0;
 #define INPUT_TIMEOUT (10)
-static int navigate_timeout = INPUT_TIMEOUT;
 #define FOCUSED_HIRES_FRAMES (60 * 1) /* 1 second load in */
+
+static int current_selected_item = 0;
+static int navigate_timeout = INPUT_TIMEOUT;
 static int frames_focused = 0;
 
 /* For drawing */
@@ -81,33 +82,6 @@ static void draw_small_boxes() {
   draw_draw_square(x_start + (icon_size + icon_spacing) * highlighted_icon - 4.0f, y_pos - 4.0f, icon_size + 8, 1.0f, &txr_highlight);
 
 #undef LIST_ADJUST
-}
-
-FUNCTION(UI_NAME, init) {
-  /* Moved to global init */
-  /*
-  draw_load_texture("/cd/highlight.pvr", &txr_highlight);
-  draw_load_texture("/cd/bg_right.pvr", &txr_bg);
-
-  font_init();
-  */
-}
-
-FUNCTION(UI_NAME, setup) {
-  list_current = list_get();
-  list_len = list_length();
-
-  current_selected_item = 0;
-  sort_current = DEFAULT;
-  frames_focused = 0;
-
-  /* Setup sensible defaults */
-  txr_focus.format = (0 << 26) | (1 << 27); /* RGB565, Twiddled */
-  txr_focus.width = 128;
-  txr_focus.height = 128;
-  txr_focus.texture = NULL;
-
-  navigate_timeout = INPUT_TIMEOUT;
 }
 
 static void menu_decrement(void) {
@@ -176,6 +150,47 @@ static void menu_cycle_ui(void) {
   navigate_timeout = INPUT_TIMEOUT;
 }
 
+static void update_data(void) {
+  if (frames_focused > FOCUSED_HIRES_FRAMES) {
+    txr_get_large(list_current[current_selected_item]->product, &txr_focus);
+    if (txr_focus.texture == img_empty_boxart.texture) {
+      txr_get_small(list_current[current_selected_item]->product, &txr_focus);
+    }
+  } else {
+    txr_get_small(list_current[current_selected_item]->product, &txr_focus);
+  }
+
+  frames_focused++;
+}
+
+/* Base UI Methods */
+
+FUNCTION(UI_NAME, init) {
+  /* Moved to global init */
+  /*
+  draw_load_texture("HIGHLIGHT.PVR", &txr_highlight);
+  draw_load_texture("BG_RIGHT.PVR", &txr_bg);
+  font_init();
+  */
+}
+
+FUNCTION(UI_NAME, setup) {
+  list_current = list_get();
+  list_len = list_length();
+
+  current_selected_item = 0;
+  sort_current = DEFAULT;
+  frames_focused = 0;
+
+  /* Setup sensible defaults */
+  txr_focus.format = (0 << 26) | (1 << 27); /* RGB565, Twiddled */
+  txr_focus.width = 128;
+  txr_focus.height = 128;
+  txr_focus.texture = NULL;
+
+  navigate_timeout = INPUT_TIMEOUT;
+}
+
 FUNCTION_INPUT(UI_NAME, handle_input) {
   enum control input_current = button;
   switch (input_current) {
@@ -211,19 +226,6 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
   }
 }
 
-static void update_data(void) {
-  if (frames_focused > FOCUSED_HIRES_FRAMES) {
-    txr_get_large(list_current[current_selected_item]->product, &txr_focus);
-    if (txr_focus.texture == img_empty_boxart.texture) {
-      txr_get_small(list_current[current_selected_item]->product, &txr_focus);
-    }
-  } else {
-    txr_get_small(list_current[current_selected_item]->product, &txr_focus);
-  }
-
-  frames_focused++;
-}
-
 FUNCTION(UI_NAME, draw) {
   update_data();
 
@@ -233,7 +235,7 @@ FUNCTION(UI_NAME, draw) {
 
   font_begin_draw();
   font_draw_main(316, 92, 1.0f, list_current[current_selected_item]->name);
-  font_draw_sub_wrap(316, 128, 1.0f, 280, "Game Synopsis here...");
+  font_draw_sub_wrap(316, 128, 1.0f, "Game Synopsis here...", 280);
   const char *text = NULL;
   switch (sort_current) {
     case ALPHA:
