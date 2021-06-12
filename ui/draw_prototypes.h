@@ -33,9 +33,15 @@ void *draw_load_texture_buffer(const char *filename, void *user, void *buffer);
 void *draw_load_texture_from_DAT_to_buffer(struct dat_file *bin, const char *ID, void *user, void *buffer);
 
 /* draws an image at coords of a given size */
-void draw_draw_image(unsigned int x, unsigned int y, float width, float height, float alpha, void *user);
+void draw_draw_image(int x, int y, float width, float height, float alpha, void *user);
 /* draws an image at coords as a square */
-void draw_draw_square(unsigned int x, unsigned int y, float size, float alpha, void *user);
+void draw_draw_square(int x, int y, float size, float alpha, void *user);
 
 /* exec proto */
 void dreamcast_rungd(unsigned int slot_num);
+
+/* z depth */
+float z_get(void);
+float z_set(float z);
+void z_reset(void);
+float z_inc(void);

@@ -16,19 +16,45 @@
 #include "draw_prototypes.h"
 #include "font_prototypes.h"
 
+//#define KOS_SPRITE (1)
+
+extern int round(float x);
+
 image txr_highlight, txr_bg; /* Highlight square and Background */
 image img_empty_boxart;
 
+static float z_depth;
+float z_get(void) {
+  return z_depth;
+}
+float z_set(float z) {
+  z_depth = z;
+  return z_depth;
+}
+void z_reset(void) {
+  z_depth = 1.0f;
+}
+float z_inc(void) {
+  z_depth += 1.0f;
+
+  /* 512 Puts Blit infront of everything*/
+  if (z_depth > 512.0f) {
+    z_depth = 512.0f;
+  }
+  return z_depth;
+}
+
 /* Called only once at start */
 void draw_init(void) {
-
-  draw_load_texture("/cd/highlight.pvr", &txr_highlight);
-  draw_load_texture("/cd/bg_right.pvr", &txr_bg);
+  draw_load_texture("HIGHLIGHT.PVR", &txr_highlight);
+  draw_load_texture("BG_RIGHT.PVR", &txr_bg);
 
   font_init();
 
-  pvr_ptr_t txr = load_pvr("/cd/empty.pvr", &img_empty_boxart.width, &img_empty_boxart.height, &img_empty_boxart.format);
+  pvr_ptr_t txr = load_pvr("EMPTY.PVR", &img_empty_boxart.width, &img_empty_boxart.height, &img_empty_boxart.format);
   img_empty_boxart.texture = txr;
+
+  z_reset();
 }
 
 /* called at the start of each frame */
@@ -97,36 +123,64 @@ void* draw_load_texture_from_DAT_to_buffer(struct dat_file* bin, const char* ID,
   }
 }
 
+// 0x1c + 0x164 =
 /* draws an image at coords of a given size */
-void draw_draw_image(unsigned int sx, unsigned int sy, float width, float height, float alpha, void* user) {
-  /*
-
-	This Function creates & Displays a rectangle polygon(useing a triangle strip) with textures at any position
-	you would like.
-
-	sx, sy is the position that you would like to display the rectangle polygon on the
-	screen at.
-
-	Size is the total texture size e.g 256x256 is just 256 this assumes that your textures are square.
-
-	Sizew, Sizeh is the size of the polygon  * Note: This does not have to be
-	the same as the above in that case the texture will be stretched to fit the poly.
-
-	x, y start a 1,1 NOT 0, 0  x2, y2 start at 64, 64 not 63, 63
-	x, y / x2, y2 is the start/end position of the texture postion given in REAL
-	Bitmap pixel format this creates a box and grabs that data from the texture map to display.
-
-*/
+void draw_draw_image(int x, int y, float width, float height, float alpha, void* user) {
   image* img = (image*)user;
-  const float z = 512;
 
-  /* Create command for sending textured triangle strips with alpha masking. */
-  pvr_poly_cxt_t context; /* This is just a convenience function for creating the following. */
-  pvr_poly_hdr_t header;  /* This is sent to the PVR before geometry is sent. */
-
-  if (img->width == 0 && img->height == 0) {
+  if (img->width == 0 || img->height == 0) {
     return;
   }
+
+  /* Upper left */
+  const float x1 = round((float)x);
+  const float y1 = round((float)y);
+  const float u1 = 0.f;
+  const float v1 = 0.f;
+
+  /* Lower right */
+  const float x2 = round((float)x + width);
+  const float y2 = round((float)y + height);
+  const float u2 = 1.0f;
+  const float v2 = 1.0f;
+
+  const float z = z_inc();
+
+#ifdef KOS_SPRITE
+  pvr_sprite_cxt_t context;
+  pvr_sprite_hdr_t header;
+
+  pvr_sprite_cxt_txr(&context, PVR_LIST_TR_POLY, img->format, img->width, img->width, img->texture, PVR_FILTER_BILINEAR);
+  pvr_sprite_compile(&header, &context);
+
+  pvr_prim(&header, sizeof(header));
+
+  pvr_sprite_txr_t vert = {
+      .flags = PVR_CMD_VERTEX_EOL, /* Always? */
+      /*  upper left */
+      .ax = x1,
+      .ay = y1,
+      .az = z,
+      /* upper right */
+      .bx = x2,
+      .by = y1,
+      .bz = z,
+      /* lower left */
+      .cx = x2,
+      .cy = y2,
+      .cz = z,
+      /* interpolated */
+      .dx = x1,
+      .dy = y2,
+      .auv = PVR_PACK_16BIT_UV(u1, v1), /* UVS */
+      .buv = PVR_PACK_16BIT_UV(u2, v1), /* UVS */
+      .cuv = PVR_PACK_16BIT_UV(u2, v2), /* UVS */
+  };
+  pvr_prim(&vert, sizeof(vert));
+
+#else
+  pvr_poly_cxt_t context;
+  pvr_poly_hdr_t header;
 
   pvr_poly_cxt_txr(&context, PVR_LIST_TR_POLY, img->format, img->width, img->width, img->texture, PVR_FILTER_BILINEAR);
   pvr_poly_compile(&header, &context);
@@ -139,101 +193,35 @@ void draw_draw_image(unsigned int sx, unsigned int sy, float width, float height
       .flags = PVR_CMD_VERTEX,
       .z = 1};
 
-  vert.x = sx;
-  vert.y = height + sy;
-  vert.z = z; /* 512 Puts Blit infront of everything*/
-  vert.u = 0.0f;
-  vert.v = 1.0f;
+  vert.x = x1;
+  vert.y = y2;
+  vert.z = z;
+  vert.u = u1;
+  vert.v = v2;
   pvr_prim(&vert, sizeof(vert));
 
-  vert.x = sx;
-  vert.y = sy;
-  vert.u = 0.0f;
-  vert.v = 0.0f;
+  vert.x = x1;
+  vert.y = y1;
+  vert.u = u1;
+  vert.v = v1;
   pvr_prim(&vert, sizeof(vert));
 
-  vert.x = width + sx;
-  vert.y = height + sy;
-  vert.u = 1.0f;
-  vert.v = 1.0f;
+  vert.x = x2;
+  vert.y = y2;
+  vert.u = u2;
+  vert.v = v2;
   pvr_prim(&vert, sizeof(vert));
 
   vert.flags = PVR_CMD_VERTEX_EOL;
-  vert.x = width + sx;
-  vert.y = sy;
-  vert.u = 1.0f;
-  vert.v = 0.0f;
+  vert.x = x2;
+  vert.y = y1;
+  vert.u = u2;
+  vert.v = v1;
   pvr_prim(&vert, sizeof(vert));
+#endif
 }
 
 /* draws an image at coords as a square */
-void draw_draw_square(unsigned int sx, unsigned int sy, float size, float alpha, void* user) {
-  /*
-
-	This Function creates & Displays a rectangle polygon(useing a triangle strip) with textures at any position
-	you would like.
-
-	sx, sy is the position that you would like to display the rectangle polygon on the
-	screen at.
-
-	Size is the total texture size e.g 256x256 is just 256 this assumes that your textures are square.
-
-	Sizew, Sizeh is the size of the polygon  * Note: This does not have to be
-	the same as the above in that case the texture will be stretched to fit the poly.
-
-	x, y start a 1,1 NOT 0, 0  x2, y2 start at 64, 64 not 63, 63
-	x, y / x2, y2 is the start/end position of the texture postion given in REAL
-	Bitmap pixel format this creates a box and grabs that data from the texture map to display.
-
-*/
-  image* img = (image*)user;
-  const float z = 512;
-
-  if (img->width == 0 && img->height == 0) {
-    return;
-  }
-
-  /* Create command for sending textured triangle strips with alpha masking. */
-  pvr_poly_cxt_t context; /* This is just a convenience function for creating the following. */
-  pvr_poly_hdr_t header;  /* This is sent to the PVR before geometry is sent. */
-
-  /* Define which palette, texture and polyon list are to be used (punchthru for alpha masking here).
-	 * Filtering is disabled because sprites are displayed 1:1.
-	 */
-  pvr_poly_cxt_txr(&context, PVR_LIST_TR_POLY, img->format, img->width, img->width, img->texture, PVR_FILTER_BILINEAR);
-  pvr_poly_compile(&header, &context);
-
-  pvr_prim(&header, sizeof(header));
-
-  pvr_vertex_t vert = {
-      .argb = PVR_PACK_COLOR(alpha, 1.0f, 1.0f, 1.0f),
-      .oargb = 0,
-      .flags = PVR_CMD_VERTEX,
-      .z = 1};
-
-  vert.x = sx;
-  vert.y = size + sy;
-  vert.z = z; /* 512 Puts Blit infront of everything*/
-  vert.u = 0.0f;
-  vert.v = 1.0f;
-  pvr_prim(&vert, sizeof(vert));
-
-  vert.x = sx;
-  vert.y = sy;
-  vert.u = 0.0f;
-  vert.v = 0.0f;
-  pvr_prim(&vert, sizeof(vert));
-
-  vert.x = size + sx;
-  vert.y = size + sy;
-  vert.u = 1.0f;
-  vert.v = 1.0f;
-  pvr_prim(&vert, sizeof(vert));
-
-  vert.flags = PVR_CMD_VERTEX_EOL;
-  vert.x = size + sx;
-  vert.y = sy;
-  vert.u = 1.0f;
-  vert.v = 0.0f;
-  pvr_prim(&vert, sizeof(vert));
+void draw_draw_square(int x, int y, float size, float alpha, void* user) {
+  draw_draw_image(x, y, size, size, alpha, user);
 }
