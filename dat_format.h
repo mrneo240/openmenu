@@ -42,6 +42,7 @@ typedef struct dat_file {
 
 int DAT_init(dat_file *bin);
 int DAT_load_parse(dat_file *bin, const char *path);
+void DAT_dump(const dat_file *bin);
 
 uint32_t DAT_get_offset_by_ID(const dat_file *bin, const char *ID);
 int DAT_read_file_by_ID(const dat_file *bin, const char *ID, void *buf);

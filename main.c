@@ -13,6 +13,7 @@
 #include <dc/maple/controller.h>
 #include <dc/pvr.h>
 #include <dc/video.h>
+#include <dc/cdrom.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -81,6 +82,13 @@ void ui_cycle_next(void) {
   ui_set_choice(ui_choice_current);
 }
 
+int round(float x) {
+  if (x < 0.0f)
+    return (int)(x - 0.5f);
+  else
+    return (int)(x + 0.5f);
+}
+
 static int init(void) {
   int ret = 0;
 
@@ -94,13 +102,7 @@ static int init(void) {
   ui_set_default();
 
   (*current_ui_init)();
-  (*current_ui_setup)();
-
-  //GRID_3_init();
-  //GRID_3_setup();
-
-  //LIST_DESC_init();
-  //LIST_DESC_setup();
+  (*current_ui_setup)(); /* Called twice :( */
 
   return ret;
 }
@@ -112,8 +114,6 @@ static void draw(void) {
   pvr_list_begin(PVR_LIST_TR_POLY);
 
   (*current_ui_draw)();
-  //GRID_3_draw();
-  //LIST_DESC_draw();
 
   pvr_list_finish();
 
@@ -121,7 +121,7 @@ static void draw(void) {
 }
 
 static void processInput(void) {
-  static inputs _input;
+  inputs _input;
   unsigned int buttons;
 
   maple_device_t *cont;
@@ -206,6 +206,36 @@ static int translate_input(void) {
   return NONE;
 }
 
+static void reset_gdrom_drive(void) {
+  int status;
+  int disc_type;
+
+  do {
+    cdrom_get_status(&status, &disc_type);
+
+    if (status == CD_STATUS_PAUSED || status == CD_STATUS_STANDBY || status == CD_STATUS_PLAYING) {
+      break;
+    }
+  } while (1);
+
+  cdrom_init();
+  extern void gd_reset_handles(void);
+  gd_reset_handles();
+
+  do {
+    cdrom_get_status(&status, &disc_type);
+
+    if (status == CD_STATUS_PAUSED || status == CD_STATUS_STANDBY || status == CD_STATUS_PLAYING) {
+      break;
+    }
+  } while (1);
+
+  printf("Disc checking: ");
+  if (disc_type == CD_GDROM) {
+    printf("Found GDROM!\n");
+  }
+}
+
 static void init_gfx_pvr(void) {
   /* BlueCrab (c) 2014,
     This assumes that the video mode is initialized as KOS
@@ -241,16 +271,17 @@ int main(int argc, char *argv[]) {
   setbuf(stdout, NULL);
   init_gfx_pvr();
 
+  reset_gdrom_drive();
+
   if (init()) {
     puts("Init error.");
     return 1;
   }
 
   for (;;) {
+    z_reset();
     enum control input = translate_input();
     (*current_ui_handle_input)(input);
-    //GRID_3_handle_input(input);
-    //LIST_DESC_handle_input(input);
     draw();
   }
 

@@ -14,7 +14,6 @@ gcc example.c ini.c -Os -s  -Xlinker -Map=output.map -ffunction-sections -fdata-
 */
 
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
@@ -24,8 +23,12 @@ gcc example.c ini.c -Os -s  -Xlinker -Map=output.map -ffunction-sections -fdata-
 #include "gd_item.h"
 #include "ini.h"
 
+/* Used to read from GDROM instead of cdrom */
+#define GDROM_FS (1)
+#include "../gdrom/gdrom_fs.h"
+
 #ifdef _arch_dreamcast
-#define PATH_PREFIX "/cd/"
+#define PATH_PREFIX DISC_PREFIX
 #else
 #define PATH_PREFIX ""
 #endif
@@ -35,8 +38,8 @@ static gd_item* gd_slots_BASE = NULL;
 
 static gd_item** list_temp = NULL;
 
-size_t filelength(FILE* f) {
-  size_t end;
+static inline long int filelength(FD_TYPE f) {
+  long int end;
   fseek(f, 0, SEEK_END);
   end = ftell(f);
   fseek(f, 0, SEEK_SET);
@@ -178,7 +181,8 @@ int list_length(void) {
 }
 
 int list_read(void) {
-  FILE* ini = fopen(PATH_PREFIX "OPENMENU.ini", "r");
+  /* Always LD/cdrom */
+  FD_TYPE ini = fopen(PATH_PREFIX "OPENMENU.INI", "r");
   if (!ini) {
     printf("Error opening!!\n");
     fflush(stdout);
@@ -187,7 +191,7 @@ int list_read(void) {
   }
   size_t ini_size = filelength(ini);
   char* ini_buffer = malloc(ini_size);
-  fread(ini_buffer, 1, ini_size, ini);
+  fread(ini_buffer, ini_size, 1, ini);
   fclose(ini);
 
   if (ini_parse_string(ini_buffer, read_openmenu_ini, NULL) < 0) {

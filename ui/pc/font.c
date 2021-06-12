@@ -17,7 +17,7 @@ void font_begin_draw() {
 void _font_draw_string(int x1, int y1, float color, const char *str, char font) {
 }
 
-void font_draw_sub_wrap(int x1, int y1, float color, int width, const char *str) {
+void font_draw_sub_wrap(int x1, int y1, float color, const char *str, int width) {
 }
 
 void font_draw_main(int x1, int y1, float color, const char *str) {

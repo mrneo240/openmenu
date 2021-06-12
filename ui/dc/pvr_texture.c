@@ -6,9 +6,15 @@
  * -----
  * Copyright (c) 2019 Hayden Kowalchuk
  */
+#include "pvr_texture.h"
+
 #include <string.h>
 
-#include "pvr_texture.h"
+/* Used to read from GDROM instead of cdrom */
+#define GDROM_FS (1)
+#include "../../gdrom/gdrom_fs.h"
+
+extern int puts(const char* str);
 
 #define PVR_HDR_SIZE 0x20
 
@@ -117,8 +123,11 @@ pvr_ptr_t load_pvr_from_buffer(const void* input, uint32_t* w, uint32_t* h, uint
   unsigned char* texBuf = (unsigned char*)input;
   uint32_t txr_size = pvr_get_texture_size(input, w, h, txrFormat);
 
+  if (!txr_size)
+    return NULL;
+
   if (!(rv = pvr_mem_malloc(txr_size))) {
-    printf("PVR: Couldn't allocate memory for texture!\n");
+    puts("PVR: Couldn't allocate memory for texture!\n");
     return NULL;
   }
   pvr_txr_load(texBuf + PVR_HDR_SIZE, rv, txr_size);
@@ -135,31 +144,31 @@ void* pvr_get_internal_buffer(void) {
 
 static void pvr_read_to_internal(const char* filename) {
   unsigned int texSize;
-  FILE* tex_fd = NULL;
-  const size_t filename_len = strlen(filename) + 1;
+  FD_TYPE tex_fd = (FD_TYPE)NULL;
+  strcpy(filename_safe, DISC_PREFIX);
+  strcat(filename_safe, filename);
 
   /* replace all - with _ */
-  filename_safe[filename_len] = '\0';
-  memcpy(filename_safe, filename, filename_len);
   char* iter = filename_safe;
   while (*iter++) {
     if (*iter == '-')
       *iter = '_';
   }
 
+  unsigned char* texBuf = pvr_get_internal_buffer();
+  memset(texBuf, '\0', PVR_HDR_SIZE);
+
   tex_fd = fopen(filename_safe, "rb");
   if (!tex_fd) {
-    printf("PVR: pvr load fail %s\n", filename_safe);
+    puts("PVR: pvr load fail!\n");
     return;
   }
-
-  unsigned char* texBuf = pvr_get_internal_buffer();
 
   fseek(tex_fd, 0, SEEK_END);
   texSize = ftell(tex_fd);
 
   fseek(tex_fd, 0, SEEK_SET);
-  fread(texBuf, 1, texSize, tex_fd);
+  fread(texBuf, texSize, 1, tex_fd);
   fclose(tex_fd);
 }
 

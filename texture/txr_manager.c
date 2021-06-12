@@ -60,8 +60,8 @@ int txr_load_DATs(void) {
 
   DAT_init(&dat_icon);
   DAT_init(&dat_box);
-  DAT_load_parse(&dat_icon, "/cd/ICON.DAT");
-  DAT_load_parse(&dat_box, "/cd/BOX.DAT");
+  DAT_load_parse(&dat_icon, "ICON.DAT");
+  DAT_load_parse(&dat_box, "BOX.DAT");
 
   return 0;
 }
@@ -105,7 +105,7 @@ int txr_get_small(const char *id, struct image *img) {
   char buffer[64] = {0};
   strcat(buffer, "/cd/icon/");
   strcat(buffer, id_santized);
-  strcat(buffer, ".pvr");
+  strcat(buffer, ".PVR");
 
   /* check if exists and if not, return missing image */
   if (!file_exists(buffer)) {

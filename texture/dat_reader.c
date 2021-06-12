@@ -8,7 +8,6 @@
  * License: BSD 3-clause "New" or "Revised" License, http://www.opensource.org/licenses/BSD-3-Clause
  */
 
-#include <stdio.h>
 #include <stdlib.h>
 
 #include "../dat_format.h"
@@ -24,7 +23,11 @@ Dumps all info about the container
 /* only defined when building the binary tool */
 //#define STANDALONE_BINARY (1)
 
-#if DEBUG
+/* Used to read from GDROM instead of cdrom */
+#define GDROM_FS (1)
+#include "../gdrom/gdrom_fs.h"
+
+#ifdef DEBUG
 #define DBG_PRINT(...) printf(__VA_ARGS__)
 #else
 #define DBG_PRINT(...)
@@ -41,12 +44,15 @@ int DAT_init(dat_file *bin) {
 }
 
 int DAT_load_parse(dat_file *bin, const char *path) {
-  FILE *bin_fd;
+  FD_TYPE bin_fd;
   bin_header file_header;
+  char fullpath[128];
+  strcpy(fullpath, DISC_PREFIX);
+  strcat(fullpath, path);
 
-  bin_fd = fopen(path, "rb");
+  bin_fd = fopen(fullpath, "rb");
   if (!bin_fd) {
-    DBG_PRINT("Err: Cant read input %s!\n", path);
+    DBG_PRINT("Err: Cant read input %s!\n", fullpath);
     return 1;
   }
 
@@ -59,23 +65,27 @@ int DAT_load_parse(dat_file *bin, const char *path) {
   /* setup basic bin file info */
   bin->chunk_size = file_header.chunk_size;
   bin->num_chunks = file_header.num_chunks;
-  bin->handle = bin_fd;
+  bin->handle = (void *)bin_fd;
   bin->items = malloc(bin->num_chunks * sizeof(bin_item));
   bin->hash = NULL;
 
   /* Parse file table to Hash table */
   for (int i = 0; i < file_header.num_chunks; i++) {
-    fread(&bin->items[i], sizeof(bin_item_raw), 1, bin->handle);
+    fread(&bin->items[i], sizeof(bin_item_raw), 1, (FD_TYPE)bin->handle);
     HASH_ADD_STR(bin->hash, ID, &bin->items[i]);
   }
+
+#ifdef DEBUG
+  DAT_dump(bin);
+#endif
 
   return 0;
 }
 
 void DAT_dump(const dat_file *bin) {
-  DBG_PRINT("BIN Stats:\nChunk Size: %d\nNum Chunks: %d\n\n", bin->chunk_size, bin->num_chunks);
+  DBG_PRINT("BIN Stats:\nChunk Size: %lu\nNum Chunks: %lu\n\n", bin->chunk_size, bin->num_chunks);
   for (int i = 0; i < bin->num_chunks; i++) {
-    DBG_PRINT("Record[%d] %s at 0x%X\n", bin->items[i].offset, bin->items[i].ID, bin->items[i].offset * bin->chunk_size);
+    DBG_PRINT("Record[%lu] %s at 0x%X\n", bin->items[i].offset, bin->items[i].ID, (unsigned int)(bin->items[i].offset * bin->chunk_size));
   }
 }
 
@@ -96,8 +106,8 @@ uint32_t DAT_get_offset_by_ID(const dat_file *bin, const char *ID) {
 int DAT_read_file_by_ID(const dat_file *bin, const char *ID, void *buf) {
   uint32_t offset = DAT_get_offset_by_ID(bin, ID);
   if (offset) {
-    fseek(bin->handle, offset, SEEK_SET);
-    fread(buf, bin->chunk_size, 1, bin->handle);
+    fseek((FD_TYPE)bin->handle, offset, SEEK_SET);
+    fread(buf, bin->chunk_size, 1, (FD_TYPE)bin->handle);
     return 1;
   } else {
     return 0;
@@ -107,8 +117,8 @@ int DAT_read_file_by_ID(const dat_file *bin, const char *ID, void *buf) {
 int DAT_read_file_by_num(const dat_file *bin, uint32_t chunk_num, void *buf) {
   uint32_t offset = chunk_num * bin->chunk_size;
   if (chunk_num <= bin->num_chunks) {
-    fseek(bin->handle, offset, SEEK_SET);
-    fread(buf, bin->chunk_size, 1, bin->handle);
+    fseek((FD_TYPE)bin->handle, offset, SEEK_SET);
+    fread(buf, bin->chunk_size, 1, (FD_TYPE)bin->handle);
     return 1;
   } else {
     return 0;
