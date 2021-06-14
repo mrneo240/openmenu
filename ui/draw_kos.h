@@ -15,3 +15,11 @@
 #include <stdint.h>
 
 #include "dc/pvr_texture.h"
+
+#ifndef PVR_PACK_ARGB
+#define PVR_PACK_ARGB(a, r, g, b)( \
+    (((uint8_t)((a))) << 24) |  \
+    (((uint8_t)((r))) << 16) |  \
+    (((uint8_t)((g))) << 8) |   \
+    (((uint8_t)((b))) << 0))
+#endif

@@ -95,7 +95,7 @@ static int init(void) {
   ret += txr_create_small_pool();
   ret += txr_create_large_pool();
   ret += txr_load_DATs();
-  ret += list_read();
+  ret += list_read_default();
 
   draw_init();
 
@@ -260,7 +260,7 @@ static void init_gfx_pvr(void) {
       256 * 1024,                                                                   /* 256kb Vertex buffer  */
       0,                                                                            /* No DMA */
       0,                                                                            /* No FSAA */
-      1                                                                             /* Enable TR autosort */
+      0                                                                             /* Disable TR autosort */
   };
 
   pvr_init(&params);
@@ -269,6 +269,7 @@ static void init_gfx_pvr(void) {
 int main(int argc, char *argv[]) {
   fflush(stdout);
   setbuf(stdout, NULL);
+  pvr_init_defaults();
   init_gfx_pvr();
 
   reset_gdrom_drive();

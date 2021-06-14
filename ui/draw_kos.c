@@ -44,13 +44,15 @@ float z_inc(void) {
   return z_depth;
 }
 
-/* Called only once at start */
-void draw_init(void) {
+void draw_default_load_resources(void) {
   draw_load_texture("HIGHLIGHT.PVR", &txr_highlight);
   draw_load_texture("BG_RIGHT.PVR", &txr_bg);
 
-  font_init();
+  font_bmf_init();
+}
 
+/* Called only once at start */
+void draw_init(void) {
   pvr_ptr_t txr = load_pvr("EMPTY.PVR", &img_empty_boxart.width, &img_empty_boxart.height, &img_empty_boxart.format);
   img_empty_boxart.texture = txr;
 
@@ -123,9 +125,14 @@ void* draw_load_texture_from_DAT_to_buffer(struct dat_file* bin, const char* ID,
   }
 }
 
-// 0x1c + 0x164 =
 /* draws an image at coords of a given size */
 void draw_draw_image(int x, int y, float width, float height, float alpha, void* user) {
+  image* img = (image*)user;
+  const dimen_RECT uv_01 = {.x = 0, .y = 0, .w = img->width, .h = img->height};
+  draw_draw_sub_image(x, y, width, height, alpha, user, &uv_01);
+}
+
+void draw_draw_sub_image(int x, int y, float width, float height, float alpha, void* user, const dimen_RECT* rect) {
   image* img = (image*)user;
 
   if (img->width == 0 || img->height == 0) {
@@ -135,14 +142,14 @@ void draw_draw_image(int x, int y, float width, float height, float alpha, void*
   /* Upper left */
   const float x1 = round((float)x);
   const float y1 = round((float)y);
-  const float u1 = 0.f;
-  const float v1 = 0.f;
+  const float u1 = (float)rect->x / img->width;
+  const float v1 = (float)rect->y / img->height;
 
   /* Lower right */
   const float x2 = round((float)x + width);
   const float y2 = round((float)y + height);
-  const float u2 = 1.0f;
-  const float v2 = 1.0f;
+  const float u2 = (float)(rect->x + rect->w) / img->width;
+  const float v2 = (float)(rect->y + rect->h) / img->height;
 
   const float z = z_inc();
 
@@ -150,7 +157,7 @@ void draw_draw_image(int x, int y, float width, float height, float alpha, void*
   pvr_sprite_cxt_t context;
   pvr_sprite_hdr_t header;
 
-  pvr_sprite_cxt_txr(&context, PVR_LIST_TR_POLY, img->format, img->width, img->width, img->texture, PVR_FILTER_BILINEAR);
+  pvr_sprite_cxt_txr(&context, PVR_LIST_TR_POLY, img->format, img->width, img->height, img->texture, PVR_FILTER_BILINEAR);
   pvr_sprite_compile(&header, &context);
 
   pvr_prim(&header, sizeof(header));
@@ -182,7 +189,7 @@ void draw_draw_image(int x, int y, float width, float height, float alpha, void*
   pvr_poly_cxt_t context;
   pvr_poly_hdr_t header;
 
-  pvr_poly_cxt_txr(&context, PVR_LIST_TR_POLY, img->format, img->width, img->width, img->texture, PVR_FILTER_BILINEAR);
+  pvr_poly_cxt_txr(&context, PVR_LIST_TR_POLY, img->format, img->width, img->height, img->texture, PVR_FILTER_BILINEAR);
   pvr_poly_compile(&header, &context);
 
   pvr_prim(&header, sizeof(header));
@@ -221,7 +228,90 @@ void draw_draw_image(int x, int y, float width, float height, float alpha, void*
 #endif
 }
 
+/* Draws untextured quad at coords with size and color(rgba) */
+void draw_draw_quad(int x, int y, float width, float height, uint32_t color) {
+  /* Upper left */
+  const float x1 = round((float)x);
+  const float y1 = round((float)y);
+
+  /* Lower right */
+  const float x2 = round((float)x + width);
+  const float y2 = round((float)y + height);
+
+  const float z = z_inc();
+
+#ifdef KOS_SPRITE
+  pvr_sprite_cxt_t context;
+  pvr_sprite_hdr_t header;
+
+  pvr_sprite_cxt_col(&context, PVR_LIST_TR_POLY);
+  pvr_sprite_compile(&header, &context);
+
+  pvr_prim(&header, sizeof(header));
+
+  pvr_sprite_col_t vert = {
+      .flags = PVR_CMD_VERTEX_EOL, /* Always? */
+      /*  upper left */
+      .ax = x1,
+      .ay = y1,
+      .az = z,
+      /* upper right */
+      .bx = x2,
+      .by = y1,
+      .bz = z,
+      /* lower left */
+      .cx = x2,
+      .cy = y2,
+      .cz = z,
+      /* interpolated */
+      .dx = x1,
+      .dy = y2};
+
+  pvr_prim(&vert, sizeof(vert));
+
+#else
+  pvr_poly_cxt_t context;
+  pvr_poly_hdr_t header;
+
+  pvr_poly_cxt_col(&context, PVR_LIST_TR_POLY);
+  pvr_poly_compile(&header, &context);
+
+  pvr_prim(&header, sizeof(header));
+
+  pvr_vertex_t vert = {
+      .argb = color,
+      .oargb = 0,
+      .flags = PVR_CMD_VERTEX,
+      .z = z,
+      .u = 0,
+      .v = 0};
+
+  vert.x = x1;
+  vert.y = y2;
+  pvr_prim(&vert, sizeof(vert));
+
+  vert.x = x1;
+  vert.y = y1;
+  pvr_prim(&vert, sizeof(vert));
+
+  vert.x = x2;
+  vert.y = y2;
+  pvr_prim(&vert, sizeof(vert));
+
+  vert.flags = PVR_CMD_VERTEX_EOL;
+  vert.x = x2;
+  vert.y = y1;
+  pvr_prim(&vert, sizeof(vert));
+#endif
+}
+
 /* draws an image at coords as a square */
 void draw_draw_square(int x, int y, float size, float alpha, void* user) {
   draw_draw_image(x, y, size, size, alpha, user);
+}
+
+void draw_draw_image_centered(int x, int y, float width, float height, float alpha, void* user) {
+  const int x_extent = width / 2;
+  const int y_extent = height / 2;
+  draw_draw_image(x - x_extent, y - y_extent, width, height, alpha, user);
 }
