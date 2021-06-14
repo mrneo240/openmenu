@@ -17,7 +17,7 @@
 #include "../draw_prototypes.h"
 
 //#define DEBUG (1)
-#include "../../dbgprint.h"
+#include "../../inc/dbgprint.h"
 
 /* Used to read from GDROM instead of cdrom */
 #define GDROM_FS (1)
@@ -354,11 +354,11 @@ int BMF_adjust_kerning(unsigned char first, unsigned char second, bm_font *font)
 static float current_height;
 static float current_scale;
 
-void font_set_height_default(void) {
+void font_bmf_set_height_default(void) {
   current_height = font_basilea.fontSize;
   current_scale = 1.0f;
 }
-void font_set_height(float height) {
+void font_bmf_set_height(float height) {
   current_height = height;
   current_scale = height / font_basilea.fontSize;
 }
@@ -371,7 +371,7 @@ static pvr_poly_hdr_t font_header;
 static image font_texture;
 
 /* Font prototype generics */
-int font_init(void) {
+int font_bmf_init(void) {
   pvr_ptr_t txr;
   int ret = 0;
 
@@ -395,17 +395,17 @@ int font_init(void) {
   return ret;
 }
 
-void font_destroy(void) {
+void font_bmf_destroy(void) {
   /*@Todo: release safely */
 }
 
-void font_begin_draw(void) {
-  font_set_height_default();
+void font_bmf_begin_draw(void) {
+  font_bmf_set_height_default();
   pvr_prim(&font_header, sizeof(font_header));
 }
 
 /* Draws a font letter using two triangle strips */
-int font_draw_char(int x, int y, float color, unsigned char chr) {
+static int font_bmf_draw_char(int x, int y, float color, unsigned char chr) {
   (void)color;
   bm_font *font = &font_basilea;
 
@@ -484,14 +484,14 @@ int font_draw_char(int x, int y, float color, unsigned char chr) {
   return ret_advance;
 }
 
-void _font_draw_string(int x1, int y1, float color, const char *str, char font) {
+static void _font_bmf_draw_string(int x1, int y1, float color, const char *str, char font) {
   z_inc();
   unsigned char prev = 0;
   while (*str) {
     unsigned char chr = (*str);
     /* Add possible kerning adjustment */
     x1 += round(current_scale * BMF_adjust_kerning(prev, chr, &font_basilea));
-    x1 += font_draw_char(x1, y1, color, chr);
+    x1 += font_bmf_draw_char(x1, y1, color, chr);
 
     prev = chr;
     (void)*str++;
@@ -500,7 +500,7 @@ void _font_draw_string(int x1, int y1, float color, const char *str, char font) 
   (void)font;
 }
 
-static float _font_calculate_length(const char *str) {
+static float _font_bmf_calculate_length(const char *str) {
   float width = 0;
   unsigned char prev = 0;
   bm_font *font = &font_basilea;
@@ -518,28 +518,28 @@ static float _font_calculate_length(const char *str) {
   return round(width);
 }
 
-void font_draw_auto_size(int x1, int y1, float color, const char *str, int width) {
-  float temp = _font_calculate_length(str);
-  font_set_height(width / temp * font_basilea.fontSize);
-  _font_draw_string(x1, y1, color, str, 0);
+void font_bmf_draw_auto_size(int x1, int y1, float color, const char *str, int width) {
+  float temp = _font_bmf_calculate_length(str);
+  font_bmf_set_height(width / temp * font_basilea.fontSize);
+  _font_bmf_draw_string(x1, y1, color, str, 0);
 }
 
-void font_draw_centered(int x1, int y1, float color, const char *str) {
-  int temp = (int)_font_calculate_length(str);
-  _font_draw_string(x1 - (temp / 2), y1, color, str, 0);
+void font_bmf_draw_centered(int x1, int y1, float color, const char *str) {
+  int temp = (int)_font_bmf_calculate_length(str);
+  _font_bmf_draw_string(x1 - (temp / 2), y1, color, str, 0);
 }
 
-void font_draw_main(int x1, int y1, float color, const char *str) {
-  font_set_height_default();
-  _font_draw_string(x1, y1, color, str, 0);
+void font_bmf_draw_main(int x1, int y1, float color, const char *str) {
+  font_bmf_set_height_default();
+  _font_bmf_draw_string(x1, y1, color, str, 0);
 }
 
-void font_draw_sub(int x1, int y1, float color, const char *str) {
-  font_set_height(16.0f);
-  _font_draw_string(x1, y1, color, str, 1);
+void font_bmf_draw_sub(int x1, int y1, float color, const char *str) {
+  font_bmf_set_height(16.0f);
+  _font_bmf_draw_string(x1, y1, color, str, 1);
 }
 
-void font_draw_sub_wrap(int x1, int y1, float color, const char *str, int width) {
+void font_bmf_draw_sub_wrap(int x1, int y1, float color, const char *str, int width) {
   (void)x1;
   (void)y1;
   (void)color;
@@ -547,5 +547,5 @@ void font_draw_sub_wrap(int x1, int y1, float color, const char *str, int width)
 
   (void)width;
 
-  font_draw_sub(x1, y1, color, str);
+  font_bmf_draw_sub(x1, y1, color, str);
 }

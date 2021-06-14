@@ -6,3 +6,6 @@
 *loader*
 gdrom
 .vscode
+tools/dat*.*
+tools/dat*
+tools/cosmo
