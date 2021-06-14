@@ -12,7 +12,7 @@
 
 #include <stdio.h>
 
-#include "../dat_format.h"
+#include "../inc/dat_format.h"
 #include "draw_prototypes.h"
 #include "font_prototypes.h"
 

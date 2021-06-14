@@ -10,8 +10,8 @@
 
 #include <stdlib.h>
 
-#include "../dat_format.h"
-#include "../uthash.h"
+#include "../inc/dat_format.h"
+#include "../inc/uthash.h"
 
 /* Called:
 ./reader input.bin

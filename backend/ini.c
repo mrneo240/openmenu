@@ -15,9 +15,13 @@ https://github.com/benhoyt/inih
 #define _CRT_SECURE_NO_WARNINGS
 #endif
 
+#ifdef COSMO
+#include "../tools/cosmo/cosmopolitan.h"
+#else
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
+#endif
 
 #include "ini.h"
 
@@ -28,7 +32,9 @@ void* ini_malloc(size_t size);
 void ini_free(void* ptr);
 void* ini_realloc(void* ptr, size_t size);
 #else
+#ifndef COSMO
 #include <stdlib.h>
+#endif
 #define ini_malloc malloc
 #define ini_free free
 #define ini_realloc realloc

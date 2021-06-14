@@ -10,7 +10,8 @@
 
 #pragma once
 struct gd_item;
-int list_read(void);
+int list_read(const char *filename);
+int list_read_default(void);
 void list_destroy(void);
 void list_print_slots(void);
 void list_print_temp(void);

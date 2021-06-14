@@ -19,7 +19,11 @@ https://github.com/benhoyt/inih
 extern "C" {
 #endif
 
+#ifdef COSMO
+#include "../tools/cosmo/cosmopolitan.h"
+#else
 #include <stdio.h>
+#endif
 
 #include "ini_opt.h"
 

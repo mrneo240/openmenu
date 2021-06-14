@@ -14,7 +14,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../dat_format.h"
+#include "../inc/dat_format.h"
 #include "../ui/draw_kos.h"
 #include "../ui/draw_prototypes.h"
 #include "block_pool.h"
