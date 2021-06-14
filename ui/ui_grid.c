@@ -46,9 +46,14 @@ typedef struct vec2d {
   float y;
 } vec2d;
 
-typedef struct anim2d {
+typedef struct AnimBare {
   int frame_len;
   int frame_now;
+  bool active;
+} AnimBare;
+
+typedef struct anim2d {
+  AnimBare time;
   vec2d start;
   vec2d end;
   vec2d cur;
@@ -56,18 +61,40 @@ typedef struct anim2d {
 
 static vec2d pos_highlight = (vec2d){.x = 0, .y = 0};
 static anim2d anim_highlight = {0};
-static bool anim_active = false;
+
+static anim2d anim_large_art_pos = {0};
+static anim2d anim_large_art_scale = {0};
 
 #define ANIM_FRAMES (15)
-#define TILE_X_POS(col) (100 - 4 + ((40 + 120) * (col)))
-#define TILE_Y_POS(row) (20 - 4 + ((10 + 120) * (row)))
+#define HIGHLIGHT_X_POS(col) (100 - 4 + ((40 + 120) * (col)))
+#define HIGHLIGHT_Y_POS(row) (20 - 4 + ((10 + 120) * (row)))
+#define TILE_X_POS(col) (100 + ((40 + 120) * (col)))
+#define TILE_Y_POS(row) (20 + ((10 + 120) * (row)))
 
-static void update_anim(anim2d *anim) {
-  AHEasingFunction ease = CircularEaseOut;
-  const float dt = (float)anim->frame_now / (float)anim->frame_len;
+static void anim_update_2d(anim2d *anim) {
+  //AHEasingFunction ease = CircularEaseOut;
+  AHEasingFunction ease = CubicEaseInOut;
+  const float dt = (float)anim->time.frame_now / (float)anim->time.frame_len;
   const float dv = (*ease)(dt);
   anim->cur.x = anim->start.x + (anim->end.x - anim->start.x) * dv;
   anim->cur.y = anim->start.y + (anim->end.y - anim->start.y) * dv;
+}
+
+static inline bool anim_finished(AnimBare *anim) {
+  return anim->frame_now == anim->frame_len;
+}
+
+static inline void anim_tick(AnimBare *anim) {
+  if (!anim_finished(anim))
+    anim->frame_now++;
+}
+
+static inline bool anim_active(AnimBare *anim) {
+  return anim->active;
+}
+
+static inline bool anim_alive(AnimBare *anim) {
+  return anim_active(anim) && anim->frame_now <= anim->frame_len;
 }
 
 /* For drawing */
@@ -96,31 +123,35 @@ static inline int current_selected(void) {
   return current_starting_index + (screen_row * items_per_row) + (screen_column);
 }
 
-static void draw_large_art(int x, int y, int width, int height) {
+static void draw_large_art(void) {
   if (showing_large_art) {
     txr_get_large(list_current[current_selected()]->product, &txr_focus);
     if (txr_focus.texture == img_empty_boxart.texture) {
       /* Only draw if large is present */
       return;
     }
-    draw_draw_image(x, y, width, height, 1.0f, &txr_focus);
+    /* Always draw on top */
+    float z = z_get();
+    z_set(512.0f);
+    draw_draw_image_centered(anim_large_art_pos.cur.x, anim_large_art_pos.cur.y, anim_large_art_scale.cur.x, anim_large_art_scale.cur.y, 1.0f, &txr_focus);
+    z_set(z);
   }
 }
 
 static void setup_highlight_animation(void) {
   float start_x = pos_highlight.x;
   float start_y = pos_highlight.y;
-  if (anim_active) {
+  if (anim_active(&anim_highlight.time)) {
     start_x = anim_highlight.cur.x;
     start_y = anim_highlight.cur.y;
   }
   anim_highlight.start.x = start_x;
   anim_highlight.start.y = start_y;
-  anim_highlight.end.x = TILE_X_POS(screen_column);
-  anim_highlight.end.y = TILE_Y_POS(screen_row);
-  anim_highlight.frame_now = 0;
-  anim_highlight.frame_len = ANIM_FRAMES;
-  anim_active = true;
+  anim_highlight.end.x = HIGHLIGHT_X_POS(screen_column);
+  anim_highlight.end.y = HIGHLIGHT_Y_POS(screen_row);
+  anim_highlight.time.frame_now = 0;
+  anim_highlight.time.frame_len = ANIM_FRAMES;
+  anim_highlight.time.active = true;
 }
 
 static void draw_static_highlight(int size) {
@@ -130,7 +161,7 @@ static void draw_static_highlight(int size) {
 static void draw_animated_highlight(int size) {
   /* Always draw on top */
   float z = z_get();
-  z_set(512.0f);
+  z_set(256.0f);
   draw_draw_square(anim_highlight.cur.x, anim_highlight.cur.y, size, 1.0f, &txr_highlight);
   z_set(z);
 }
@@ -161,7 +192,7 @@ static void draw_grid_boxes(void) {
 
       /* Highlight */
       if ((current_starting_index + idx) == current_selected()) {
-        if (anim_active) {
+        if (anim_alive(&anim_highlight.time)) {
           draw_animated_highlight(tile_size + (highlight_overhang * 2));
         } else {
           pos_highlight.x = x_pos - highlight_overhang;
@@ -173,16 +204,21 @@ static void draw_grid_boxes(void) {
   }
 
   /* If focused, draw large cover art */
-  draw_large_art(gutter_side - 4, gutter_top - 4, (tile_size * items_per_row) + (horizontal_spacing * (items_per_row - 1)) + 8, (tile_size * items_per_row) + (vertical_spacing * (rows - 1)) + 8);
+  draw_large_art();
 }
 
 static void update_time(void) {
-  if (anim_active) {
-    anim_highlight.frame_now++;
-    if (anim_highlight.frame_now > anim_highlight.frame_len) {
-      anim_active = false;
-    }
-    update_anim(&anim_highlight);
+  if (anim_alive(&anim_highlight.time)) {
+    anim_tick(&anim_highlight.time);
+    anim_update_2d(&anim_highlight);
+  }
+  if (anim_alive(&anim_large_art_scale.time)) {
+    /* Update scale and position */
+    anim_tick(&anim_large_art_pos.time);
+    anim_update_2d(&anim_large_art_pos);
+
+    anim_tick(&anim_large_art_scale.time);
+    anim_update_2d(&anim_large_art_scale);
   }
 }
 
@@ -327,18 +363,35 @@ static void menu_cycle_ui(void) {
 }
 
 static void menu_show_large_art(void) {
+  if (!showing_large_art && !anim_active(&anim_large_art_scale.time)) {
+    /* Setup positioning */
+    {
+      anim_large_art_pos.start.x = TILE_X_POS(screen_column) + (120 / 2);
+      anim_large_art_pos.start.y = TILE_Y_POS(screen_row) + (120 / 2);
+      anim_large_art_pos.end.x = TILE_X_POS(1) + (120 / 2);
+      anim_large_art_pos.end.y = TILE_Y_POS(1) + (120 / 2);
+      anim_large_art_pos.time.frame_now = 0;
+      anim_large_art_pos.time.frame_len = 30;
+      anim_large_art_pos.time.active = true;
+    }
+    /* Setup Scaling */
+    {
+      anim_large_art_scale.start.x = 120;
+      anim_large_art_scale.start.y = 120;
+      anim_large_art_scale.end.x = (120 * 3) + (40 * (3 - 1)) + 8;
+      anim_large_art_scale.end.y = (120 * 3) + (10 * (3 - 1)) + 8;
+      anim_large_art_scale.time.frame_now = 0;
+      anim_large_art_scale.time.frame_len = 30;
+      anim_large_art_scale.time.active = true;
+    }
+  }
   showing_large_art = true;
 }
 
 /* Base UI Methods */
 
 FUNCTION(UI_NAME, init) {
-  /* Moved to global init */
-  /*
-  draw_load_texture("HIGHLIGHT.PVR", &txr_highlight);
-  draw_load_texture("BG_RIGHT.PVR", &txr_bg);
-  font_init();
-  */
+  draw_default_load_resources();
 }
 
 /* Reset variables sensibly */
@@ -402,6 +455,10 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
   if (screen_column < 0) {
     screen_column = 0;
   }
+  if (!showing_large_art) {
+    anim_large_art_pos.time.active = false;
+    anim_large_art_scale.time.active = false;
+  }
 }
 
 FUNCTION(UI_NAME, draw) {
@@ -410,6 +467,6 @@ FUNCTION(UI_NAME, draw) {
   draw_bg_layers();
   draw_grid_boxes();
 
-  font_begin_draw();
-  font_draw_centered(320, 430, 1.0f, list_current[current_selected()]->name);
+  font_bmf_begin_draw();
+  font_bmf_draw_centered(320, 430, 1.0f, list_current[current_selected()]->name);
 }
