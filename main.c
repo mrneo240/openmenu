@@ -8,12 +8,12 @@
  * Copyright (c) 2019 Hayden Kowalchuk
  */
 
+#include <dc/cdrom.h>
 #include <dc/flashrom.h>
 #include <dc/maple.h>
 #include <dc/maple/controller.h>
 #include <dc/pvr.h>
 #include <dc/video.h>
-#include <dc/cdrom.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,6 +27,8 @@
 #include "ui/ui_grid.h"
 #undef UI_NAME
 #include "ui/ui_line_desc.h"
+#undef UI_NAME
+#include "ui/ui_gdmenu.h"
 #undef UI_NAME
 
 #include "texture/txr_manager.h"
@@ -49,6 +51,7 @@ typedef struct ui_template {
   }
 
 static ui_template ui_choices[] = {
+    UI_TEMPLATE(GDMENU_EMU),
     UI_TEMPLATE(GRID_3),
     UI_TEMPLATE(LIST_DESC),
 };
