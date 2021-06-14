@@ -233,9 +233,9 @@ FUNCTION(UI_NAME, draw) {
   draw_small_boxes();
   draw_big_box();
 
-  font_begin_draw();
-  font_draw_main(316, 92, 1.0f, list_current[current_selected_item]->name);
-  font_draw_sub_wrap(316, 128, 1.0f, "Game Synopsis here...", 280);
+  font_bmf_begin_draw();
+  font_bmf_draw_main(316, 92, 1.0f, list_current[current_selected_item]->name);
+  font_bmf_draw_sub_wrap(316, 128, 1.0f, "Game Synopsis here...", 280);
   const char *text = NULL;
   switch (sort_current) {
     case ALPHA:
@@ -252,5 +252,5 @@ FUNCTION(UI_NAME, draw) {
       text = "SD Card Order";
       break;
   }
-  font_draw_main(4, 440, 1.0f, text);
+  font_bmf_draw_main(4, 440, 1.0f, text);
 }
