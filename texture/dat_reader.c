@@ -8,24 +8,22 @@
  * License: BSD 3-clause "New" or "Revised" License, http://www.opensource.org/licenses/BSD-3-Clause
  */
 
+#ifdef COSMO
+#include "cosmo/cosmopolitan.h"
+#else
+#include <stdio.h>
 #include <stdlib.h>
+#endif
 
+#include "../gdrom/gdrom_fs.h"
 #include "../inc/dat_format.h"
 #include "../inc/uthash.h"
 
-/* Called:
-./reader input.bin
-
-Dumps all info about the container
-*/
-
 /* Define configure constants */
 /* only defined when building the binary tool */
-//#define STANDALONE_BINARY (1)
-
-/* Used to read from GDROM instead of cdrom */
-#define GDROM_FS (1)
-#include "../gdrom/gdrom_fs.h"
+#ifdef STANDALONE_BINARY
+#define DEBUG
+#endif
 
 #ifdef DEBUG
 #define DBG_PRINT(...) printf(__VA_ARGS__)
@@ -46,19 +44,25 @@ int DAT_init(dat_file *bin) {
 int DAT_load_parse(dat_file *bin, const char *path) {
   FD_TYPE bin_fd;
   bin_header file_header;
+
+#ifdef STANDALONE_BINARY
+  bin_fd = fopen(path, "rb");
+#else
   char fullpath[128];
   strcpy(fullpath, DISC_PREFIX);
   strcat(fullpath, path);
 
   bin_fd = fopen(fullpath, "rb");
+#endif
+
   if (!bin_fd) {
-    DBG_PRINT("Err: Cant read input %s!\n", fullpath);
+    printf("Err: Cant read input %s!\n", fullpath);
     return 1;
   }
 
   fread(&file_header, sizeof(bin_header), 1, bin_fd);
   if (file_header.magic.rich.version != 1) {
-    DBG_PRINT("Err: Incorrect input file format!\n");
+    printf("Err: Incorrect input file format!\n");
     return 1;
   }
 
@@ -74,10 +78,6 @@ int DAT_load_parse(dat_file *bin, const char *path) {
     fread(&bin->items[i], sizeof(bin_item_raw), 1, (FD_TYPE)bin->handle);
     HASH_ADD_STR(bin->hash, ID, &bin->items[i]);
   }
-
-#ifdef DEBUG
-  DAT_dump(bin);
-#endif
 
   return 0;
 }
@@ -125,30 +125,3 @@ int DAT_read_file_by_num(const dat_file *bin, uint32_t chunk_num, void *buf) {
   }
   return 1;
 }
-
-#ifdef STANDALONE_BINARY
-#define NUM_ARGS (1)
-int main(int argc, char **argv) {
-  if (argc < NUM_ARGS + 1 /*binary itself*/) {
-    printf("Incorrect usage!\n\t./reader input.bin\n");
-    return 1;
-  }
-
-  /* Basic Usage */
-  dat_file input_bin;
-  DAT_init(&input_bin);
-  DAT_load_parse(&input_bin, argv[1]);
-
-  /* Dump info and files */
-  DAT_dump(&input_bin);
-
-  /* Hashmap test */
-  printf("\nSearching known:\n");
-  const char *search = "T40502N";
-  printf("Found %s at %X\n", search, DAT_get_offset_by_ID(&input_bin, search));
-
-  printf("\nSearching missing:\n");
-  const char *missing = "MISSING";
-  printf("Found %s at %X\n", missing, DAT_get_offset_by_ID(&input_bin, missing));
-}
-#endif

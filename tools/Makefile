@@ -2,6 +2,7 @@ CC := gcc
 OBJCOPY := objcopy
 CFLAGS := -g -Os -static -nostdlib -nostdinc -fno-pie -no-pie -mno-red-zone -fno-omit-frame-pointer -pg -mnop-mcount -DCOSMO
 LDFLAGS := -fuse-ld=bfd -Wl,-T,cosmo/ape.lds -include cosmo/cosmopolitan.h cosmo/crt.o cosmo/ape.o cosmo/cosmopolitan.a
+DEFINES := -DSTANDALONE_BINARY=1
 
 all: datread datpack datstrip
 
@@ -11,7 +12,7 @@ cosmo: datread.com datpack.com datstrip.com
 .PHONY: native
 cosmo: datread datpack datstrip
 
-datread.com: reader.c
+datread.com: reader.c ../texture/dat_reader.c
 	@echo "$(CC) $<"
 	@$(CC) $(CFLAGS) -o $@.dbg $^ $(LDFLAGS)
 	@$(OBJCOPY) -S -O binary $@.dbg $@
@@ -29,7 +30,7 @@ datstrip.com: stripper.c ../backend/gd_list.c ../backend/ini.c
 	@$(OBJCOPY) -S -O binary $@.dbg $@
 	@echo "$(OBJCOPY) $@.dbg -> $@"
 
-datread: reader.c
+datread: reader.c ../texture/dat_reader.c
 	@echo "$(CC) $<"
 	@$(CC) -O2 -s -o $@ $^
 	@echo "> $@"
@@ -47,4 +48,8 @@ datstrip: stripper.c ../backend/gd_list.c ../backend/ini.c
 .PHONY: clean
 clean:
 	-rm -f datread.com.dbg datpack.com.dbg datstrip.com.dbg
+
+.PHONY: distclean
+distclean: clean
+	-rm -f datread.com datpack.com datstrip.com datread datpack datstrip
 

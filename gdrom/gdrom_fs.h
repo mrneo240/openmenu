@@ -10,6 +10,8 @@
 
 #pragma once
 
+/* Used to control reading from GD-ROM or CD-ROM */
+
 #ifdef GDROM_FS
 #include "gdfs.h"
 typedef int FD_TYPE;

@@ -7,11 +7,7 @@
  * Copyright (c) 2021 Hayden Kowalchuk, Hayden Kowalchuk
  * License: BSD 3-clause "New" or "Revised" License, http://www.opensource.org/licenses/BSD-3-Clause
  */
-/*
 
-gcc example.c ini.c -Os -s  -Xlinker -Map=output.map -ffunction-sections -fdata-sections -Xlinker --gc-sections  -o example
-
-*/
 #ifdef COSMO
 #include "../tools/cosmo/cosmopolitan.h"
 #else
@@ -28,8 +24,6 @@ gcc example.c ini.c -Os -s  -Xlinker -Map=output.map -ffunction-sections -fdata-
 
 #ifdef _arch_dreamcast
 #define PATH_PREFIX DISC_PREFIX
-/* Used to read from GDROM instead of cdrom */
-#define GDROM_FS (1)
 #include "../gdrom/gdrom_fs.h"
 #else
 #define PATH_PREFIX ""
@@ -83,7 +77,7 @@ static int read_openmenu_ini(void *user, const char *section, const char *name, 
 #include "gd_item.def"
     } else {
       /* error */
-      printf("UNKNOWN! [%s] %s: %s\n", section, name, value);
+      printf("INI:Error unknown [%s] %s: %s\n", section, name, value);
     }
   }
   //fflush(stdout);
