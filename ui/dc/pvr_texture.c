@@ -8,13 +8,11 @@
  */
 #include "pvr_texture.h"
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-/* Used to read from GDROM instead of cdrom */
-#define GDROM_FS (1)
 #include "../../gdrom/gdrom_fs.h"
-
-extern int puts(const char* str);
 
 #define PVR_HDR_SIZE 0x20
 
@@ -127,7 +125,7 @@ pvr_ptr_t load_pvr_from_buffer(const void* input, uint32_t* w, uint32_t* h, uint
     return NULL;
 
   if (!(rv = pvr_mem_malloc(txr_size))) {
-    puts("PVR: Couldn't allocate memory for texture!\n");
+    printf("PVR: Couldn't allocate memory for texture!\n");
     return NULL;
   }
   pvr_txr_load(texBuf + PVR_HDR_SIZE, rv, txr_size);
@@ -160,7 +158,7 @@ static void pvr_read_to_internal(const char* filename) {
 
   tex_fd = fopen(filename_safe, "rb");
   if (!tex_fd) {
-    puts("PVR: pvr load fail!\n");
+    printf("PVR:Error opening %s!\n", filename);
     return;
   }
 

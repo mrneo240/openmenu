@@ -9,10 +9,8 @@
 
 #pragma once
 
-#include <dc/fmath.h>
 #include <dc/pvr.h>
 #include <stdint.h>
-#include <stdlib.h>
 
 /* Offset and dimensions of each sprite within a spritesheet (romdisk/foo.txt file) */
 typedef struct image {

@@ -14,17 +14,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../draw_prototypes.h"
-
-//#define DEBUG (1)
-#include "../../inc/dbgprint.h"
-
-/* Used to read from GDROM instead of cdrom */
-#define GDROM_FS (1)
 #include "../../gdrom/gdrom_fs.h"
-
-/* Changes from using Polys to native Sprites */
-//#define KOS_SPRITE (1)
+#include "../../inc/dbgprint.h"
+#include "../draw_prototypes.h"
 
 #define PRINT_MEMBER(struct, member)                        \
   do {                                                      \
@@ -281,7 +273,7 @@ static int BMF_load(const char *file, bm_font *font) {
   fd = fopen(file, "rb");
 
   if (fd <= 0) {
-    printf("ERR: font \"%s\" missing err(%d)!\n", file, fd);
+    printf("BMF:Error file %s not found!\n", file);
     return 1;
   }
 
@@ -298,7 +290,7 @@ static int BMF_load(const char *file, bm_font *font) {
   fread(&file_header, sizeof(bm_header), 1, fd);
   if (file_header.version != 3) {
     fclose(fd);
-    printf("ERR: font magic wrong %3s!\n", file_header.bmf);
+    printf("BMF:Error font magic wrong %3s!\n", file_header.bmf);
     return 1;
   }
 

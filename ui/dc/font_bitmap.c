@@ -8,17 +8,9 @@
  */
 #include <dc/pvr.h>
 
-#include "../draw_prototypes.h"
-
-//#define DEBUG (1)
-#include "../../inc/dbgprint.h"
-
-/* Used to read from GDROM instead of cdrom */
-#define GDROM_FS (1)
 #include "../../gdrom/gdrom_fs.h"
-
-/* Changes from using Polys to native Sprites */
-//#define KOS_SPRITE (1)
+#include "../../inc/dbgprint.h"
+#include "../draw_prototypes.h"
 
 typedef struct bitmap_font {
   int char_width;

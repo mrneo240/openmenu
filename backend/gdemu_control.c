@@ -4,6 +4,7 @@
 #include <kos/thread.h>
 
 #include "gdemu_sdk.h"
+#include "gdmenu_loader.h"
 #include "rungd.h"
 
 void dreamcast_rungd(unsigned int slot_num) {
@@ -17,6 +18,9 @@ void dreamcast_rungd(unsigned int slot_num) {
 //  fini();
 #endif
 
+#ifdef USE_GDMENU_LOADER
+  arch_exec(gdmenu_loader, gdmenu_loader_length);
+#else
   ubc_disable_all();
   fs_dclsocket_shutdown();
   net_shutdown();
@@ -44,4 +48,5 @@ void dreamcast_rungd(unsigned int slot_num) {
   irq_shutdown();
 
   gdplay_run_game((void*)rungd);
+#endif
 }
