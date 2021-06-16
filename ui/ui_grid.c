@@ -35,7 +35,7 @@ static int frames_focused = 0;
 static const int items_per_row = 3;
 static const int rows = 3;
 
-static bool showing_large_art = false;
+static bool boxart_button_held = false;
 
 static bool direction_last = false;
 static bool direction_current = false;
@@ -84,17 +84,26 @@ static inline bool anim_finished(AnimBare *anim) {
   return anim->frame_now == anim->frame_len;
 }
 
-static inline void anim_tick(AnimBare *anim) {
-  if (!anim_finished(anim))
-    anim->frame_now++;
-}
-
 static inline bool anim_active(AnimBare *anim) {
   return anim->active;
 }
 
 static inline bool anim_alive(AnimBare *anim) {
-  return anim_active(anim) && anim->frame_now <= anim->frame_len;
+  return anim_active(anim) && (anim->frame_now <= anim->frame_len);
+}
+
+static inline void anim_tick(AnimBare *anim) {
+  if (anim_alive(anim) && !anim_finished(anim))
+    anim->frame_now++;
+}
+
+static inline void anim_tick_backward(AnimBare *anim) {
+  if (anim_active(anim))
+    anim->frame_now--;
+  if (anim->frame_now <= 0) {
+    anim->active = false;
+    anim->frame_now = 0;
+  }
 }
 
 /* For drawing */
@@ -124,7 +133,7 @@ static inline int current_selected(void) {
 }
 
 static void draw_large_art(void) {
-  if (showing_large_art) {
+  if (anim_active(&anim_large_art_scale.time)) {
     txr_get_large(list_current[current_selected()]->product, &txr_focus);
     if (txr_focus.texture == img_empty_boxart.texture) {
       /* Only draw if large is present */
@@ -212,12 +221,20 @@ static void update_time(void) {
     anim_tick(&anim_highlight.time);
     anim_update_2d(&anim_highlight);
   }
-  if (anim_alive(&anim_large_art_scale.time)) {
+  if (boxart_button_held && anim_alive(&anim_large_art_scale.time)) {
     /* Update scale and position */
     anim_tick(&anim_large_art_pos.time);
     anim_update_2d(&anim_large_art_pos);
 
     anim_tick(&anim_large_art_scale.time);
+    anim_update_2d(&anim_large_art_scale);
+  }
+  if (!boxart_button_held && anim_alive(&anim_large_art_scale.time)) {
+    /* Rewind Animation update scale and position */
+    anim_tick_backward(&anim_large_art_pos.time);
+    anim_update_2d(&anim_large_art_pos);
+
+    anim_tick_backward(&anim_large_art_scale.time);
     anim_update_2d(&anim_large_art_scale);
   }
 }
@@ -251,6 +268,11 @@ static void menu_row_down(void) {
   }
 }
 
+static void kill_large_art_animation(void) {
+  anim_large_art_pos.time.active = false;
+  anim_large_art_scale.time.active = false;
+}
+
 static void menu_up(void) {
   if (direction_held && navigate_timeout > 0) {
     navigate_timeout--;
@@ -259,6 +281,7 @@ static void menu_up(void) {
   menu_row_up();
 
   setup_highlight_animation();
+  kill_large_art_animation();
 
   frames_focused = 0;
   navigate_timeout = INPUT_TIMEOUT;
@@ -272,6 +295,7 @@ static void menu_down(void) {
   menu_row_down();
 
   setup_highlight_animation();
+  kill_large_art_animation();
 
   frames_focused = 0;
   navigate_timeout = INPUT_TIMEOUT;
@@ -293,6 +317,7 @@ static void menu_left(void) {
   }
 
   setup_highlight_animation();
+  kill_large_art_animation();
 
   frames_focused = 0;
   navigate_timeout = INPUT_TIMEOUT;
@@ -313,6 +338,7 @@ static void menu_right(void) {
   }
 
   setup_highlight_animation();
+  kill_large_art_animation();
 
   frames_focused = 0;
   navigate_timeout = INPUT_TIMEOUT;
@@ -363,7 +389,7 @@ static void menu_cycle_ui(void) {
 }
 
 static void menu_show_large_art(void) {
-  if (!showing_large_art && !anim_active(&anim_large_art_scale.time)) {
+  if (!boxart_button_held && !anim_active(&anim_large_art_scale.time)) {
     /* Setup positioning */
     {
       anim_large_art_pos.start.x = TILE_X_POS(screen_column) + (120 / 2);
@@ -385,7 +411,6 @@ static void menu_show_large_art(void) {
       anim_large_art_scale.time.active = true;
     }
   }
-  showing_large_art = true;
 }
 
 /* Base UI Methods */
@@ -408,7 +433,7 @@ FUNCTION(UI_NAME, setup) {
 FUNCTION_INPUT(UI_NAME, handle_input) {
   direction_last = direction_current;
   direction_current = false;
-  showing_large_art = false;
+  boxart_button_held = false;
 
   enum control input_current = button;
   switch (input_current) {
@@ -439,6 +464,7 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
       break;
     case X:
       menu_show_large_art();
+      boxart_button_held = true;
       break;
 
     /* These dont do anything */
@@ -455,16 +481,15 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
   if (screen_column < 0) {
     screen_column = 0;
   }
-  if (!showing_large_art) {
-    anim_large_art_pos.time.active = false;
-    anim_large_art_scale.time.active = false;
-  }
 }
 
-FUNCTION(UI_NAME, draw) {
+FUNCTION(UI_NAME, drawOP) {
+  draw_bg_layers();
+}
+
+FUNCTION(UI_NAME, drawTR) {
   update_time();
 
-  draw_bg_layers();
   draw_grid_boxes();
 
   font_bmf_begin_draw();
