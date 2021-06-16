@@ -47,15 +47,15 @@ enum sort_type { DEFAULT,
                  SORT_END };
 static enum sort_type sort_current = DEFAULT;
 
-static void draw_bg_layers() {
+static void draw_bg_layers(void) {
   draw_draw_image(0, 0, 640, 480, 1.0f, &txr_bg);
 }
 
-static void draw_big_box() {
+static void draw_big_box(void) {
   draw_draw_image(92, 92, 208, 208, 1.0f, &txr_focus);
 }
 
-static void draw_small_boxes() {
+static void draw_small_boxes(void) {
 #define LIST_ADJUST (2)
   int i;
   int num_icons = 10; /* really 9..., the math is easier for 10 */
@@ -79,6 +79,30 @@ static void draw_small_boxes() {
     txr_get_small(list_current[starting_icon_idx + i]->product, &txr_icon_list[i]);
     draw_draw_square(x_start + (icon_size + icon_spacing) * i, y_pos, icon_size, 1.0f, &txr_icon_list[i]);
   }
+
+#undef LIST_ADJUST
+}
+
+static void draw_small_box_highlight(void) {
+#define LIST_ADJUST (2)
+  int i;
+  int num_icons = 10; /* really 9..., the math is easier for 10 */
+  int starting_icon_idx = current_selected_item - 4;
+  float x_start = -24.0f;
+  float y_pos = 350.0f;
+  float icon_size = 68.0f;
+  float icon_spacing = 8.0f;
+  int highlighted_icon = (num_icons / 2 - 1);
+
+  /* possible change how many we draw based on if we are not quite at the 5th item in the list */
+  if (current_selected_item < 5) {
+    num_icons = 5 + current_selected_item;
+    x_start += (4 - current_selected_item) * (icon_size + icon_spacing);
+    highlighted_icon = current_selected_item;
+    starting_icon_idx = 0;
+    num_icons++;
+  }
+
   draw_draw_square(x_start + (icon_size + icon_spacing) * highlighted_icon - 4.0f, y_pos - 4.0f, icon_size + 8, 1.0f, &txr_highlight);
 
 #undef LIST_ADJUST
@@ -166,12 +190,7 @@ static void update_data(void) {
 /* Base UI Methods */
 
 FUNCTION(UI_NAME, init) {
-  /* Moved to global init */
-  /*
-  draw_load_texture("HIGHLIGHT.PVR", &txr_highlight);
-  draw_load_texture("BG_RIGHT.PVR", &txr_bg);
-  font_init();
-  */
+  draw_default_load_resources();
 }
 
 FUNCTION(UI_NAME, setup) {
@@ -226,16 +245,17 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
   }
 }
 
-FUNCTION(UI_NAME, draw) {
+FUNCTION(UI_NAME, drawOP) {
   update_data();
 
   draw_bg_layers();
   draw_small_boxes();
   draw_big_box();
+}
 
+FUNCTION(UI_NAME, drawTR) {
+  draw_small_box_highlight();
   font_bmf_begin_draw();
-  font_bmf_draw_main(316, 92, 1.0f, list_current[current_selected_item]->name);
-  font_bmf_draw_sub_wrap(316, 128, 1.0f, "Game Synopsis here...", 280);
   const char *text = NULL;
   switch (sort_current) {
     case ALPHA:
@@ -252,5 +272,14 @@ FUNCTION(UI_NAME, draw) {
       text = "SD Card Order";
       break;
   }
-  font_bmf_draw_main(4, 440, 1.0f, text);
+  //font_bmf_draw_main(4, 440, 1.0f, text);
+
+  font_bmf_draw_main(316, 92, 1.0f, list_current[current_selected_item]->name);
+  /*const char *synopsis =
+      "Aqua GT is powerboat racing game. It features three modes: Championship, Arcade and Two-player.\n\n"
+      "Championship mode is the main single player game, where you advance through the Bronze, Silver and Gold Championships. In the Arcade gameplay mode you have to beat the clock. In two-player split screen mode you go head to head against another player.\n\n"
+      "There are 5 boats to choose from, and you can unlock another 15 while progressing through the game.";
+      */
+  const char *synopsis = "Buckle up and we're talking 5-point harness. Sonic the Hedgehog will propel your Dreamcast into warp-speed 3D adventure. Want Rings? We've got rings. Want chaos emeralds? We've got those too. You want insane graphics, huge levels, puzzles, hidden mini-games, multiple playable characters and more. Oh yeah! We've got it all.";
+  font_bmf_draw_sub_wrap(316, 128, 1.0f, synopsis, 280);
 }

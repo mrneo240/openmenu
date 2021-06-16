@@ -16,12 +16,18 @@
 #include "draw_prototypes.h"
 #include "font_prototypes.h"
 
-//#define KOS_SPRITE (1)
-
 extern int round(float x);
 
 image txr_highlight, txr_bg; /* Highlight square and Background */
 image img_empty_boxart;
+
+static int current_list;
+void draw_set_list(int list) {
+  current_list = list;
+}
+int draw_get_list(void) {
+  return current_list;
+}
 
 static float z_depth;
 float z_get(void) {
@@ -157,7 +163,7 @@ void draw_draw_sub_image(int x, int y, float width, float height, float alpha, v
   pvr_sprite_cxt_t context;
   pvr_sprite_hdr_t header;
 
-  pvr_sprite_cxt_txr(&context, PVR_LIST_TR_POLY, img->format, img->width, img->height, img->texture, PVR_FILTER_BILINEAR);
+  pvr_sprite_cxt_txr(&context, draw_get_list(), img->format, img->width, img->height, img->texture, PVR_FILTER_BILINEAR);
   pvr_sprite_compile(&header, &context);
 
   pvr_prim(&header, sizeof(header));
@@ -189,7 +195,7 @@ void draw_draw_sub_image(int x, int y, float width, float height, float alpha, v
   pvr_poly_cxt_t context;
   pvr_poly_hdr_t header;
 
-  pvr_poly_cxt_txr(&context, PVR_LIST_TR_POLY, img->format, img->width, img->height, img->texture, PVR_FILTER_BILINEAR);
+  pvr_poly_cxt_txr(&context, draw_get_list(), img->format, img->width, img->height, img->texture, PVR_FILTER_BILINEAR);
   pvr_poly_compile(&header, &context);
 
   pvr_prim(&header, sizeof(header));
@@ -244,8 +250,10 @@ void draw_draw_quad(int x, int y, float width, float height, uint32_t color) {
   pvr_sprite_cxt_t context;
   pvr_sprite_hdr_t header;
 
-  pvr_sprite_cxt_col(&context, PVR_LIST_TR_POLY);
+  pvr_sprite_cxt_col(&context, draw_get_list());
   pvr_sprite_compile(&header, &context);
+
+  header.argb = color;
 
   pvr_prim(&header, sizeof(header));
 
@@ -273,7 +281,7 @@ void draw_draw_quad(int x, int y, float width, float height, uint32_t color) {
   pvr_poly_cxt_t context;
   pvr_poly_hdr_t header;
 
-  pvr_poly_cxt_col(&context, PVR_LIST_TR_POLY);
+  pvr_poly_cxt_col(&context, draw_get_list());
   pvr_poly_compile(&header, &context);
 
   pvr_prim(&header, sizeof(header));

@@ -14,6 +14,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define DEBUG (1)
+
 #include "../../gdrom/gdrom_fs.h"
 #include "../../inc/dbgprint.h"
 #include "../draw_prototypes.h"
@@ -23,7 +25,8 @@
     DBG_PRINT("%s: %d\n", #member, (int)((struct).member)); \
   } while (0)
 
-extern int round(float x);
+//extern int round(float x);
+#define round(x) (x)
 
 /* BMFont implementation */
 #define BMF_MAGIC (54938946) /* BMF(0x3) */
@@ -106,6 +109,20 @@ typedef struct __attribute__((__packed__)) bm_kern_pair {
   int16_t amount;
 } bm_kern_pair;
 
+typedef struct __attribute__((__packed__)) bm_char_ex {
+  uint32_t id;
+  uint16_t x;
+  uint16_t y;
+  uint16_t width;
+  uint16_t height;
+  int16_t xoffset;
+  int16_t yoffset;
+  int16_t xadvance;
+  uint8_t page;
+  uint8_t chnl;
+  bm_kern_pair *kerns;
+} bm_char_ex;
+
 typedef struct bm_font {
   uint16_t height;
   uint16_t width;
@@ -113,7 +130,7 @@ typedef struct bm_font {
   uint32_t fontSize;
   uint32_t num_chars;
   uint32_t num_kerns;
-  bm_char chars[256];
+  bm_char_ex chars[256];
   bm_kern_pair *kerns;
 } bm_font;
 
@@ -195,7 +212,7 @@ static int BMF_parse_chars(FD_TYPE fd, size_t block_size, bm_font *font) {
   DBG_PRINT("BMF found char block!\n");
 
   int num_chars = block_size / sizeof(bm_char);
-  bm_char temp_char;
+  bm_char_ex temp_char;
 
   font->num_chars = num_chars;
 
@@ -206,7 +223,7 @@ static int BMF_parse_chars(FD_TYPE fd, size_t block_size, bm_font *font) {
     fread(&temp_char, sizeof(bm_char), 1, fd);
     if (temp_char.id < 256) {
       /* Optionally print out info for each char parsed */
-#if DBG_CHAR_INFO
+#if defined(DBG_CHAR_INFO) && DBG_CHAR_INFO
       char temp = (char)temp_char.id;
       DBG_PRINT("Char: %c\n", temp);
       PRINT_MEMBER(temp_char, id);
@@ -221,6 +238,7 @@ static int BMF_parse_chars(FD_TYPE fd, size_t block_size, bm_font *font) {
 #endif
 
       font->chars[temp_char.id] = temp_char;
+      font->chars[temp_char.id].kerns = NULL;
     }
   }
 
@@ -228,35 +246,52 @@ static int BMF_parse_chars(FD_TYPE fd, size_t block_size, bm_font *font) {
   return 0;
 }
 
+static int _kern_pair_sort(const void *a, const void *b) {
+  const bm_kern_pair *ia = (const bm_kern_pair *)a;
+  const bm_kern_pair *ib = (const bm_kern_pair *)b;
+  if (ia->first == ib->first) {
+    return ia->second - ib->second;
+  }
+  return ia->first - ib->first;
+}
+
 static int BMF_parse_kerning(FD_TYPE fd, size_t block_size, bm_font *font) {
   DBG_PRINT("BMF found kerning block!\n");
 
   /* Do nothing! */
-  //fseek(fd, block_size, SEEK_CUR);
+  /*
+  fseek(fd, block_size, SEEK_CUR);
+  font->kerns = NULL;
+  */
 
   /* Parse and save */
   int num_pairs = block_size / sizeof(bm_kern_pair);
-  bm_kern_pair temp_pair;
 
   DBG_PRINT("BMF %d kerning pairs present\n", num_pairs);
 
   font->kerns = malloc(sizeof(bm_kern_pair) * num_pairs);
   font->num_kerns = num_pairs;
+  fread(font->kerns, sizeof(bm_kern_pair), num_pairs, fd);
 
-  /* Read one at a time to font kerning set */
+  /* Sort Kerning pairs */
+  qsort(font->kerns, num_pairs, sizeof(bm_kern_pair), _kern_pair_sort);
+
+  /* List the now sorted pairs*/
   for (int i = 0; i < num_pairs; i++) {
-    fread(&temp_pair, sizeof(temp_pair), 1, fd);
+    bm_kern_pair *pair = &font->kerns[i];
 
-#if DBG_KERN_INFO
-    char first = (char)temp_pair.first;
-    char second = (char)temp_pair.second;
+    if (pair->first < 256) {
+      font->chars[pair->first].kerns = pair;
+    }
+
+#if defined(DBG_KERN_INFO) && DBG_KERN_INFO
+    char first = (char)pair->first;
+    char second = (char)pair->second;
     DBG_PRINT("First: %c\n", first);
     DBG_PRINT("Second: %c\n", second);
-    PRINT_MEMBER(temp_pair, amount);
+    DBG_PRINT("amount: %d\n", pair->amount);
     DBG_PRINT("\n");
 #endif
-
-    font->kerns[i] = temp_pair;
   }
 
   DBG_PRINT("\n");
@@ -334,17 +369,30 @@ static int BMF_load(const char *file, bm_font *font) {
 }
 
 int BMF_adjust_kerning(unsigned char first, unsigned char second, bm_font *font) {
+#if 0
   const int32_t num_kerns = font->num_kerns;
   for (int i = 0; i < num_kerns; i++) {
     if (font->kerns[i].first == first && font->kerns[i].second == second) {
       return font->kerns[i].amount;
     }
   }
+#endif
+  const bm_kern_pair *kern_pairs = font->chars[first].kerns;
+  if (kern_pairs) {
+    do {
+      if (kern_pairs->second == second) {
+        return kern_pairs->amount;
+      }
+    } while ((unsigned char)(kern_pairs++)->first == first);
+  }
   return 0;
 }
 
+/* Drawing */
+
 static float current_height;
 static float current_scale;
+static float current_alpha;
 
 void font_bmf_set_height_default(void) {
   current_height = font_basilea.fontSize;
@@ -357,8 +405,10 @@ void font_bmf_set_height(float height) {
 
 #ifdef KOS_SPRITE
 static pvr_sprite_hdr_t font_header;
+#define VERT_PER_CHAR (1)
 #else
 static pvr_poly_hdr_t font_header;
+#define VERT_PER_CHAR (4)
 #endif
 static image font_texture;
 
@@ -373,17 +423,6 @@ int font_bmf_init(void) {
     return 1;
   font_texture.texture = txr;
 
-  /* Make a polygon header */
-#ifdef KOS_SPRITE
-  pvr_sprite_cxt_t tmp;
-  pvr_sprite_cxt_txr(&tmp, PVR_LIST_TR_POLY, font_texture.format, font_texture.width, font_texture.height, font_texture.texture, PVR_FILTER_BILINEAR);
-  pvr_sprite_compile(&font_header, &tmp);
-#else
-  pvr_poly_cxt_t tmp;
-  pvr_poly_cxt_txr(&tmp, PVR_LIST_TR_POLY, font_texture.format, font_texture.width, font_texture.height, font_texture.texture, PVR_FILTER_BILINEAR);
-  pvr_poly_compile(&font_header, &tmp);
-#endif
-
   return ret;
 }
 
@@ -392,13 +431,31 @@ void font_bmf_destroy(void) {
 }
 
 void font_bmf_begin_draw(void) {
+  /* Make a polygon header */
+#ifdef KOS_SPRITE
+  pvr_sprite_cxt_t tmp;
+  pvr_sprite_cxt_txr(&tmp, draw_get_list(), font_texture.format, font_texture.width, font_texture.height, font_texture.texture, PVR_FILTER_BILINEAR);
+  pvr_sprite_compile(&font_header, &tmp);
+#else
+  pvr_poly_cxt_t tmp;
+  pvr_poly_cxt_txr(&tmp, draw_get_list(), font_texture.format, font_texture.width, font_texture.height, font_texture.texture, PVR_FILTER_BILINEAR);
+  pvr_poly_compile(&font_header, &tmp);
+#endif
   font_bmf_set_height_default();
   pvr_prim(&font_header, sizeof(font_header));
+  current_alpha = 1.0f;
 }
 
+#define BUFFER_MAX_CHARS (128)
+#ifdef KOS_SPRITE
+static pvr_sprite_txr_t charbuf[BUFFER_MAX_CHARS * VERT_PER_CHAR] __attribute__((aligned(32)));
+#else
+static pvr_vertex_t charbuf[BUFFER_MAX_CHARS * VERT_PER_CHAR] __attribute__((aligned(32)));
+#endif
+static int charbuffered;
+
 /* Draws a font letter using two triangle strips */
-static int font_bmf_draw_char(int x, int y, float color, unsigned char chr) {
-  (void)color;
+static int font_bmf_draw_char(int x, int y, unsigned char chr) {
   bm_font *font = &font_basilea;
 
   /* Upper left */
@@ -414,6 +471,11 @@ static int font_bmf_draw_char(int x, int y, float color, unsigned char chr) {
   const float v2 = (float)(font->chars[chr].y + font->chars[chr].height) / (float)font->height;
 
   const float z = z_get();
+
+  if (charbuffered > BUFFER_MAX_CHARS) {
+    pvr_prim(charbuf, charbuffered * sizeof(charbuf[0]));
+    charbuffered = 0;
+  }
 
 #ifdef KOS_SPRITE
   pvr_sprite_txr_t vert = {
@@ -437,107 +499,179 @@ static int font_bmf_draw_char(int x, int y, float color, unsigned char chr) {
       .buv = PVR_PACK_16BIT_UV(u2, v1), /* UVS */
       .cuv = PVR_PACK_16BIT_UV(u2, v2), /* UVS */
   };
-  pvr_prim(&vert, sizeof(vert));
+
+  charbuf[charbuffered] = vert;
 #else
-  pvr_vertex_t vert;
+  pvr_vertex_t *vert1, *vert2, *vert3, *vert4;
+  vert1 = &charbuf[charbuffered + 0];
+  vert2 = &charbuf[charbuffered + 1];
+  vert3 = &charbuf[charbuffered + 2];
+  vert4 = &charbuf[charbuffered + 3];
+  const unsigned int col = PVR_PACK_COLOR(current_alpha, 0.0f, 0.0f, 0.0f);
 
-  vert.flags = PVR_CMD_VERTEX;
-  vert.x = x1;
-  vert.y = y2;
-  vert.z = z;
-  vert.u = u1;
-  vert.v = v2;
-  vert.argb = PVR_PACK_COLOR(color, 0.0f, 0.0f, 0.0f);
-  vert.oargb = 0;
-  pvr_prim(&vert, sizeof(vert));
+  vert1->flags = PVR_CMD_VERTEX;
+  vert1->x = x1;
+  vert1->y = y2;
+  vert1->z = z;
+  vert1->u = u1;
+  vert1->v = v2;
+  vert1->argb = col;
+  vert1->oargb = 0;
 
-  vert.x = x1;
-  vert.y = y1;
-  vert.u = u1;
-  vert.v = v1;
-  pvr_prim(&vert, sizeof(vert));
+  vert2->flags = PVR_CMD_VERTEX;
+  vert2->x = x1;
+  vert2->y = y1;
+  vert2->z = z;
+  vert2->u = u1;
+  vert2->v = v1;
+  vert2->argb = col;
+  vert2->oargb = 0;
 
-  vert.x = x2;
-  vert.y = y2;
-  vert.u = u2;
-  vert.v = v2;
-  pvr_prim(&vert, sizeof(vert));
+  vert3->flags = PVR_CMD_VERTEX;
+  vert3->x = x2;
+  vert3->y = y2;
+  vert3->z = z;
+  vert3->u = u2;
+  vert3->v = v2;
+  vert3->argb = col;
+  vert3->oargb = 0;
 
-  vert.flags = PVR_CMD_VERTEX_EOL;
-  vert.x = x2;
-  vert.y = y1;
-  vert.u = u2;
-  vert.v = v1;
-  pvr_prim(&vert, sizeof(vert));
+  vert4->flags = PVR_CMD_VERTEX_EOL;
+  vert4->x = x2;
+  vert4->y = y1;
+  vert4->z = z;
+  vert4->u = u2;
+  vert4->v = v1;
+  vert4->argb = col;
+  vert4->oargb = 0;
 #endif
+  charbuffered += VERT_PER_CHAR;
 
-  const float temp_advance = round(current_scale * font->chars[chr].xadvance);
-  const float ret_advance = (temp_advance < 1.0f ? 1.0f : temp_advance);
-  return ret_advance;
+  return current_scale * font->chars[chr].xadvance;
 }
 
-static void _font_bmf_draw_string(int x1, int y1, float color, const char *str, char font) {
+static void _font_bmf_draw_string(int x1, int y1, float alpha, const char *str) {
+  current_alpha = alpha;
+  charbuffered = 0;
   z_inc();
+
   unsigned char prev = 0;
-  while (*str) {
-    unsigned char chr = (*str);
-    /* Add possible kerning adjustment */
-    x1 += round(current_scale * BMF_adjust_kerning(prev, chr, &font_basilea));
-    x1 += font_bmf_draw_char(x1, y1, color, chr);
+  do {
+    unsigned char chr = *str;
+    if (chr != ' ') {
+      /* Add possible kerning adjustment */
+      x1 += round(current_scale * BMF_adjust_kerning(prev, chr, &font_basilea));
+      x1 += font_bmf_draw_char(x1, y1, chr);
+    } else {
+      x1 += round(current_scale * (float)font_basilea.chars[' '].width);
+    }
 
     prev = chr;
+  } while (*str++);
+
+  pvr_prim(charbuf, charbuffered * sizeof(charbuf[0]));
+}
+
+static float _font_bmf_calculate_length_full(const char *str, int length) {
+  /* Not sure if its worth calculating kerning for this */
+  float width = 0;
+  //unsigned char prev = 0;
+  bm_font *font = &font_basilea;
+  int cursor = 0;
+
+  while (*str && cursor++ < length) {
+    unsigned char chr = *str;
+    /* Add possible kerning adjustment */
+    //width += BMF_adjust_kerning(prev, chr, &font_basilea); /* too slow */
+    width += font->chars[chr].xadvance;
+
+    //prev = chr;
     (void)*str++;
   }
 
-  (void)font;
+  return round(current_scale * round(width));
 }
 
 static float _font_bmf_calculate_length(const char *str) {
-  float width = 0;
-  unsigned char prev = 0;
-  bm_font *font = &font_basilea;
-
-  while (*str) {
-    unsigned char chr = (*str);
-    /* Add possible kerning adjustment */
-    width += BMF_adjust_kerning(prev, chr, &font_basilea);
-    width += font->chars[chr].xadvance;
-
-    prev = chr;
-    (void)*str++;
-  }
-
-  return round(width);
+  return _font_bmf_calculate_length_full(str, strlen(str));
 }
 
-void font_bmf_draw_auto_size(int x1, int y1, float color, const char *str, int width) {
+void font_bmf_draw_auto_size(int x1, int y1, float alpha, const char *str, int width) {
   float temp = _font_bmf_calculate_length(str);
   font_bmf_set_height(width / temp * font_basilea.fontSize);
-  _font_bmf_draw_string(x1, y1, color, str, 0);
+  _font_bmf_draw_string(x1, y1, alpha, str);
 }
 
-void font_bmf_draw_centered(int x1, int y1, float color, const char *str) {
+void font_bmf_draw_centered(int x1, int y1, float alpha, const char *str) {
   int temp = (int)_font_bmf_calculate_length(str);
-  _font_bmf_draw_string(x1 - (temp / 2), y1, color, str, 0);
+  _font_bmf_draw_string(x1 - (temp / 2), y1, alpha, str);
 }
 
-void font_bmf_draw_main(int x1, int y1, float color, const char *str) {
+void font_bmf_draw_main(int x1, int y1, float alpha, const char *str) {
   font_bmf_set_height_default();
-  _font_bmf_draw_string(x1, y1, color, str, 0);
+  _font_bmf_draw_string(x1, y1, alpha, str);
 }
 
-void font_bmf_draw_sub(int x1, int y1, float color, const char *str) {
+void font_bmf_draw_sub(int x1, int y1, float alpha, const char *str) {
   font_bmf_set_height(16.0f);
-  _font_bmf_draw_string(x1, y1, color, str, 1);
+  _font_bmf_draw_string(x1, y1, alpha, str);
 }
 
-void font_bmf_draw_sub_wrap(int x1, int y1, float color, const char *str, int width) {
-  (void)x1;
-  (void)y1;
-  (void)color;
-  (void)str;
+void font_bmf_draw_sub_wrap(int x1, int y1, float alpha, const char *str, int width) {
+  font_bmf_set_height(16.0f);
+  z_inc();
+  current_alpha = alpha;
+  unsigned char prev = 0;
 
-  (void)width;
+  const int x_start = x1;
+  const char *text_end = strrchr(str, '\0');
+  const char *current_text_start = str;
+  const char *current_text_temp = str;
+  const char *last_known_space = str;
+  int current_text_len = 0;
 
-  font_bmf_draw_sub(x1, y1, color, str);
+  do {
+    /* Try to find longest string broken by spaces that will fit in width */
+    float current_text_width = 0.0f;
+    do {
+      const int current_char = *(current_text_start + current_text_len);
+      if (current_char == ' ') {
+        last_known_space = current_text_start + current_text_len;
+      }
+      if (current_char == '\n') {
+        /* not space but safe breaking point */
+        last_known_space = current_text_start + current_text_len;
+        break;
+      }
+      if (current_text_start + current_text_len >= text_end) {
+        last_known_space = text_end;
+        break;
+      }
+      current_text_width += (current_scale * font_basilea.chars[current_char].xadvance);
+      current_text_len++;
+    } while (current_text_width < width);
+
+    current_text_temp = current_text_start;
+    charbuffered = 0;
+    do {
+      unsigned char chr = (*current_text_temp++);
+      if (chr != ' ') {
+        /* Add possible kerning adjustment */
+        x1 += round(current_scale * BMF_adjust_kerning(prev, chr, &font_basilea));
+        x1 += font_bmf_draw_char(x1, y1, chr);
+      } else {
+        x1 += round(current_scale * (float)font_basilea.chars[' '].width);
+      }
+      prev = chr;
+    } while (current_text_temp < last_known_space);
+
+    pvr_prim(charbuf, charbuffered * sizeof(charbuf[0]));
+
+    /* prepare for next row */
+    y1 += (current_scale * font_basilea.lineHeight);
+    x1 = x_start;
+    current_text_start = last_known_space + 1;
+    current_text_len = 0;
+    prev = 0;
+  } while (current_text_start < text_end);
 }

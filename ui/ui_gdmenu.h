@@ -25,4 +25,5 @@ FUNCTION(UI_NAME, setup);
 /* Handles incoming input each frame, your job to manage */
 FUNCTION_INPUT(UI_NAME, handle_input);
 /* Called per frame to draw your UI */
-FUNCTION(UI_NAME, draw);
+FUNCTION(UI_NAME, drawOP);
+FUNCTION(UI_NAME, drawTR);

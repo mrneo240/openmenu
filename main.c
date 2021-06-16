@@ -35,19 +35,21 @@
 
 void (*current_ui_init)(void);
 void (*current_ui_setup)(void);
-void (*current_ui_draw)(void);
+void (*current_ui_draw_OP)(void);
+void (*current_ui_draw_TR)(void);
 void (*current_ui_handle_input)(unsigned int);
 
 typedef struct ui_template {
   void (*init)(void);
   void (*setup)(void);
-  void (*draw)(void);
+  void (*drawOP)(void);
+  void (*drawTR)(void);
   void (*handle_input)(unsigned int);
 } ui_template;
 
-#define UI_TEMPLATE(name)                                                                                                                         \
-  (ui_template) {                                                                                                                                 \
-    .init = FUNC_NAME(name, init), .setup = FUNC_NAME(name, setup), .draw = FUNC_NAME(name, draw), .handle_input = FUNC_NAME(name, handle_input), \
+#define UI_TEMPLATE(name)                                                                                                                                                                \
+  (ui_template) {                                                                                                                                                                        \
+    .init = FUNC_NAME(name, init), .setup = FUNC_NAME(name, setup), .drawOP = FUNC_NAME(name, drawOP), .drawTR = FUNC_NAME(name, drawTR), .handle_input = FUNC_NAME(name, handle_input), \
   }
 
 static ui_template ui_choices[] = {
@@ -63,7 +65,8 @@ void ui_set_choice(int choice) {
   if (choice >= 0 && choice < num_ui_choices) {
     current_ui_init = ui_choices[choice].init;
     current_ui_setup = ui_choices[choice].setup;
-    current_ui_draw = ui_choices[choice].draw;
+    current_ui_draw_OP = ui_choices[choice].drawOP;
+    current_ui_draw_TR = ui_choices[choice].drawTR;
     current_ui_handle_input = ui_choices[choice].handle_input;
 
     ui_choice_current = choice;
@@ -114,9 +117,17 @@ static void draw(void) {
   pvr_wait_ready();
   pvr_scene_begin();
 
+  draw_set_list(PVR_LIST_OP_POLY);
+  pvr_list_begin(PVR_LIST_OP_POLY);
+
+  (*current_ui_draw_OP)();
+
+  pvr_list_finish();
+
+  draw_set_list(PVR_LIST_TR_POLY);
   pvr_list_begin(PVR_LIST_TR_POLY);
 
-  (*current_ui_draw)();
+  (*current_ui_draw_TR)();
 
   pvr_list_finish();
 
@@ -259,20 +270,20 @@ static void init_gfx_pvr(void) {
 
   pvr_init_params_t params = {
       /* Enable opaque and translucent polygons with size 32 and 32 */
-      {PVR_BINSIZE_0, PVR_BINSIZE_0, PVR_BINSIZE_32, PVR_BINSIZE_0, PVR_BINSIZE_0}, /* Only TR */
-      256 * 1024,                                                                   /* 256kb Vertex buffer  */
-      0,                                                                            /* No DMA */
-      0,                                                                            /* No FSAA */
-      0                                                                             /* Disable TR autosort */
+      {PVR_BINSIZE_32, PVR_BINSIZE_0, PVR_BINSIZE_32, PVR_BINSIZE_0, PVR_BINSIZE_0}, /* Only TR */
+      256 * 1024,                                                                    /* 256kb Vertex buffer  */
+      0,                                                                             /* No DMA, but maybe? */
+      0,                                                                             /* No FSAA */
+      0                                                                              /* Disable TR autosort */
   };
 
   pvr_init(&params);
+  draw_set_list(PVR_LIST_OP_POLY);
 }
 
 int main(int argc, char *argv[]) {
   fflush(stdout);
   setbuf(stdout, NULL);
-  pvr_init_defaults();
   init_gfx_pvr();
 
   reset_gdrom_drive();

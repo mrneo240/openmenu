@@ -21,28 +21,30 @@
 #include "draw_prototypes.h"
 #include "font_prototypes.h"
 
+#define UNUSED __attribute__((unused))
+
 static image txr_bg_left, txr_bg_right;
 
 /* Info taken from megavolt85 and RazorX */
 /* GDMENU Default Colors */
-static const uint32_t color_window_title = PVR_PACK_ARGB(255, 103, 193, 245);
-static const uint32_t color_options_default = PVR_PACK_ARGB(255, 164, 158, 152);
-static const uint32_t color_options_highlight = PVR_PACK_ARGB(255, 103, 193, 245);
-static const uint32_t color_options_save = PVR_PACK_ARGB(255, 152, 158, 164);
-static const uint32_t color_sysinfo_default = PVR_PACK_ARGB(255, 152, 158, 164);
-static const uint32_t color_about_default = PVR_PACK_ARGB(255, 152, 158, 164);
-static const uint32_t color_exit_default = PVR_PACK_ARGB(255, 152, 158, 164);
-static const uint32_t color_exit_highlight = PVR_PACK_ARGB(255, 103, 193, 245);
-static const uint32_t color_cb_default = PVR_PACK_ARGB(255, 152, 158, 164);
-static const uint32_t color_cb_highlight = PVR_PACK_ARGB(255, 103, 193, 245);
-static const uint32_t color_main_default = PVR_PACK_ARGB(255, 152, 158, 164);
-static const uint32_t color_main_highlight = PVR_PACK_ARGB(255, 103, 193, 245);
-static const uint32_t color_update_default = PVR_PACK_ARGB(255, 152, 158, 164);
-static const uint32_t color_image_info_default = PVR_PACK_ARGB(255, 152, 158, 164);
-static const uint32_t color_image_name_default = PVR_PACK_ARGB(255, 152, 158, 164);
-static const uint32_t color_image_name_highlight = PVR_PACK_ARGB(255, 103, 193, 245);
-static const uint32_t color_cursor_default = PVR_PACK_ARGB(255, 33, 56, 82); /* unsure */
-static const uint32_t color_cursor_actual = PVR_PACK_ARGB(255, 29, 44, 66);
+static const uint32_t UNUSED color_window_title = PVR_PACK_ARGB(255, 103, 193, 245);
+static const uint32_t UNUSED color_options_default = PVR_PACK_ARGB(255, 164, 158, 152);
+static const uint32_t UNUSED color_options_highlight = PVR_PACK_ARGB(255, 103, 193, 245);
+static const uint32_t UNUSED color_options_save = PVR_PACK_ARGB(255, 152, 158, 164);
+static const uint32_t UNUSED color_sysinfo_default = PVR_PACK_ARGB(255, 152, 158, 164);
+static const uint32_t UNUSED color_about_default = PVR_PACK_ARGB(255, 152, 158, 164);
+static const uint32_t UNUSED color_exit_default = PVR_PACK_ARGB(255, 152, 158, 164);
+static const uint32_t UNUSED color_exit_highlight = PVR_PACK_ARGB(255, 103, 193, 245);
+static const uint32_t UNUSED color_cb_default = PVR_PACK_ARGB(255, 152, 158, 164);
+static const uint32_t UNUSED color_cb_highlight = PVR_PACK_ARGB(255, 103, 193, 245);
+static const uint32_t UNUSED color_main_default = PVR_PACK_ARGB(255, 152, 158, 164);
+static const uint32_t UNUSED color_main_highlight = PVR_PACK_ARGB(255, 103, 193, 245);
+static const uint32_t UNUSED color_update_default = PVR_PACK_ARGB(255, 152, 158, 164);
+static const uint32_t UNUSED color_image_info_default = PVR_PACK_ARGB(255, 152, 158, 164);
+static const uint32_t UNUSED color_image_name_default = PVR_PACK_ARGB(255, 152, 158, 164);
+static const uint32_t UNUSED color_image_name_highlight = PVR_PACK_ARGB(255, 103, 193, 245);
+static const uint32_t UNUSED color_cursor_default = PVR_PACK_ARGB(255, 33, 56, 82); /* unsure */
+static const uint32_t UNUSED color_cursor_actual = PVR_PACK_ARGB(255, 29, 44, 66);
 
 /* GDMENU Default positions */
 static const int cursor_width = 404;
@@ -113,7 +115,7 @@ static void draw_gamelist(void) {
   const int X_ADJUST_TEXT = 7;
   const int Y_ADJUST_TEXT = 4;
   const int Y_ADJUST_CRSR = 3; /* 2 pixels higher than text */
-
+  font_bmp_begin_draw();
   for (int i = 0; i < items_per_page; i++) {
     /* Break before issues */
     if ((current_starting_index + i) >= list_len) {
@@ -127,8 +129,8 @@ static void draw_gamelist(void) {
     } else {
       font_bmp_set_color(color_main_default);
     }
-    font_bmp_begin_draw();
-    font_bmp_draw_main(pos_gameslist_x + X_ADJUST_TEXT, pos_gameslist_y + Y_ADJUST_TEXT + (i * 21), 1.0f, buffer);
+
+    font_bmp_draw_main(pos_gameslist_x + X_ADJUST_TEXT, pos_gameslist_y + Y_ADJUST_TEXT + (i * 21), buffer);
   }
 }
 
@@ -173,19 +175,19 @@ static void draw_gameinfo(void) {
   font_bmp_set_color(color_image_name_highlight); /* Unsure */
   // Region
   string_outer_concat(line_buf, STR_REGION, region_code_to_readable(list_current[current_selected_item]->region), INFO_STR_LEN);
-  font_bmp_draw_main(pos_gameinfo_x, pos_gameinfo_region_y, 1.0f, line_buf);
+  font_bmp_draw_main(pos_gameinfo_x, pos_gameinfo_region_y, line_buf);
   // VGA
   string_outer_concat(line_buf, STR_VGA, (list_current[current_selected_item]->vga[0] == '1' ? STR_YES : STR_NO), INFO_STR_LEN);
-  font_bmp_draw_main(pos_gameinfo_x, pos_gameinfo_vga_y, 1.0f, line_buf);
+  font_bmp_draw_main(pos_gameinfo_x, pos_gameinfo_vga_y, line_buf);
   // DISC
   string_outer_concat(line_buf, STR_DISC, list_current[current_selected_item]->disc, INFO_STR_LEN);
-  font_bmp_draw_main(pos_gameinfo_x, pos_gameinfo_disc_y, 1.0f, line_buf);
+  font_bmp_draw_main(pos_gameinfo_x, pos_gameinfo_disc_y, line_buf);
   // DATE
   string_outer_concat(line_buf, STR_DATE, transform_date_readable(date_buf, list_current[current_selected_item]->date), INFO_STR_LEN);
-  font_bmp_draw_main(pos_gameinfo_x, pos_gameinfo_date_y, 1.0f, line_buf);
+  font_bmp_draw_main(pos_gameinfo_x, pos_gameinfo_date_y, line_buf);
   // VERSION
   string_outer_concat(line_buf, STR_VERSION, list_current[current_selected_item]->version, INFO_STR_LEN);
-  font_bmp_draw_main(pos_gameinfo_x, pos_gameinfo_version_y, 1.0f, line_buf);
+  font_bmp_draw_main(pos_gameinfo_x, pos_gameinfo_version_y, line_buf);
 }
 
 static void draw_gameart(void) {
@@ -209,7 +211,7 @@ static void menu_decrement(void) {
   if (current_selected_item > 0) {
     current_selected_item--;
   }
-  if (current_selected_item <= current_starting_index) {
+  if (current_selected_item < current_starting_index) {
     current_starting_index--;
     if (current_starting_index < 0) {
       current_starting_index = 0;
@@ -298,9 +300,12 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
   }
 }
 
-FUNCTION(UI_NAME, draw) {
+FUNCTION(UI_NAME, drawOP) {
   draw_bg_layers();
   draw_gameart();
+}
+
+FUNCTION(UI_NAME, drawTR) {
   draw_gamelist();
   draw_gameinfo();
 }

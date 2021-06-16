@@ -32,6 +32,10 @@ void draw_default_load_resources(void);
 /* called at the start of each frame */
 void draw_setup(void);
 
+/* Controls which list we are drawing into */
+void draw_set_list(int list);
+int draw_get_list(void);
+
 /* returns default missing texture */
 void *draw_load_missing_icon(void *user);
 /* Throws pass whatever is relevant to your platform as a pointer and it will filled + returned if successfull, otherwise NULL */
