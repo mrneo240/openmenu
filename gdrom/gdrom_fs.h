@@ -24,5 +24,7 @@ typedef int FD_TYPE;
 #else
 #include <stdio.h>
 typedef FILE* FD_TYPE;
+#ifdef _arch_dreamcast
 #define DISC_PREFIX "/cd/"
+#endif
 #endif

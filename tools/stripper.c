@@ -11,15 +11,15 @@
 #ifdef COSMO
 #include "cosmo/cosmopolitan.h"
 #else
+#include <ctype.h>
+#include <dirent.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
-#include <dirent.h>
-#include <errno.h>
-#include <ctype.h>
 #endif
 
 #include "../backend/gd_item.h"
@@ -37,7 +37,9 @@ Reads an input DAT and a menu ini to then generate an optimized DAT
 
 /* Define configure constants */
 /* only defined when building the binary tool */
+#ifndef STANDALONE_BINARY
 #define STANDALONE_BINARY (1)
+#endif
 #ifdef STANDALONE_BINARY
 #define DEBUG
 #endif
@@ -54,8 +56,7 @@ Reads an input DAT and a menu ini to then generate an optimized DAT
 #define PATH_SEP "/"
 #endif
 
-typedef struct bin_item_raw
-{
+typedef struct bin_item_raw {
   char ID[12];
   uint32_t offset;
 } bin_item_raw;
@@ -68,17 +69,14 @@ static FILE *out_fd;
 static bin_item_raw *bin_items;
 static unsigned char *data_buf;
 
-void open_output(const char *path)
-{
+void open_output(const char *path) {
   out_fd = fopen(path, "wb");
-  if (!out_fd)
-  {
+  if (!out_fd) {
     printf("ERR: unable to open %s for writing!\n", path);
   }
 }
 
-void write_bin_file(void)
-{
+void write_bin_file(void) {
   char *nul = calloc(1, file_header.chunk_size - sizeof(file_header) - (sizeof(bin_item_raw) * file_header.num_chunks));
 
   printf("Writing:");
@@ -99,28 +97,22 @@ void write_bin_file(void)
   printf("done!\n");
 }
 
-int add_bin_file(const char *path, const char *folder, struct stat *statptr)
-{
+int add_bin_file(const char *path, const char *folder, struct stat *statptr) {
   char temp_id[12];
   char temp_file[FILENAME_MAX];
 
-  if (file_header.chunk_size == 0)
-  {
+  if (file_header.chunk_size == 0) {
     file_header.chunk_size = (uint32_t)statptr->st_size;
     data_buf = malloc(file_header.chunk_size * file_header.padding0); /* Temporarily use padding0 as num_files */
-  }
-  else
-  {
-    if (statptr->st_size != file_header.chunk_size)
-    {
+  } else {
+    if (statptr->st_size != file_header.chunk_size) {
       printf("Err: Filesize mismatch for %s, found %ld vs %d!\n", path, statptr->st_size, file_header.chunk_size);
       return -1;
     }
   }
   /* Check if filename too long, dont try to reconcile, just skip */
   char *dot = strrchr(path, '.');
-  if ((size_t)dot - (size_t)path > 11)
-  {
+  if ((size_t)dot - (size_t)path > 11) {
     printf("Err: filename too long \"%s\", maxlength = 11!\n", path);
     return -1;
   }
@@ -130,8 +122,7 @@ int add_bin_file(const char *path, const char *folder, struct stat *statptr)
   strcat(temp_file, PATH_SEP);
   strcat(temp_file, path);
   FILE *temp_fd = fopen(temp_file, "rb");
-  if (!temp_fd)
-  {
+  if (!temp_fd) {
     printf("ERR: cant read %s\n", temp_file);
     return -1;
   }
@@ -154,13 +145,11 @@ int add_bin_file(const char *path, const char *folder, struct stat *statptr)
   printf("Added[%d] as %s\n", file_header.num_chunks, temp_id);
 }
 
-int print_cb(const char *path, const char *folder, struct stat *statptr)
-{
+int print_cb(const char *path, const char *folder, struct stat *statptr) {
   printf("%s\n", path);
 }
 
-int iterate_dir(const char *path, int (*file_cb)(const char *, const char *, struct stat *))
-{
+int iterate_dir(const char *path, int (*file_cb)(const char *, const char *, struct stat *)) {
   struct dirent *dp;
   struct stat statbuf;
   char pathbuf[FILENAME_MAX];
@@ -168,8 +157,7 @@ int iterate_dir(const char *path, int (*file_cb)(const char *, const char *, str
 
   DIR *dir = opendir(path);
 
-  if (file_cb == NULL)
-  {
+  if (file_cb == NULL) {
     file_cb = print_cb;
   }
 
@@ -179,8 +167,7 @@ int iterate_dir(const char *path, int (*file_cb)(const char *, const char *, str
 
   /* Loop twice, first time to count then second time to add */
   num_files_found = 0;
-  while ((dp = readdir(dir)) != NULL)
-  {
+  while ((dp = readdir(dir)) != NULL) {
     /* ignore these */
     if (strcmp(dp->d_name, ".") == 0 || strcmp(dp->d_name, "..") == 0)
       continue;
@@ -191,15 +178,13 @@ int iterate_dir(const char *path, int (*file_cb)(const char *, const char *, str
     strcat(pathbuf, path);
     strcat(pathbuf, PATH_SEP);
     strcat(pathbuf, dp->d_name);
-    if (stat(pathbuf, &statbuf) == -1)
-    {
+    if (stat(pathbuf, &statbuf) == -1) {
       printf("ERR: errno = %d\n", errno);
       return -1;
     }
 
     /* only check files */
-    if (S_ISREG(statbuf.st_mode))
-    {
+    if (S_ISREG(statbuf.st_mode)) {
       num_files_found++;
     }
   }
@@ -213,8 +198,7 @@ int iterate_dir(const char *path, int (*file_cb)(const char *, const char *, str
   file_header.padding0 = num_files_found;
   bin_items = malloc(sizeof(bin_item_raw) * num_files_found);
 
-  while ((dp = readdir(dir)) != NULL)
-  {
+  while ((dp = readdir(dir)) != NULL) {
     /* ignore these */
     if (strcmp(dp->d_name, ".") == 0 || strcmp(dp->d_name, "..") == 0)
       continue;
@@ -225,15 +209,13 @@ int iterate_dir(const char *path, int (*file_cb)(const char *, const char *, str
     strcat(pathbuf, path);
     strcat(pathbuf, PATH_SEP);
     strcat(pathbuf, dp->d_name);
-    if (stat(pathbuf, &statbuf) == -1)
-    {
+    if (stat(pathbuf, &statbuf) == -1) {
       printf("ERR: errno = %d\n", errno);
       return -1;
     }
 
     /* only check files */
-    if (S_ISREG(statbuf.st_mode))
-    {
+    if (S_ISREG(statbuf.st_mode)) {
       (*file_cb)(dp->d_name, path, &statbuf);
     }
   }
@@ -243,27 +225,23 @@ int iterate_dir(const char *path, int (*file_cb)(const char *, const char *, str
 
 /* DAT loading */
 
-int DAT_init(dat_file *bin)
-{
+int DAT_init(dat_file *bin) {
   memset(bin, '\0', sizeof(dat_file));
   return 0;
 }
 
-int DAT_load_parse(dat_file *bin, const char *path)
-{
+int DAT_load_parse(dat_file *bin, const char *path) {
   FILE *bin_fd;
   bin_header file_header;
 
   bin_fd = fopen(path, "rb");
-  if (!bin_fd)
-  {
+  if (!bin_fd) {
     DBG_PRINT("DAT:Error opening %s!\n", path);
     return 1;
   }
 
   fread(&file_header, sizeof(bin_header), 1, bin_fd);
-  if (file_header.magic.rich.version != 1)
-  {
+  if (file_header.magic.rich.version != 1) {
     DBG_PRINT("DAT:Error Incorrect file format!\n");
     return 1;
   }
@@ -276,8 +254,7 @@ int DAT_load_parse(dat_file *bin, const char *path)
   bin->hash = NULL;
 
   /* Parse file table to Hash table */
-  for (int i = 0; i < file_header.num_chunks; i++)
-  {
+  for (int i = 0; i < file_header.num_chunks; i++) {
     fread(&bin->items[i], sizeof(bin_item_raw), 1, bin->handle);
     HASH_ADD_STR(bin->hash, ID, &bin->items[i]);
   }
@@ -287,74 +264,57 @@ int DAT_load_parse(dat_file *bin, const char *path)
   return 0;
 }
 
-void DAT_dump(const dat_file *bin)
-{
+void DAT_dump(const dat_file *bin) {
   DBG_PRINT("BIN Stats:\nChunk Size: %d\nNum Chunks: %d\n\n", bin->chunk_size, bin->num_chunks);
-  for (int i = 0; i < bin->num_chunks; i++)
-  {
+  for (int i = 0; i < bin->num_chunks; i++) {
     DBG_PRINT("Record[%d] %s at 0x%X\n", bin->items[i].offset, bin->items[i].ID, bin->items[i].offset * bin->chunk_size);
   }
 }
 
-uint32_t DAT_get_offset_by_ID(const dat_file *bin, const char *ID)
-{
+uint32_t DAT_get_offset_by_ID(const dat_file *bin, const char *ID) {
   const bin_item *item;
   uint32_t ret;
 
   HASH_FIND_STR(bin->hash, ID, item);
-  if (item)
-  {
+  if (item) {
     ret = item->offset * bin->chunk_size;
-  }
-  else
-  {
+  } else {
     ret = 0;
   }
 
   return ret;
 }
 
-int DAT_read_file_by_ID(const dat_file *bin, const char *ID, void *buf)
-{
+int DAT_read_file_by_ID(const dat_file *bin, const char *ID, void *buf) {
   uint32_t offset = DAT_get_offset_by_ID(bin, ID);
-  if (offset)
-  {
+  if (offset) {
     fseek(bin->handle, offset, SEEK_SET);
     fread(buf, bin->chunk_size, 1, bin->handle);
     return 1;
-  }
-  else
-  {
+  } else {
     return 0;
   }
 }
 
-int DAT_read_file_by_num(const dat_file *bin, uint32_t chunk_num, void *buf)
-{
+int DAT_read_file_by_num(const dat_file *bin, uint32_t chunk_num, void *buf) {
   uint32_t offset = chunk_num * bin->chunk_size;
-  if (chunk_num <= bin->num_chunks)
-  {
+  if (chunk_num <= bin->num_chunks) {
     fseek(bin->handle, offset, SEEK_SET);
     fread(buf, bin->chunk_size, 1, bin->handle);
     return 1;
-  }
-  else
-  {
+  } else {
     return 0;
   }
   return 1;
 }
 
-int main(int argc, char **argv)
-{
-  if (argc < NUM_ARGS + 1 /*binary itself*/)
-  {
+int main(int argc, char **argv) {
+  if (argc < NUM_ARGS + 1 /*binary itself*/) {
     printf("Incorrect usage!\n\t./datstrip input.dat openmenu.ini output.dat\n");
     return 1;
   }
 
-  if (strcmp(argv[1], argv[3]) == 0)
-  {
+  if (strcmp(argv[1], argv[3]) == 0) {
     printf("Incorrect usage: input and output cannot be the same file!\n");
     return 1;
   }
@@ -362,8 +322,7 @@ int main(int argc, char **argv)
   /* Basic Usage */
   dat_file input_bin;
   DAT_init(&input_bin);
-  if (DAT_load_parse(&input_bin, argv[1]))
-  {
+  if (DAT_load_parse(&input_bin, argv[1])) {
     return -1;
   }
 
@@ -372,24 +331,19 @@ int main(int argc, char **argv)
 
   /* Load INI and Parse entries */
   int entry_intersections = 0;
-  if (list_read(argv[2]))
-  {
+  if (list_read(argv[2])) {
     return -1;
   }
   int len = list_length();
   const gd_item *ini_entry;
-  for (int i = 0; i < len; i++)
-  {
+  for (int i = 0; i < len; i++) {
     ini_entry = list_item_get(i);
     //DBG_PRINT("Checking %s: ", ini_entry->product);
     uint32_t offset = DAT_get_offset_by_ID(&input_bin, ini_entry->product);
-    if (offset)
-    {
+    if (offset) {
       //DBG_PRINT("present!\n");
       entry_intersections++;
-    }
-    else
-    {
+    } else {
       //DBG_PRINT("NOT present!\n");
     }
   }
@@ -405,13 +359,11 @@ int main(int argc, char **argv)
   data_buf = malloc(file_header.chunk_size * entry_intersections);
 
   printf("Copying:");
-  for (int i = 0; i < len; i++)
-  {
+  for (int i = 0; i < len; i++) {
     ini_entry = list_item_get(i);
 
     uint32_t offset = DAT_get_offset_by_ID(&input_bin, ini_entry->product);
-    if (offset)
-    {
+    if (offset) {
       DAT_read_file_by_ID(&input_bin, ini_entry->product, data_buf + (file_header.num_chunks * file_header.chunk_size));
 
       memcpy(&bin_items[file_header.num_chunks].ID, ini_entry->product, sizeof(bin_items->ID));

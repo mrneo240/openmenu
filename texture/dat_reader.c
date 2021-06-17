@@ -47,6 +47,7 @@ int DAT_load_parse(dat_file *bin, const char *path) {
 
 #ifdef STANDALONE_BINARY
   bin_fd = fopen(path, "rb");
+  const char *fullpath = path;
 #else
   char fullpath[128];
   strcpy(fullpath, DISC_PREFIX);
@@ -79,13 +80,16 @@ int DAT_load_parse(dat_file *bin, const char *path) {
     HASH_ADD_STR(bin->hash, ID, &bin->items[i]);
   }
 
+  /* Leave our handle in a handy place in case we need to read after */
+  fseek((FD_TYPE)bin->handle, bin->items[0].offset * bin->chunk_size, SEEK_SET);
+
   return 0;
 }
 
 void DAT_dump(const dat_file *bin) {
-  DBG_PRINT("BIN Stats:\nChunk Size: %lu\nNum Chunks: %lu\n\n", bin->chunk_size, bin->num_chunks);
+  DBG_PRINT("BIN Stats:\nChunk Size: %u\nNum Chunks: %u\n\n", bin->chunk_size, bin->num_chunks);
   for (int i = 0; i < bin->num_chunks; i++) {
-    DBG_PRINT("Record[%lu] %s at 0x%X\n", bin->items[i].offset, bin->items[i].ID, (unsigned int)(bin->items[i].offset * bin->chunk_size));
+    DBG_PRINT("Record[%u] %s at 0x%X\n", bin->items[i].offset, bin->items[i].ID, (unsigned int)(bin->items[i].offset * bin->chunk_size));
   }
 }
 
@@ -98,6 +102,20 @@ uint32_t DAT_get_offset_by_ID(const dat_file *bin, const char *ID) {
     ret = item->offset * bin->chunk_size;
   } else {
     ret = 0;
+  }
+
+  return ret;
+}
+
+uint32_t DAT_get_index_by_ID(const dat_file *bin, const char *ID) {
+  const bin_item *item;
+  uint32_t ret;
+
+  HASH_FIND_STR(bin->hash, ID, item);
+  if (item) {
+    ret = item->offset;
+  } else {
+    ret = 0xFFFFFFFF;
   }
 
   return ret;
@@ -123,5 +141,4 @@ int DAT_read_file_by_num(const dat_file *bin, uint32_t chunk_num, void *buf) {
   } else {
     return 0;
   }
-  return 1;
 }

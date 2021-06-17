@@ -11,15 +11,15 @@
 #ifdef COSMO
 #include "cosmo/cosmopolitan.h"
 #else
+#include <ctype.h>
+#include <dirent.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
-#include <dirent.h>
-#include <errno.h>
-#include <ctype.h>
 #endif
 
 #include "../inc/dat_format.h"
@@ -38,8 +38,7 @@ packs the items in the folder into the output.bin
 #define PATH_SEP "/"
 #endif
 
-typedef struct bin_item_raw
-{
+typedef struct bin_item_raw {
   char ID[12];
   uint32_t offset;
 } bin_item_raw;
@@ -50,17 +49,14 @@ static FILE *out_fd;
 static bin_item_raw *bin_items;
 static unsigned char *data_buf;
 
-void open_output(const char *path)
-{
+void open_output(const char *path) {
   out_fd = fopen(path, "wb");
-  if (!out_fd)
-  {
+  if (!out_fd) {
     printf("ERR: unable to open %s for writing!\n", path);
   }
 }
 
-void write_bin_file(void)
-{
+void write_bin_file(void) {
   char *nul = calloc(1, file_header.chunk_size - sizeof(file_header) - (sizeof(bin_item_raw) * file_header.num_chunks));
 
   printf("Writing:");
@@ -81,28 +77,22 @@ void write_bin_file(void)
   printf("done!\n");
 }
 
-int add_bin_file(const char *path, const char *folder, struct stat *statptr)
-{
+int add_bin_file(const char *path, const char *folder, struct stat *statptr) {
   char temp_id[12];
   char temp_file[FILENAME_MAX];
 
-  if (file_header.chunk_size == 0)
-  {
+  if (file_header.chunk_size == 0) {
     file_header.chunk_size = (uint32_t)statptr->st_size;
     data_buf = malloc(file_header.chunk_size * file_header.padding0); /* Temporarily use padding0 as num_files */
-  }
-  else
-  {
-    if (statptr->st_size != file_header.chunk_size)
-    {
+  } else {
+    if (statptr->st_size != file_header.chunk_size) {
       printf("Err: Filesize mismatch for %s, found %ld vs %d!\n", path, statptr->st_size, file_header.chunk_size);
       return -1;
     }
   }
   /* Check if filename too long, dont try to reconcile, just skip */
   char *dot = strrchr(path, '.');
-  if ((size_t)dot - (size_t)path > 11)
-  {
+  if ((size_t)dot - (size_t)path > 11) {
     printf("Err: filename too long \"%s\", maxlength = 11!\n", path);
     return -1;
   }
@@ -112,8 +102,7 @@ int add_bin_file(const char *path, const char *folder, struct stat *statptr)
   strcat(temp_file, PATH_SEP);
   strcat(temp_file, path);
   FILE *temp_fd = fopen(temp_file, "rb");
-  if (!temp_fd)
-  {
+  if (!temp_fd) {
     printf("ERR: cant read %s\n", temp_file);
     return -1;
   }
@@ -121,10 +110,13 @@ int add_bin_file(const char *path, const char *folder, struct stat *statptr)
   fclose(temp_fd);
 
   /* Use filename as ID, remove extension */
+  printf("Working on %s\n", path);
   memcpy(temp_id, path, 11);
+  temp_id[11] = '\0';
   char *end = strrchr(temp_id, '.');
-  if (end)
+  if (end) {
     memset(end, '\0', sizeof(temp_id) - ((size_t)end - (size_t)temp_id));
+  }
   char *temp_start = temp_id;
   while (*temp_start)
     *temp_start++ = toupper(*temp_start);
@@ -136,13 +128,11 @@ int add_bin_file(const char *path, const char *folder, struct stat *statptr)
   printf("Added[%d] as %s\n", file_header.num_chunks, temp_id);
 }
 
-int print_cb(const char *path, const char *folder, struct stat *statptr)
-{
+int print_cb(const char *path, const char *folder, struct stat *statptr) {
   printf("%s\n", path);
 }
 
-int iterate_dir(const char *path, int (*file_cb)(const char *, const char *, struct stat *))
-{
+int iterate_dir(const char *path, int (*file_cb)(const char *, const char *, struct stat *)) {
   struct dirent *dp;
   struct stat statbuf;
   char pathbuf[FILENAME_MAX];
@@ -150,8 +140,7 @@ int iterate_dir(const char *path, int (*file_cb)(const char *, const char *, str
 
   DIR *dir = opendir(path);
 
-  if (file_cb == NULL)
-  {
+  if (file_cb == NULL) {
     file_cb = print_cb;
   }
 
@@ -161,8 +150,7 @@ int iterate_dir(const char *path, int (*file_cb)(const char *, const char *, str
 
   /* Loop twice, first time to count then second time to add */
   num_files_found = 0;
-  while ((dp = readdir(dir)) != NULL)
-  {
+  while ((dp = readdir(dir)) != NULL) {
     /* ignore these */
     if (strcmp(dp->d_name, ".") == 0 || strcmp(dp->d_name, "..") == 0)
       continue;
@@ -173,15 +161,13 @@ int iterate_dir(const char *path, int (*file_cb)(const char *, const char *, str
     strcat(pathbuf, path);
     strcat(pathbuf, PATH_SEP);
     strcat(pathbuf, dp->d_name);
-    if (stat(pathbuf, &statbuf) == -1)
-    {
+    if (stat(pathbuf, &statbuf) == -1) {
       printf("ERR: errno = %d\n", errno);
       return -1;
     }
 
     /* only check files */
-    if (S_ISREG(statbuf.st_mode))
-    {
+    if (S_ISREG(statbuf.st_mode)) {
       num_files_found++;
     }
   }
@@ -195,8 +181,7 @@ int iterate_dir(const char *path, int (*file_cb)(const char *, const char *, str
   file_header.padding0 = num_files_found;
   bin_items = malloc(sizeof(bin_item_raw) * num_files_found);
 
-  while ((dp = readdir(dir)) != NULL)
-  {
+  while ((dp = readdir(dir)) != NULL) {
     /* ignore these */
     if (strcmp(dp->d_name, ".") == 0 || strcmp(dp->d_name, "..") == 0)
       continue;
@@ -207,15 +192,13 @@ int iterate_dir(const char *path, int (*file_cb)(const char *, const char *, str
     strcat(pathbuf, path);
     strcat(pathbuf, PATH_SEP);
     strcat(pathbuf, dp->d_name);
-    if (stat(pathbuf, &statbuf) == -1)
-    {
+    if (stat(pathbuf, &statbuf) == -1) {
       printf("ERR: errno = %d\n", errno);
       return -1;
     }
 
     /* only check files */
-    if (S_ISREG(statbuf.st_mode))
-    {
+    if (S_ISREG(statbuf.st_mode)) {
       (*file_cb)(dp->d_name, path, &statbuf);
     }
   }
@@ -223,10 +206,8 @@ int iterate_dir(const char *path, int (*file_cb)(const char *, const char *, str
   closedir(dir);
 }
 
-int main(int argc, char **argv)
-{
-  if (argc < NUM_ARGS + 1 /*binary itself*/)
-  {
+int main(int argc, char **argv) {
+  if (argc < NUM_ARGS + 1 /*binary itself*/) {
     printf("Incorrect usage!\n\t./datpack FOLDER output.dat\n");
     return 1;
   }
