@@ -9,7 +9,7 @@
  */
 
 #ifdef COSMO
-#include "cosmo/cosmopolitan.h"
+#include "../tools/cosmo/cosmopolitan.h"
 #else
 #include <stdio.h>
 #include <stdlib.h>

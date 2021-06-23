@@ -22,7 +22,11 @@ typedef int FD_TYPE;
 #define fclose(fd) gd_close(fd)
 #define ftell(fd) gd_tell(fd)
 #else
+#ifdef COSMO
+#include "../tools/cosmo/cosmopolitan.h"
+#else
 #include <stdio.h>
+#endif
 typedef FILE* FD_TYPE;
 #ifdef _arch_dreamcast
 #define DISC_PREFIX "/cd/"
