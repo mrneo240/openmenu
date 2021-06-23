@@ -18,7 +18,6 @@
 
 extern int round(float x);
 
-image txr_highlight, txr_bg; /* Highlight square and Background */
 image img_empty_boxart;
 
 static int current_list;
@@ -50,17 +49,11 @@ float z_inc(void) {
   return z_depth;
 }
 
-void draw_default_load_resources(void) {
-  draw_load_texture("HIGHLIGHT.PVR", &txr_highlight);
-  draw_load_texture("BG_RIGHT.PVR", &txr_bg);
-
-  font_bmf_init();
-}
-
+static void* pvr_scratch_buf;
 /* Called only once at start */
 void draw_init(void) {
-  pvr_ptr_t txr = load_pvr("EMPTY.PVR", &img_empty_boxart.width, &img_empty_boxart.height, &img_empty_boxart.format);
-  img_empty_boxart.texture = txr;
+  pvr_scratch_buf = pvr_mem_malloc(TEXMAN_BUFFER_SIZE);
+  texman_reset(pvr_scratch_buf, TEXMAN_BUFFER_SIZE);
 
   z_reset();
 }
@@ -132,13 +125,13 @@ void* draw_load_texture_from_DAT_to_buffer(struct dat_file* bin, const char* ID,
 }
 
 /* draws an image at coords of a given size */
-void draw_draw_image(int x, int y, float width, float height, float alpha, void* user) {
+void draw_draw_image(int x, int y, float width, float height, uint32_t color, void* user) {
   image* img = (image*)user;
   const dimen_RECT uv_01 = {.x = 0, .y = 0, .w = img->width, .h = img->height};
-  draw_draw_sub_image(x, y, width, height, alpha, user, &uv_01);
+  draw_draw_sub_image(x, y, width, height, color, user, &uv_01);
 }
 
-void draw_draw_sub_image(int x, int y, float width, float height, float alpha, void* user, const dimen_RECT* rect) {
+void draw_draw_sub_image(int x, int y, float width, float height, uint32_t color, void* user, const dimen_RECT* rect) {
   image* img = (image*)user;
 
   if (img->width == 0 || img->height == 0) {
@@ -201,7 +194,7 @@ void draw_draw_sub_image(int x, int y, float width, float height, float alpha, v
   pvr_prim(&header, sizeof(header));
 
   pvr_vertex_t vert = {
-      .argb = PVR_PACK_COLOR(alpha, 1.0f, 1.0f, 1.0f),
+      .argb = color,
       .oargb = 0,
       .flags = PVR_CMD_VERTEX,
       .z = 1};
@@ -314,12 +307,12 @@ void draw_draw_quad(int x, int y, float width, float height, uint32_t color) {
 }
 
 /* draws an image at coords as a square */
-void draw_draw_square(int x, int y, float size, float alpha, void* user) {
-  draw_draw_image(x, y, size, size, alpha, user);
+void draw_draw_square(int x, int y, float size, uint32_t color, void* user) {
+  draw_draw_image(x, y, size, size, color, user);
 }
 
-void draw_draw_image_centered(int x, int y, float width, float height, float alpha, void* user) {
+void draw_draw_image_centered(int x, int y, float width, float height, uint32_t color, void* user) {
   const int x_extent = width / 2;
   const int y_extent = height / 2;
-  draw_draw_image(x - x_extent, y - y_extent, width, height, alpha, user);
+  draw_draw_image(x - x_extent, y - y_extent, width, height, color, user);
 }

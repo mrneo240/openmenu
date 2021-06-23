@@ -27,7 +27,6 @@ typedef struct dimen_RECT {
 
 /* Called only once at start */
 void draw_init(void);
-void draw_default_load_resources(void);
 
 /* called at the start of each frame */
 void draw_setup(void);
@@ -45,13 +44,13 @@ void *draw_load_texture_buffer(const char *filename, void *user, void *buffer);
 void *draw_load_texture_from_DAT_to_buffer(struct dat_file *bin, const char *ID, void *user, void *buffer);
 
 /* draws an image at coords of a given size */
-void draw_draw_image(int x, int y, float width, float height, float alpha, void *user);
+void draw_draw_image(int x, int y, float width, float height, uint32_t color, void *user);
 /* draws an image centered at coords of a given size */
-void draw_draw_image_centered(int x, int y, float width, float height, float alpha, void *user);
+void draw_draw_image_centered(int x, int y, float width, float height, uint32_t color, void *user);
 /* draws an image at coords as a square */
-void draw_draw_square(int x, int y, float size, float alpha, void *user);
+void draw_draw_square(int x, int y, float size, uint32_t color, void *user);
 /* Draws part of an image specified in rect at the given coords of size */
-void draw_draw_sub_image(int x, int y, float width, float height, float alpha, void *user, const dimen_RECT *rect);
+void draw_draw_sub_image(int x, int y, float width, float height, uint32_t color, void *user, const dimen_RECT *rect);
 
 /* Draws untextured quad at coords with size and color(rgba) */
 void draw_draw_quad(int x, int y, float width, float height, uint32_t color);
