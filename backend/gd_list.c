@@ -179,7 +179,7 @@ int list_length(void) {
 
 int list_read(const char *filename) {
   /* Always LD/cdrom */
-  FD_TYPE ini = fopen(filename, "r");
+  FD_TYPE ini = fopen(filename, "rb");
   if (!ini) {
     printf("INI:Error opening %s!\n", filename);
     fflush(stdout);
