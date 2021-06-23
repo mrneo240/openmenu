@@ -102,11 +102,11 @@ static int navigate_timeout = INPUT_TIMEOUT;
 static void draw_bg_layers(void) {
   {
     const dimen_RECT left = {.x = 0, .y = 0, .w = 512, .h = 480};
-    draw_draw_sub_image(0, 0, 512, 480, 1.0f, &txr_bg_left, &left);
+    draw_draw_sub_image(0, 0, 512, 480, COLOR_WHITE, &txr_bg_left, &left);
   }
   {
     const dimen_RECT right = {.x = 0, .y = 0, .w = 128, .h = 480};
-    draw_draw_sub_image(512, 0, 128, 480, 1.0f, &txr_bg_right, &right);
+    draw_draw_sub_image(512, 0, 128, 480, COLOR_WHITE, &txr_bg_right, &right);
   }
 }
 
@@ -200,7 +200,7 @@ static void draw_gameart(void) {
     return;
   }
 
-  draw_draw_image(pos_gametxr_x, pos_gametxr_y, 210, 210, 1.0f, &txr_focus);
+  draw_draw_image(pos_gametxr_x, pos_gametxr_y, 210, 210, COLOR_WHITE, &txr_focus);
 }
 
 static void menu_decrement(void) {
@@ -263,10 +263,19 @@ static void menu_accept(void) {
 }
 
 FUNCTION(UI_NAME, init) {
-  draw_load_texture("GDMENU_LEFT.PVR", &txr_bg_left);
-  draw_load_texture("GDMENU_RIGHT.PVR", &txr_bg_right);
+  texman_clear();
 
-  font_bmp_init("GDMNUFNT.PVR", 8, 16);
+  unsigned int temp = texman_create();
+  draw_load_texture_buffer("THEME/GDMENU/BG_L.PVR", &txr_bg_left, texman_get_tex_data(temp));
+  texman_reserve_memory(txr_bg_left.width, txr_bg_left.height, 2 /* 16Bit */);
+
+  temp = texman_create();
+  draw_load_texture_buffer("THEME/GDMENU/BG_R.PVR", &txr_bg_right, texman_get_tex_data(temp));
+  texman_reserve_memory(txr_bg_right.width, txr_bg_right.height, 2 /* 16Bit */);
+
+  font_bmp_init("FONT/GDMNUFNT.PVR", 8, 16);
+
+  printf("Texture scratch free: %d/%d KB (%d/%d bytes)\n", texman_get_space_available() / 1024, (1024 * 1024) / 1024, texman_get_space_available(), (1024 * 1024));
 }
 
 FUNCTION(UI_NAME, setup) {
