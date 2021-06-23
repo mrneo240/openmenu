@@ -1,0 +1,61 @@
+/*
+ * File: db_list.c
+ * Project: backend
+ * File Created: Wednesday, 16th June 2021 10:32:39 pm
+ * Author: Hayden Kowalchuk
+ * -----
+ * Copyright (c) 2021 Hayden Kowalchuk, Hayden Kowalchuk
+ * License: BSD 3-clause "New" or "Revised" License, http://www.opensource.org/licenses/BSD-3-Clause
+ */
+
+#include "db_list.h"
+
+#include <stdio.h>
+
+#include "../gdrom/gdrom_fs.h"
+#include "../inc/dat_format.h"
+#include "db_item.h"
+
+static dat_file dat_meta;
+static db_item *db;
+static int dat_first_index;
+
+int db_load_DAT(void) {
+  DAT_init(&dat_meta);
+  DAT_load_parse(&dat_meta, "META.DAT");
+  dat_first_index = dat_meta.items[0].offset;
+
+  /* Read DAT to db, but use Hash table to quickly search */
+  db = malloc(dat_meta.num_chunks * sizeof(db_item));
+  fread(db, sizeof(db_item), dat_meta.num_chunks, (FD_TYPE)dat_meta.handle);
+  fclose((FD_TYPE)dat_meta.handle);
+
+  DAT_dump(&dat_meta);
+
+  return 0;
+}
+
+/* Returns 0 on success and places a pointer in item, otherwise returns 1 and item = NULL */
+int db_get_meta(const char *id, struct db_item **item) {
+  uint32_t index = DAT_get_index_by_ID(&dat_meta, id);
+
+  if (index == 0xFFFFFFFF) {
+    *item = NULL;
+    return 1;
+  }
+
+  *item = &db[index - dat_first_index];
+  return 0;
+}
+
+const char *db_format_nplayers_str(int nplayers) {
+  static char str[10];
+  sprintf(str, "%d Player%c", nplayers, (nplayers > 1 ? 's' : '\0'));
+  return str;
+}
+
+const char *db_format_vmu_blocks_str(int num_blocks) {
+  static char str[12];
+  sprintf(str, "%d Block%c", num_blocks, (num_blocks > 1 ? 's' : '\0'));
+  return str;
+}

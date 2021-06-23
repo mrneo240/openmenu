@@ -6,6 +6,7 @@
 *loader*
 gdrom
 .vscode
-tools/dat*.*
-tools/dat*
+tools/*.exe
+tools/*.dbg
+tools/*.com
 tools/cosmo

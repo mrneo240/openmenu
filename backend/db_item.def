@@ -1,0 +1,12 @@
+/*DB_ITEM_STRI(ITEM, product, "T-0000A")*/
+DB_ITEM_STRI(ITEM, description, "Text here...")
+DB_ITEM_CHAR(ITEM, num_players, 0)
+DB_ITEM_CHAR(ITEM, vmu_blocks, 0)
+DB_ITEM_CHAR(ITEM, accessories, 0)
+DB_ITEM_CHAR(ITEM, network, 0)
+DB_ITEM_GENRE(ITEM, genre, 0)
+DB_ITEM_CHAR(ITEM, padding1, 0)
+DB_ITEM_CHAR(ITEM, padding2, 0)
+#undef DB_ITEM_STRI
+#undef DB_ITEM_CHAR
+#undef DB_ITEM_GENRE

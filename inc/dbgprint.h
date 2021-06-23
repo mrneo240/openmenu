@@ -12,10 +12,8 @@
 
 #if DEBUG
 #define DBG_PRINT(...) printf(__VA_ARGS__)
-#define DBG_CHAR_INFO (1)
+#define DBG_CHAR_INFO (0)
 #define DBG_KERN_INFO (0)
 #else
 #define DBG_PRINT(...)
-#define DBG_CHAR_INFO (0)
-#define DBG_KERN_INFO (0)
 #endif

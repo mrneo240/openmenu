@@ -45,5 +45,6 @@ int DAT_load_parse(dat_file *bin, const char *path);
 void DAT_dump(const dat_file *bin);
 
 uint32_t DAT_get_offset_by_ID(const dat_file *bin, const char *ID);
+uint32_t DAT_get_index_by_ID(const dat_file *bin, const char *ID);
 int DAT_read_file_by_ID(const dat_file *bin, const char *ID, void *buf);
 int DAT_read_file_by_num(const dat_file *bin, uint32_t chunk_num, void *buf);
