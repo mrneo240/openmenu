@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "backend/db_list.h"
 #include "backend/gd_list.h"
 #include "ui/common.h"
 #include "ui/dc/input.h"
@@ -53,9 +54,9 @@ typedef struct ui_template {
   }
 
 static ui_template ui_choices[] = {
-    UI_TEMPLATE(GDMENU_EMU),
-    UI_TEMPLATE(GRID_3),
+    //UI_TEMPLATE(GDMENU_EMU),
     UI_TEMPLATE(LIST_DESC),
+    UI_TEMPLATE(GRID_3),
 };
 
 static const int num_ui_choices = sizeof(ui_choices) / sizeof(ui_template);
@@ -71,7 +72,8 @@ void ui_set_choice(int choice) {
 
     ui_choice_current = choice;
 
-    /* Call setup but not init */
+    /* Call init & setup */
+    (*current_ui_init)();
     (*current_ui_setup)();
   }
 }
@@ -102,13 +104,11 @@ static int init(void) {
   ret += txr_create_large_pool();
   ret += txr_load_DATs();
   ret += list_read_default();
+  ret += db_load_DAT();
 
   draw_init();
 
   ui_set_default();
-
-  (*current_ui_init)();
-  (*current_ui_setup)(); /* Called twice :( */
 
   return ret;
 }
@@ -215,6 +215,14 @@ static int translate_input(void) {
   }
   if (INPT_Button(BTN_START)) {
     return START;
+  }
+
+  /* Triggers */
+  if (INPT_TriggerPressed(TRIGGER_L)) {
+    return TRIG_L;
+  }
+  if (INPT_TriggerPressed(TRIGGER_R)) {
+    return TRIG_R;
   }
 
   return NONE;
