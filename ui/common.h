@@ -23,7 +23,9 @@ enum control { NONE = 0,
                B,
                X,
                Y,
-               START };
+               START,
+               TRIG_L,
+               TRIG_R };
 
 static inline int file_exists(const char *path) {
   struct stat buffer;

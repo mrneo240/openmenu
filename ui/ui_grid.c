@@ -17,6 +17,7 @@
 #include "../backend/gd_item.h"
 #include "../backend/gd_list.h"
 #include "../texture/txr_manager.h"
+#include "animation.h"
 #include "draw_prototypes.h"
 #include "font_prototypes.h"
 
@@ -41,24 +42,6 @@ static bool direction_last = false;
 static bool direction_current = false;
 #define direction_held (direction_last & direction_current)
 
-typedef struct vec2d {
-  float x;
-  float y;
-} vec2d;
-
-typedef struct AnimBare {
-  int frame_len;
-  int frame_now;
-  bool active;
-} AnimBare;
-
-typedef struct anim2d {
-  AnimBare time;
-  vec2d start;
-  vec2d end;
-  vec2d cur;
-} anim2d;
-
 static vec2d pos_highlight = (vec2d){.x = 0, .y = 0};
 static anim2d anim_highlight = {0};
 
@@ -71,47 +54,13 @@ static anim2d anim_large_art_scale = {0};
 #define TILE_X_POS(col) (100 + ((40 + 120) * (col)))
 #define TILE_Y_POS(row) (20 + ((10 + 120) * (row)))
 
-static void anim_update_2d(anim2d *anim) {
-  //AHEasingFunction ease = CircularEaseOut;
-  AHEasingFunction ease = CubicEaseInOut;
-  const float dt = (float)anim->time.frame_now / (float)anim->time.frame_len;
-  const float dv = (*ease)(dt);
-  anim->cur.x = anim->start.x + (anim->end.x - anim->start.x) * dv;
-  anim->cur.y = anim->start.y + (anim->end.y - anim->start.y) * dv;
-}
-
-static inline bool anim_finished(AnimBare *anim) {
-  return anim->frame_now == anim->frame_len;
-}
-
-static inline bool anim_active(AnimBare *anim) {
-  return anim->active;
-}
-
-static inline bool anim_alive(AnimBare *anim) {
-  return anim_active(anim) && (anim->frame_now <= anim->frame_len);
-}
-
-static inline void anim_tick(AnimBare *anim) {
-  if (anim_alive(anim) && !anim_finished(anim))
-    anim->frame_now++;
-}
-
-static inline void anim_tick_backward(AnimBare *anim) {
-  if (anim_active(anim))
-    anim->frame_now--;
-  if (anim->frame_now <= 0) {
-    anim->active = false;
-    anim->frame_now = 0;
-  }
-}
-
 /* For drawing */
-//static image txr_highlight, txr_bg; /* Highlight square and Background */
 static image txr_icon_list[9]; /* Lower list of 9 icons */
 static image txr_focus;
+static image txr_highlight; /* Highlight square */
+static image txr_bg_left, txr_bg_right;
+static image txr_icons_white, txr_icons_black;
 
-extern image txr_highlight, txr_bg; /* Highlight square and Background */
 extern image img_empty_boxart;
 
 /* Our actual gdemu items */
@@ -124,8 +73,49 @@ enum sort_type { DEFAULT,
                  SORT_END };
 static enum sort_type sort_current = DEFAULT;
 
+typedef struct theme_region {
+  const char *bg_left;
+  const char *bg_right;
+  image *icon_set;
+  uint32_t text_color;
+  uint32_t highlight_color;
+} theme_region;
+
+static theme_region themes[] = {
+    (theme_region){
+        .bg_left = "THEME/NTSC_U/BG_U_L.PVR",
+        .bg_right = "THEME/NTSC_U/BG_U_R.PVR",
+        .icon_set = &txr_icons_white,
+        .text_color = COLOR_WHITE,
+        .highlight_color = COLOR_ORANGE_U},
+    (theme_region){
+        .bg_left = "THEME/NTSC_J/BG_J_L.PVR",
+        .bg_right = "THEME/NTSC_J/BG_J_R.PVR",
+        .icon_set = &txr_icons_black,
+        .text_color = COLOR_BLACK,
+        .highlight_color = COLOR_ORANGE_J},
+    (theme_region){
+        .bg_left = "THEME/PAL/BG_E_L.PVR",
+        .bg_right = "THEME/PAL/BG_E_R.PVR",
+        .icon_set = &txr_icons_black,
+        .text_color = COLOR_BLACK,
+        .highlight_color = COLOR_BLUE},
+};
+enum theme { NTSC_U = 0,
+             NTSC_J = 1,
+             PAL = 2,
+             THEME_END };
+static enum theme theme_current = NTSC_U;
+
 static void draw_bg_layers(void) {
-  draw_draw_image(0, 0, 640, 480, 1.0f, &txr_bg);
+  {
+    const dimen_RECT left = {.x = 0, .y = 0, .w = 512, .h = 480};
+    draw_draw_sub_image(0, 0, 512, 480, COLOR_WHITE, &txr_bg_left, &left);
+  }
+  {
+    const dimen_RECT right = {.x = 0, .y = 0, .w = 128, .h = 480};
+    draw_draw_sub_image(512, 0, 128, 480, COLOR_WHITE, &txr_bg_right, &right);
+  }
 }
 
 static inline int current_selected(void) {
@@ -142,7 +132,7 @@ static void draw_large_art(void) {
     /* Always draw on top */
     float z = z_get();
     z_set(512.0f);
-    draw_draw_image_centered(anim_large_art_pos.cur.x, anim_large_art_pos.cur.y, anim_large_art_scale.cur.x, anim_large_art_scale.cur.y, 1.0f, &txr_focus);
+    draw_draw_image_centered(anim_large_art_pos.cur.x, anim_large_art_pos.cur.y, anim_large_art_scale.cur.x, anim_large_art_scale.cur.y, COLOR_WHITE, &txr_focus);
     z_set(z);
   }
 }
@@ -164,14 +154,14 @@ static void setup_highlight_animation(void) {
 }
 
 static void draw_static_highlight(int size) {
-  draw_draw_square(pos_highlight.x, pos_highlight.y, size, 1.0f, &txr_highlight);
+  draw_draw_square(pos_highlight.x, pos_highlight.y, size, themes[theme_current].highlight_color, &txr_highlight);
 }
 
 static void draw_animated_highlight(int size) {
   /* Always draw on top */
   float z = z_get();
   z_set(256.0f);
-  draw_draw_square(anim_highlight.cur.x, anim_highlight.cur.y, size, 1.0f, &txr_highlight);
+  draw_draw_square(anim_highlight.cur.x, anim_highlight.cur.y, size, themes[theme_current].highlight_color, &txr_highlight);
   z_set(z);
 }
 
@@ -197,7 +187,7 @@ static void draw_grid_boxes(void) {
       int y_pos = gutter_top + ((vertical_spacing + tile_size) * row);       /* 20 + ((10 + 120)*{0,1,2}) */
 
       txr_get_small(list_current[current_starting_index + idx]->product, &txr_icon_list[idx]);
-      draw_draw_square(x_pos, y_pos, tile_size, 1.0f, &txr_icon_list[idx]);
+      draw_draw_square(x_pos, y_pos, tile_size, COLOR_WHITE, &txr_icon_list[idx]);
 
       /* Highlight */
       if ((current_starting_index + idx) == current_selected()) {
@@ -273,12 +263,14 @@ static void kill_large_art_animation(void) {
   anim_large_art_scale.time.active = false;
 }
 
-static void menu_up(void) {
+static void menu_up(int amount) {
   if (direction_held && navigate_timeout > 0) {
     navigate_timeout--;
     return;
   }
-  menu_row_up();
+
+  while (amount--)
+    menu_row_up();
 
   setup_highlight_animation();
   kill_large_art_animation();
@@ -287,12 +279,14 @@ static void menu_up(void) {
   navigate_timeout = INPUT_TIMEOUT;
 }
 
-static void menu_down(void) {
+static void menu_down(int amount) {
   if (direction_held && navigate_timeout > 0) {
     navigate_timeout--;
     return;
   }
-  menu_row_down();
+
+  while (amount--)
+    menu_row_down();
 
   setup_highlight_animation();
   kill_large_art_animation();
@@ -388,6 +382,19 @@ static void menu_cycle_ui(void) {
   navigate_timeout = INPUT_TIMEOUT;
 }
 
+static void menu_theme_cycle(void) {
+  if (navigate_timeout > 0) {
+    navigate_timeout--;
+    return;
+  }
+  theme_current++;
+  if (theme_current == THEME_END) {
+    theme_current = NTSC_U;
+  }
+  GRID_3_init();
+  navigate_timeout = INPUT_TIMEOUT;
+}
+
 static void menu_show_large_art(void) {
   if (!boxart_button_held && !anim_active(&anim_large_art_scale.time)) {
     /* Setup positioning */
@@ -416,7 +423,39 @@ static void menu_show_large_art(void) {
 /* Base UI Methods */
 
 FUNCTION(UI_NAME, init) {
-  draw_default_load_resources();
+  texman_clear();
+
+  /* on user for now, may change */
+  unsigned int temp = texman_create();
+  draw_load_texture_buffer("EMPTY.PVR", &img_empty_boxart, texman_get_tex_data(temp));
+  texman_reserve_memory(img_empty_boxart.width, img_empty_boxart.height, 2 /* 16Bit */);
+
+  temp = texman_create();
+  draw_load_texture_buffer("THEME/SHARED/HIGHLIGHT.PVR", &txr_highlight, texman_get_tex_data(temp));
+  texman_reserve_memory(txr_highlight.width, txr_highlight.height, 2 /* 16Bit */);
+
+  temp = texman_create();
+  draw_load_texture_buffer(themes[theme_current].bg_left, &txr_bg_left, texman_get_tex_data(temp));
+  texman_reserve_memory(txr_bg_left.width, txr_bg_left.height, 2 /* 16Bit */);
+
+  temp = texman_create();
+  draw_load_texture_buffer(themes[theme_current].bg_right, &txr_bg_right, texman_get_tex_data(temp));
+  texman_reserve_memory(txr_bg_right.width, txr_bg_right.height, 2 /* 16Bit */);
+
+#if 0
+  temp = texman_create();
+  draw_load_texture_buffer("THEME/SHARED/ICON_BLACK.PVR", &txr_icons_black, texman_get_tex_data(temp));
+  texman_reserve_memory(txr_icons_black.width, txr_icons_black.height, 2 /* 16Bit */);
+
+  draw_load_texture_buffer("THEME/SHARED/ICON_WHITE.PVR", &txr_icons_white, texman_get_tex_data(temp));
+  texman_reserve_memory(txr_icons_white.width, txr_icons_white.height, 2 /* 16Bit */);
+  //txr_icons_current = &txr_icons_white;
+  txr_icons_current = themes[theme_current].icon_set;
+#endif
+
+  font_bmf_init("FONT/BASILEA.FNT", "FONT/BASILEA_W.PVR");
+
+  printf("Texture scratch free: %d/%d KB (%d/%d bytes)\n", texman_get_space_available() / 1024, (1024 * 1024) / 1024, texman_get_space_available(), (1024 * 1024));
 }
 
 /* Reset variables sensibly */
@@ -447,11 +486,19 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
       break;
     case UP:
       direction_current = true;
-      menu_up();
+      menu_up(1);
       break;
     case DOWN:
       direction_current = true;
-      menu_down();
+      menu_down(1);
+      break;
+    case TRIG_L:
+      direction_current = true;
+      menu_up(3);
+      break;
+    case TRIG_R:
+      direction_current = true;
+      menu_down(3);
       break;
     case A:
       menu_accept();
@@ -466,10 +513,12 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
       menu_show_large_art();
       boxart_button_held = true;
       break;
+    case B:
+      menu_theme_cycle();
+      break;
 
     /* These dont do anything */
-    case B:
-      break;
+
     /* Always nothing */
     case NONE:
     default:
@@ -493,5 +542,5 @@ FUNCTION(UI_NAME, drawTR) {
   draw_grid_boxes();
 
   font_bmf_begin_draw();
-  font_bmf_draw_centered(320, 430, 1.0f, list_current[current_selected()]->name);
+  font_bmf_draw_centered_auto_size(320, 430, themes[theme_current].text_color, list_current[current_selected()]->name, 640 - (10 * 2));
 }
