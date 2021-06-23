@@ -39,8 +39,10 @@ int find_in_cache(cache_instance *cache, const char *key) {
   HASH_FIND_STR(cache->cache, key, entry);
   if (entry) {
     // remove it (so the subsequent add will throw it on the front of the list)
-    HASH_DELETE(hh, cache->cache, entry);
-    HASH_ADD_KEYPTR(hh, cache->cache, entry->key, strlen(entry->key), entry);
+    if (entry != cache->cache) {
+      HASH_DELETE(hh, cache->cache, entry);
+      HASH_ADD_STR(cache->cache, key, entry);
+    }
     return entry->value;
   }
   return -1;
@@ -63,7 +65,7 @@ void add_to_cache(cache_instance *cache, const char *key, int value) {
   }
   entry->value = value;
   new_entry = entry;
-  HASH_ADD_KEYPTR(hh, cache->cache, entry->key, strlen(entry->key), entry);
+  HASH_ADD_STR(cache->cache, key, entry);
 
   // prune the cache to cache_max_size
   if (HASH_COUNT(cache->cache) > cache->cache_max_size) {
