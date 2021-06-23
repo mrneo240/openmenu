@@ -10,16 +10,21 @@
 
 #pragma once
 /* BMF formatted nice text */
-int font_bmf_init(void);
+int font_bmf_init(const char *fnt, const char *texture);
 void font_bmf_destroy(void);
 
 void font_bmf_begin_draw(void);
+void font_bmf_set_scale(float scale);
+void font_bmf_set_height_default(void);
+void font_bmf_set_height(float height);
 
-void font_bmf_draw_main(int x, int y, float alpha, const char *str);
-void font_bmf_draw_sub(int x, int y, float alpha, const char *str);
-void font_bmf_draw_sub_wrap(int x, int y, float alpha, const char *str, int width);
-void font_bmf_draw_auto_size(int x, int y, float alpha, const char *str, int width);
-void font_bmf_draw_centered(int x, int y, float alpha, const char *str);
+void font_bmf_draw(int x, int y, uint32_t color, const char *str);
+void font_bmf_draw_main(int x, int y, uint32_t color, const char *str);
+void font_bmf_draw_sub(int x, int y, uint32_t color, const char *str);
+void font_bmf_draw_sub_wrap(int x, int y, uint32_t color, const char *str, int width);
+void font_bmf_draw_auto_size(int x, int y, uint32_t color, const char *str, int width);
+void font_bmf_draw_centered(int x, int y, uint32_t color, const char *str);
+void font_bmf_draw_centered_auto_size(int x, int y, uint32_t color, const char *str, int width);
 
 /* Basic fixed width bitmap font */
 int font_bmp_init(const char *filename, int char_width, int char_height);

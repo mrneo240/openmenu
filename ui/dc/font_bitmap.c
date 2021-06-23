@@ -37,11 +37,9 @@ static pvr_vertex_t charbuf[BUFFER_MAX_CHARS * VERT_PER_CHAR] __attribute__((ali
 static int charbuffered;
 
 int font_bmp_init(const char *filename, int char_width, int char_height) {
-  pvr_ptr_t txr;
-
-  if (!(txr = load_pvr(filename, &font.texture.width, &font.texture.height, &font.texture.format)))
-    return 1;
-  font.texture.texture = txr;
+  unsigned int temp = texman_create();
+  draw_load_texture_buffer(filename, &font.texture, texman_get_tex_data(temp));
+  texman_reserve_memory(font.texture.width, font.texture.height, 2 /* 16Bit */);
 
   font.char_height = char_height;
   font.char_width = char_width;
@@ -181,19 +179,18 @@ static void _font_bmp_draw_string(int x1, int y1, const char *str) {
   z_inc();
   charbuffered = 0;
 
-  while (*str) {
+  do {
     unsigned char chr = (*str);
     font_bmp_draw_char(x1, y1, chr);
     x1 += (int)(font.char_width);
-    (void)*str++;
-  }
+  } while (*++str);
   pvr_prim(charbuf, charbuffered * sizeof(charbuf[0]));
 }
 
 void font_bmp_draw_sub_wrap(int x1, int y1, int width, const char *str) {
 #if 0
   int x_start = x1;
-  while (*str) {
+  do {
     unsigned char chr = (*str) + (1 * 128);
     font_draw_char(x1, y1, color, chr, 0);
     x1 += (int)(char_widths[chr - 32] * FONT_SIZE_SUB + 1);
@@ -201,8 +198,7 @@ void font_bmp_draw_sub_wrap(int x1, int y1, int width, const char *str) {
       y1 += (FONT_HEIGHT * FONT_SIZE_SUB) + 4;
       x1 = x_start;
     }
-    (void)*str++;
-  }
+  }  while (*++str) {
 #endif
   _font_bmp_draw_string(x1, y1, str);
 }

@@ -14,8 +14,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define DEBUG (1)
-
 #include "../../gdrom/gdrom_fs.h"
 #include "../../inc/dbgprint.h"
 #include "../draw_prototypes.h"
@@ -27,6 +25,7 @@
 
 //extern int round(float x);
 #define round(x) (x)
+extern float ceil(float x);
 
 /* BMFont implementation */
 #define BMF_MAGIC (54938946) /* BMF(0x3) */
@@ -135,9 +134,12 @@ typedef struct bm_font {
 } bm_font;
 
 static bm_font font_basilea;
+static int font_loaded = 0;
 
 static int BMF_parse_info(FD_TYPE fd, size_t block_size, bm_font *font) {
   DBG_PRINT("BMF found info block!\n");
+  /* Unsure why youd want to have this around or on heap */
+#if 0
   bm_info *temp_info = malloc(sizeof(bm_info) + sizeof(char) * (block_size - INFO_NAME_OFFSET));
   fread(temp_info, block_size, 1, fd);
 
@@ -162,6 +164,30 @@ static int BMF_parse_info(FD_TYPE fd, size_t block_size, bm_font *font) {
   DBG_PRINT("\n");
 
   free(temp_info);
+#else
+  bm_info temp_info;
+  fread(&temp_info, block_size, 1, fd);
+
+  /* Fix fontSize, its negative ? */
+  temp_info.fontSize *= -1;
+
+  font->fontSize = temp_info.fontSize;
+
+  PRINT_MEMBER(temp_info, fontSize);
+  PRINT_MEMBER(temp_info, bitField);
+  PRINT_MEMBER(temp_info, charSet);
+  PRINT_MEMBER(temp_info, stretchH);
+  PRINT_MEMBER(temp_info, aa);
+  PRINT_MEMBER(temp_info, paddingUp);
+  PRINT_MEMBER(temp_info, paddingRight);
+  PRINT_MEMBER(temp_info, paddingDown);
+  PRINT_MEMBER(temp_info, paddingLeft);
+  PRINT_MEMBER(temp_info, spacingHoriz);
+  PRINT_MEMBER(temp_info, spacingVert);
+  PRINT_MEMBER(temp_info, outline);
+  DBG_PRINT("name: %s\n", temp_info.fontName);
+  DBG_PRINT("\n");
+#endif
   return 0;
 }
 
@@ -365,6 +391,9 @@ static int BMF_load(const char *file, bm_font *font) {
   }
 
   fclose(fd);
+
+  font_loaded = 1;
+
   return 0;
 }
 
@@ -390,17 +419,17 @@ int BMF_adjust_kerning(unsigned char first, unsigned char second, bm_font *font)
 
 /* Drawing */
 
-static float current_height;
 static float current_scale;
-static float current_alpha;
+static unsigned int current_color;
 
 void font_bmf_set_height_default(void) {
-  current_height = font_basilea.fontSize;
   current_scale = 1.0f;
 }
 void font_bmf_set_height(float height) {
-  current_height = height;
   current_scale = height / font_basilea.fontSize;
+}
+void font_bmf_set_scale(float scale) {
+  current_scale = scale;
 }
 
 #ifdef KOS_SPRITE
@@ -413,15 +442,22 @@ static pvr_poly_hdr_t font_header;
 static image font_texture;
 
 /* Font prototype generics */
-int font_bmf_init(void) {
-  pvr_ptr_t txr;
+int font_bmf_init(const char *fnt, const char *texture) {
   int ret = 0;
+  char temp_txr[128] = {0}, temp_fnt[128] = {0};
+  memcpy(temp_fnt, DISC_PREFIX, strlen(DISC_PREFIX));
+  memcpy(temp_txr, DISC_PREFIX, strlen(DISC_PREFIX));
+  strcat(temp_fnt, fnt);
+  strcat(temp_txr, texture);
 
-  ret += BMF_load(DISC_PREFIX "FONT.FNT", &font_basilea);
+  /* If we arent loaded then load eveyrthing, otherwise just load texture */
+  if (!font_loaded) {
+    ret += BMF_load(temp_fnt, &font_basilea);
+  }
 
-  if (!(txr = load_pvr("FONT_0.PVR", &font_texture.width, &font_texture.height, &font_texture.format)))
-    return 1;
-  font_texture.texture = txr;
+  unsigned int temp = texman_create();
+  draw_load_texture_buffer(temp_txr, &font_texture, texman_get_tex_data(temp));
+  texman_reserve_memory(font_texture.width, font_texture.height, 2 /* 16Bit */);
 
   return ret;
 }
@@ -443,7 +479,7 @@ void font_bmf_begin_draw(void) {
 #endif
   font_bmf_set_height_default();
   pvr_prim(&font_header, sizeof(font_header));
-  current_alpha = 1.0f;
+  current_color = PVR_PACK_ARGB(0xff, 0xff, 0xff, 0xff);
 }
 
 #define BUFFER_MAX_CHARS (128)
@@ -507,7 +543,6 @@ static int font_bmf_draw_char(int x, int y, unsigned char chr) {
   vert2 = &charbuf[charbuffered + 1];
   vert3 = &charbuf[charbuffered + 2];
   vert4 = &charbuf[charbuffered + 3];
-  const unsigned int col = PVR_PACK_COLOR(current_alpha, 0.0f, 0.0f, 0.0f);
 
   vert1->flags = PVR_CMD_VERTEX;
   vert1->x = x1;
@@ -515,7 +550,7 @@ static int font_bmf_draw_char(int x, int y, unsigned char chr) {
   vert1->z = z;
   vert1->u = u1;
   vert1->v = v2;
-  vert1->argb = col;
+  vert1->argb = current_color;
   vert1->oargb = 0;
 
   vert2->flags = PVR_CMD_VERTEX;
@@ -524,7 +559,7 @@ static int font_bmf_draw_char(int x, int y, unsigned char chr) {
   vert2->z = z;
   vert2->u = u1;
   vert2->v = v1;
-  vert2->argb = col;
+  vert2->argb = current_color;
   vert2->oargb = 0;
 
   vert3->flags = PVR_CMD_VERTEX;
@@ -533,7 +568,7 @@ static int font_bmf_draw_char(int x, int y, unsigned char chr) {
   vert3->z = z;
   vert3->u = u2;
   vert3->v = v2;
-  vert3->argb = col;
+  vert3->argb = current_color;
   vert3->oargb = 0;
 
   vert4->flags = PVR_CMD_VERTEX_EOL;
@@ -542,7 +577,7 @@ static int font_bmf_draw_char(int x, int y, unsigned char chr) {
   vert4->z = z;
   vert4->u = u2;
   vert4->v = v1;
-  vert4->argb = col;
+  vert4->argb = current_color;
   vert4->oargb = 0;
 #endif
   charbuffered += VERT_PER_CHAR;
@@ -550,8 +585,8 @@ static int font_bmf_draw_char(int x, int y, unsigned char chr) {
   return current_scale * font->chars[chr].xadvance;
 }
 
-static void _font_bmf_draw_string(int x1, int y1, float alpha, const char *str) {
-  current_alpha = alpha;
+static void _font_bmf_draw_string(int x1, int y1, uint32_t color, const char *str) {
+  current_color = color;
   charbuffered = 0;
   z_inc();
 
@@ -567,7 +602,7 @@ static void _font_bmf_draw_string(int x1, int y1, float alpha, const char *str) 
     }
 
     prev = chr;
-  } while (*str++);
+  } while (*++str);
 
   pvr_prim(charbuf, charbuffered * sizeof(charbuf[0]));
 }
@@ -586,7 +621,7 @@ static float _font_bmf_calculate_length_full(const char *str, int length) {
     width += font->chars[chr].xadvance;
 
     //prev = chr;
-    (void)*str++;
+    str++;
   }
 
   return round(current_scale * round(width));
@@ -596,31 +631,47 @@ static float _font_bmf_calculate_length(const char *str) {
   return _font_bmf_calculate_length_full(str, strlen(str));
 }
 
-void font_bmf_draw_auto_size(int x1, int y1, float alpha, const char *str, int width) {
+void font_bmf_draw_auto_size(int x1, int y1, uint32_t color, const char *str, int width) {
   float temp = _font_bmf_calculate_length(str);
-  font_bmf_set_height(width / temp * font_basilea.fontSize);
-  _font_bmf_draw_string(x1, y1, alpha, str);
+  if (temp > width) {
+    const float scale = ((float)width / temp);
+    font_bmf_set_scale(scale);
+  }
+  _font_bmf_draw_string(x1, y1, color, str);
 }
 
-void font_bmf_draw_centered(int x1, int y1, float alpha, const char *str) {
+void font_bmf_draw_centered(int x1, int y1, uint32_t color, const char *str) {
   int temp = (int)_font_bmf_calculate_length(str);
-  _font_bmf_draw_string(x1 - (temp / 2), y1, alpha, str);
+  _font_bmf_draw_string(x1 - (temp / 2), y1, color, str);
 }
 
-void font_bmf_draw_main(int x1, int y1, float alpha, const char *str) {
+void font_bmf_draw_centered_auto_size(int x1, int y1, uint32_t color, const char *str, int width) {
+  float temp = _font_bmf_calculate_length(str);
+  if (temp > width) {
+    const float scale = ((float)width / temp);
+    font_bmf_set_scale(scale);
+  }
+  _font_bmf_draw_string(x1 - (temp / 2), y1, color, str);
+}
+
+void font_bmf_draw(int x1, int y1, uint32_t color, const char *str) {
+  _font_bmf_draw_string(x1, y1, color, str);
+}
+
+void font_bmf_draw_main(int x1, int y1, uint32_t color, const char *str) {
   font_bmf_set_height_default();
-  _font_bmf_draw_string(x1, y1, alpha, str);
+  _font_bmf_draw_string(x1, y1, color, str);
 }
 
-void font_bmf_draw_sub(int x1, int y1, float alpha, const char *str) {
+void font_bmf_draw_sub(int x1, int y1, uint32_t color, const char *str) {
   font_bmf_set_height(16.0f);
-  _font_bmf_draw_string(x1, y1, alpha, str);
+  _font_bmf_draw_string(x1, y1, color, str);
 }
 
-void font_bmf_draw_sub_wrap(int x1, int y1, float alpha, const char *str, int width) {
+void font_bmf_draw_sub_wrap(int x1, int y1, uint32_t color, const char *str, int width) {
   font_bmf_set_height(16.0f);
   z_inc();
-  current_alpha = alpha;
+  current_color = color;
   unsigned char prev = 0;
 
   const int x_start = x1;
@@ -657,10 +708,10 @@ void font_bmf_draw_sub_wrap(int x1, int y1, float alpha, const char *str, int wi
       unsigned char chr = (*current_text_temp++);
       if (chr != ' ') {
         /* Add possible kerning adjustment */
-        x1 += round(current_scale * BMF_adjust_kerning(prev, chr, &font_basilea));
+        x1 += ceil(current_scale * BMF_adjust_kerning(prev, chr, &font_basilea));
         x1 += font_bmf_draw_char(x1, y1, chr);
       } else {
-        x1 += round(current_scale * (float)font_basilea.chars[' '].width);
+        x1 += ceil(current_scale * (float)font_basilea.chars[' '].width);
       }
       prev = chr;
     } while (current_text_temp < last_known_space);
@@ -668,7 +719,7 @@ void font_bmf_draw_sub_wrap(int x1, int y1, float alpha, const char *str, int wi
     pvr_prim(charbuf, charbuffered * sizeof(charbuf[0]));
 
     /* prepare for next row */
-    y1 += (current_scale * font_basilea.lineHeight);
+    y1 += (current_scale * font_basilea.lineHeight * 1.2f /* Makes Text more natural */);
     x1 = x_start;
     current_text_start = last_known_space + 1;
     current_text_len = 0;
