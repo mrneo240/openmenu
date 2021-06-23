@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../backend/db_list.h"
 #include "../backend/gd_item.h"
 #include "../backend/gd_list.h"
 #include "../texture/txr_manager.h"
@@ -26,15 +27,20 @@ extern void ui_cycle_next(void);
 #define INPUT_TIMEOUT (10)
 #define FOCUSED_HIRES_FRAMES (60 * 1) /* 1 second load in */
 
-static int current_selected_item = 0;
-static int navigate_timeout = INPUT_TIMEOUT;
-static int frames_focused = 0;
+static int current_selected_item;
+static int navigate_timeout;
+static int frames_focused;
+
+db_item *current_meta;
 
 /* For drawing */
 static image txr_icon_list[16]; /* Lower list of 9 icons */
 static image txr_focus;         /* current selected item, either lowres or hires */
+static image txr_highlight;     /* Highlight square*/
+static image txr_bg_left, txr_bg_right;
+static image txr_icons_white, txr_icons_black;
+static image *txr_icons_current;
 
-extern image txr_highlight, txr_bg; /* Highlight square and Background */
 extern image img_empty_boxart;
 
 /* Our actual gdemu items */
@@ -47,12 +53,54 @@ enum sort_type { DEFAULT,
                  SORT_END };
 static enum sort_type sort_current = DEFAULT;
 
-static void draw_bg_layers(void) {
-  draw_draw_image(0, 0, 640, 480, 1.0f, &txr_bg);
+typedef struct theme_region {
+  const char *bg_left;
+  const char *bg_right;
+  image *icon_set;
+  uint32_t text_color;
+  uint32_t highlight_color;
+} theme_region;
+
+static theme_region themes[] = {
+    (theme_region){
+        .bg_left = "THEME/NTSC_U/BG_U_L.PVR",
+        .bg_right = "THEME/NTSC_U/BG_U_R.PVR",
+        .icon_set = &txr_icons_white,
+        .text_color = COLOR_WHITE,
+        .highlight_color = COLOR_ORANGE_U},
+    (theme_region){
+        .bg_left = "THEME/NTSC_J/BG_J_L.PVR",
+        .bg_right = "THEME/NTSC_J/BG_J_R.PVR",
+        .icon_set = &txr_icons_black,
+        .text_color = COLOR_BLACK,
+        .highlight_color = COLOR_ORANGE_J},
+    (theme_region){
+        .bg_left = "THEME/PAL/BG_E_L.PVR",
+        .bg_right = "THEME/PAL/BG_E_R.PVR",
+        .icon_set = &txr_icons_black,
+        .text_color = COLOR_BLACK,
+        .highlight_color = COLOR_BLUE},
+};
+enum theme { NTSC_U = 0,
+             NTSC_J = 1,
+             PAL = 2,
+             THEME_END };
+static enum theme theme_current = NTSC_J;
+
+static void
+draw_bg_layers(void) {
+  {
+    const dimen_RECT left = {.x = 0, .y = 0, .w = 512, .h = 480};
+    draw_draw_sub_image(0, 0, 512, 480, COLOR_WHITE, &txr_bg_left, &left);
+  }
+  {
+    const dimen_RECT right = {.x = 0, .y = 0, .w = 128, .h = 480};
+    draw_draw_sub_image(512, 0, 128, 480, COLOR_WHITE, &txr_bg_right, &right);
+  }
 }
 
 static void draw_big_box(void) {
-  draw_draw_image(92, 92, 208, 208, 1.0f, &txr_focus);
+  draw_draw_image(92 - 24, 92 - 20, 208 + 24, 208 + 24, COLOR_WHITE, &txr_focus);
 }
 
 static void draw_small_boxes(void) {
@@ -64,20 +112,18 @@ static void draw_small_boxes(void) {
   float y_pos = 350.0f;
   float icon_size = 68.0f;
   float icon_spacing = 8.0f;
-  int highlighted_icon = (num_icons / 2 - 1);
 
   /* possible change how many we draw based on if we are not quite at the 5th item in the list */
   if (current_selected_item < 5) {
     num_icons = 5 + current_selected_item;
     x_start += (4 - current_selected_item) * (icon_size + icon_spacing);
-    highlighted_icon = current_selected_item;
     starting_icon_idx = 0;
     num_icons++;
   }
 
   for (i = 0; (i < num_icons - 1) && (i + starting_icon_idx < list_len); i++) {
     txr_get_small(list_current[starting_icon_idx + i]->product, &txr_icon_list[i]);
-    draw_draw_square(x_start + (icon_size + icon_spacing) * i, y_pos, icon_size, 1.0f, &txr_icon_list[i]);
+    draw_draw_square(x_start + (icon_size + icon_spacing) * i, y_pos, icon_size, COLOR_WHITE, &txr_icon_list[i]);
   }
 
 #undef LIST_ADJUST
@@ -85,9 +131,7 @@ static void draw_small_boxes(void) {
 
 static void draw_small_box_highlight(void) {
 #define LIST_ADJUST (2)
-  int i;
   int num_icons = 10; /* really 9..., the math is easier for 10 */
-  int starting_icon_idx = current_selected_item - 4;
   float x_start = -24.0f;
   float y_pos = 350.0f;
   float icon_size = 68.0f;
@@ -99,37 +143,88 @@ static void draw_small_box_highlight(void) {
     num_icons = 5 + current_selected_item;
     x_start += (4 - current_selected_item) * (icon_size + icon_spacing);
     highlighted_icon = current_selected_item;
-    starting_icon_idx = 0;
     num_icons++;
   }
 
-  draw_draw_square(x_start + (icon_size + icon_spacing) * highlighted_icon - 4.0f, y_pos - 4.0f, icon_size + 8, 1.0f, &txr_highlight);
+  draw_draw_square(x_start + (icon_size + icon_spacing) * highlighted_icon - 4.0f, y_pos - 4.0f, icon_size + 8, themes[theme_current].highlight_color, &txr_highlight);
 
 #undef LIST_ADJUST
 }
 
-static void menu_decrement(void) {
-  if (navigate_timeout > 0) {
-    navigate_timeout--;
-    return;
+static void draw_game_meta(void) {
+  /* Icons if we have them*/
+
+  /* Then text after */
+  font_bmf_begin_draw();
+  font_bmf_set_height_default();
+  font_bmf_draw_auto_size(316, 92 - 20, themes[theme_current].text_color, list_current[current_selected_item]->name, 640 - 316 - 10);
+
+  const char *synopsis;
+  if (current_meta) {
+    /* success! */
+    synopsis = current_meta->description;
+    font_bmf_draw_sub_wrap(316, 136 - 20 - 8, themes[theme_current].text_color, synopsis, 640 - 316 - 10); /* was 316,128 */
+
+    font_bmf_set_height(12.0f);
+    font_bmf_draw_centered(326 + (20 / 2), 282 + 12, themes[theme_current].text_color, db_format_nplayers_str(current_meta->num_players));
+    //font_bmf_draw_centered(396 + (16 / 2), 282 + 12, themes[theme_current].text_color, "VMU");
+    font_bmf_draw_centered(396 + (16 / 2), 282 + 12, themes[theme_current].text_color, db_format_vmu_blocks_str(current_meta->vmu_blocks));
+    font_bmf_draw_centered(460 + (34 / 2), 282 + 12, themes[theme_current].text_color, "Jump Pack");
+    font_bmf_draw_centered(534 + (22 / 2), 282 + 12, themes[theme_current].text_color, "Modem");
+
+    /* Draw Icons */
+    {
+      //318x282
+      const dimen_RECT uv_controller = {.x = 0, .y = 0, .w = 42, .h = 42};
+      draw_draw_sub_image(326, 254 + 12, 20, 20, COLOR_WHITE, txr_icons_current, &uv_controller);  // 20x20
+    }
+    {
+      //388x282
+      const dimen_RECT uv_vmu = {.x = 42, .y = 0, .w = 26, .h = 42};
+      draw_draw_sub_image(396, 254 + 12, 16, 22, COLOR_WHITE, txr_icons_current, &uv_vmu);  //16x22
+    }
+    {
+      //448x282
+      const dimen_RECT uv_rumble = {.x = 0, .y = 42, .w = 64, .h = 44};
+      draw_draw_sub_image(458, 254 + 12, 34, 24, COLOR_WHITE, txr_icons_current, &uv_rumble);  //34x24
+    }
+    {
+      //524x282
+      const dimen_RECT uv_modem = {.x = 0, .y = 86, .w = 42, .h = 42};
+      draw_draw_sub_image(534, 254 + 12, 22, 22, COLOR_WHITE, txr_icons_current, &uv_modem);  //22x22
+    }
   }
-  if (current_selected_item > 0) {
-    current_selected_item--;
-  }
-  navigate_timeout = INPUT_TIMEOUT;
-  frames_focused = 0;
 }
 
-static void menu_increment(void) {
+static void menu_changed_item(void) {
+  frames_focused = 0;
+  db_get_meta(list_current[current_selected_item]->product, &current_meta);
+}
+
+static void menu_decrement(int amount) {
   if (navigate_timeout > 0) {
     navigate_timeout--;
     return;
   }
-  if (++current_selected_item >= list_len) {
+  current_selected_item -= amount;
+  if (current_selected_item < 0) {
+    current_selected_item = 0;
+  }
+  navigate_timeout = INPUT_TIMEOUT;
+  menu_changed_item();
+}
+
+static void menu_increment(int amount) {
+  if (navigate_timeout > 0) {
+    navigate_timeout--;
+    return;
+  }
+  current_selected_item += amount;
+  if (current_selected_item >= list_len) {
     current_selected_item = list_len - 1;
   }
   navigate_timeout = INPUT_TIMEOUT;
-  frames_focused = 0;
+  menu_changed_item();
 }
 
 static void menu_accept(void) {
@@ -165,6 +260,19 @@ static void menu_swap_sort(void) {
   frames_focused = 0;
 }
 
+static void menu_theme_cycle(void) {
+  if (navigate_timeout > 0) {
+    navigate_timeout--;
+    return;
+  }
+  theme_current++;
+  if (theme_current == THEME_END) {
+    theme_current = NTSC_U;
+  }
+  LIST_DESC_init();
+  navigate_timeout = INPUT_TIMEOUT;
+}
+
 static void menu_cycle_ui(void) {
   if (navigate_timeout > 0) {
     navigate_timeout--;
@@ -190,7 +298,38 @@ static void update_data(void) {
 /* Base UI Methods */
 
 FUNCTION(UI_NAME, init) {
-  draw_default_load_resources();
+  texman_clear();
+
+  /* on user for now, may change */
+  unsigned int temp = texman_create();
+  draw_load_texture_buffer("EMPTY.PVR", &img_empty_boxart, texman_get_tex_data(temp));
+  texman_reserve_memory(img_empty_boxart.width, img_empty_boxart.height, 2 /* 16Bit */);
+
+  temp = texman_create();
+  draw_load_texture_buffer("THEME/SHARED/HIGHLIGHT.PVR", &txr_highlight, texman_get_tex_data(temp));
+  texman_reserve_memory(txr_highlight.width, txr_highlight.height, 2 /* 16Bit */);
+
+  temp = texman_create();
+  draw_load_texture_buffer(themes[theme_current].bg_left, &txr_bg_left, texman_get_tex_data(temp));
+  texman_reserve_memory(txr_bg_left.width, txr_bg_left.height, 2 /* 16Bit */);
+
+  temp = texman_create();
+  draw_load_texture_buffer(themes[theme_current].bg_right, &txr_bg_right, texman_get_tex_data(temp));
+  texman_reserve_memory(txr_bg_right.width, txr_bg_right.height, 2 /* 16Bit */);
+
+  temp = texman_create();
+  draw_load_texture_buffer("THEME/SHARED/ICON_BLACK.PVR", &txr_icons_black, texman_get_tex_data(temp));
+  texman_reserve_memory(txr_icons_black.width, txr_icons_black.height, 2 /* 16Bit */);
+
+  temp = texman_create();
+  draw_load_texture_buffer("THEME/SHARED/ICON_WHITE.PVR", &txr_icons_white, texman_get_tex_data(temp));
+  texman_reserve_memory(txr_icons_white.width, txr_icons_white.height, 2 /* 16Bit */);
+
+  txr_icons_current = themes[theme_current].icon_set;
+
+  font_bmf_init("FONT/BASILEA.FNT", "FONT/BASILEA_W.PVR");
+
+  printf("Texture scratch free: %d/%d KB (%d/%d bytes)\n", texman_get_space_available() / 1024, (1024 * 1024) / 1024, texman_get_space_available(), (1024 * 1024));
 }
 
 FUNCTION(UI_NAME, setup) {
@@ -201,23 +340,30 @@ FUNCTION(UI_NAME, setup) {
   sort_current = DEFAULT;
   frames_focused = 0;
 
-  /* Setup sensible defaults */
-  txr_focus.format = (0 << 26) | (1 << 27); /* RGB565, Twiddled */
-  txr_focus.width = 128;
-  txr_focus.height = 128;
-  txr_focus.texture = NULL;
-
   navigate_timeout = INPUT_TIMEOUT;
+  menu_changed_item();
 }
 
 FUNCTION_INPUT(UI_NAME, handle_input) {
   enum control input_current = button;
   switch (input_current) {
     case LEFT:
-      menu_decrement();
+      menu_decrement(1);
       break;
     case RIGHT:
-      menu_increment();
+      menu_increment(1);
+      break;
+    case UP:
+      menu_decrement(10);
+      break;
+    case DOWN:
+      menu_increment(10);
+      break;
+    case TRIG_L:
+      menu_decrement(25);
+      break;
+    case TRIG_R:
+      menu_increment(25);
       break;
     case A:
       menu_accept();
@@ -228,14 +374,11 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
     case Y:
       menu_cycle_ui();
       break;
-
-    /* These dont do anything */
-    case UP:
-      break;
-    case DOWN:
-      break;
     case B:
+      menu_theme_cycle();
       break;
+
+      /* These dont do anything */
     case X:
       break;
     /* Always nothing */
@@ -255,7 +398,8 @@ FUNCTION(UI_NAME, drawOP) {
 
 FUNCTION(UI_NAME, drawTR) {
   draw_small_box_highlight();
-  font_bmf_begin_draw();
+  draw_game_meta();
+#if 0
   const char *text = NULL;
   switch (sort_current) {
     case ALPHA:
@@ -272,14 +416,6 @@ FUNCTION(UI_NAME, drawTR) {
       text = "SD Card Order";
       break;
   }
-  //font_bmf_draw_main(4, 440, 1.0f, text);
-
-  font_bmf_draw_main(316, 92, 1.0f, list_current[current_selected_item]->name);
-  /*const char *synopsis =
-      "Aqua GT is powerboat racing game. It features three modes: Championship, Arcade and Two-player.\n\n"
-      "Championship mode is the main single player game, where you advance through the Bronze, Silver and Gold Championships. In the Arcade gameplay mode you have to beat the clock. In two-player split screen mode you go head to head against another player.\n\n"
-      "There are 5 boats to choose from, and you can unlock another 15 while progressing through the game.";
-      */
-  const char *synopsis = "Buckle up and we're talking 5-point harness. Sonic the Hedgehog will propel your Dreamcast into warp-speed 3D adventure. Want Rings? We've got rings. Want chaos emeralds? We've got those too. You want insane graphics, huge levels, puzzles, hidden mini-games, multiple playable characters and more. Oh yeah! We've got it all.";
-  font_bmf_draw_sub_wrap(316, 128, 1.0f, synopsis, 280);
+  //font_bmf_draw_main(4, 440, themes[theme_current].text_color, text);
+#endif
 }
