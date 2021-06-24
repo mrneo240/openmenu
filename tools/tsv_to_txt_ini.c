@@ -69,16 +69,16 @@ size_t getline(char **lineptr, size_t *n, FILE *stream) {
     return -1;
   }
   if (bufptr == NULL) {
-    bufptr = malloc(128);
+    bufptr = malloc(MAX_LINE);
     if (bufptr == NULL) {
       return -1;
     }
-    size = 128;
+    size = MAX_LINE;
   }
   p = bufptr;
   while (c != EOF) {
     if ((p - bufptr) > (size - 1)) {
-      size = size + 128;
+      size = size + MAX_LINE;
       bufptr = realloc(bufptr, size);
       if (bufptr == NULL) {
         return -1;
@@ -106,10 +106,10 @@ static void write_ini(const char *filename, const char *players, const char *vmu
     return;
   }
 
-  players = (players && strlen(players) > 0 ? players : "");
-  vmu_blocks = (vmu_blocks && strlen(vmu_blocks) > 0 ? vmu_blocks : "");
-  genre = (genre && strlen(genre) > 0 ? genre : "");
-  synopsis = (synopsis && strlen(synopsis) > 0 ? synopsis : "");
+  const char *_players = (players && (strlen(players) > 0) ? players : "0");
+  const char *_vmu_blocks = (vmu_blocks &&  (strlen(vmu_blocks) > 0) ? vmu_blocks : "0");
+  const char *_genre = (genre && (strlen(genre) > 0) ? genre : "0");
+  const char *_synopsis = (synopsis && (strlen(synopsis) > 0) ? synopsis : "0");
 
   const char *meta_template =
       "[ITEM]\n"
@@ -121,7 +121,7 @@ static void write_ini(const char *filename, const char *players, const char *vmu
       "description=%s\n"
       "padding1=0\n"
       "padding2=0\n";
-  fprintf(ini_fd, meta_template, players, vmu_blocks, genre, synopsis);
+  fprintf(ini_fd, meta_template, _players, _vmu_blocks, _genre, _synopsis);
 
   fclose(ini_fd);
 }
@@ -145,6 +145,8 @@ int main(int argc, char **argv) {
   tsv_fd = fopen(tsv_file, "rb");
   if (tsv_fd == 0)
     exit(EXIT_FAILURE);
+
+  int i=0;
 
   while ((read = getline(&line, &len, tsv_fd)) != -1) {
     line[read - 1] = '\0';
@@ -177,9 +179,12 @@ int main(int argc, char **argv) {
     strcat(filename_temp, ".txt");
 
     write_ini(filename_temp, players, vmu_blocks, genre, synopsis);
+    i++;
   }
 
   fclose(tsv_fd);
+
+  printf("TSV: Wrote %d records out to %s!\n", i, output_folder);
 
   return EXIT_SUCCESS;
 }

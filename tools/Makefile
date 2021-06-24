@@ -3,14 +3,11 @@ OBJCOPY := objcopy
 CFLAGS := -g -Os -static -nostdlib -nostdinc -fno-pie -no-pie -mno-red-zone -fno-omit-frame-pointer -pg -mnop-mcount -DCOSMO
 LDFLAGS := -fuse-ld=bfd -Wl,-T,cosmo/ape.lds -include cosmo/cosmopolitan.h cosmo/crt.o cosmo/ape.o cosmo/cosmopolitan.a
 DEFINES := -DSTANDALONE_BINARY=1
-EXT=
 
 all: datread datpack metapack datstrip tsv2ini renamecsv
 
-
 .PHONY: win
 win: CC:=x86_64-w64-mingw32-gcc
-win: EXT:=.exe
 win: native
 
 .PHONY: cosmo
@@ -67,12 +64,12 @@ datpack$(EXT): packer.c dat_packer_internal.c
 
 metapack$(EXT): metapacker.c dat_packer_internal.c ../backend/ini.c
 	@echo "$(CC) $<"
-	@$(CC) $(DEFINES) -O2 -s -o $@ $^
+	@$(CC) $(DEFINES) -O0 -g -o $@ $^
 	@echo "> $@"
 
 tsv2ini$(EXT): tsv_to_txt_ini.c
 	@echo "$(CC) $<"
-	@$(CC) $(DEFINES) -O2 -s  -o $@ $^
+	@$(CC) $(DEFINES) -O0 -g  -o $@ $^
 	@echo "> $@"
 
 renamecsv$(EXT): renamecsv.c
