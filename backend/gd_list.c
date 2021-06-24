@@ -186,6 +186,9 @@ int list_read(const char *filename) {
     /*exit or something */
     return -1;
   }
+
+  printf("INI:Open %s\n", filename);
+
   size_t ini_size = filelength(ini);
   char *ini_buffer = malloc(ini_size);
   fread(ini_buffer, ini_size, 1, ini);
@@ -197,6 +200,7 @@ int list_read(const char *filename) {
     /*exit or something */
     return -1;
   }
+
   printf("INI:Parse success (%d items)!\n", num_items);
   list_temp_reset();
   fflush(stdout);

@@ -47,23 +47,25 @@ int DAT_load_parse(dat_file *bin, const char *path) {
 
 #ifdef STANDALONE_BINARY
   bin_fd = fopen(path, "rb");
-  const char *fullpath = path;
+  const char *filename_safe = path;
 #else
-  char fullpath[128];
-  strcpy(fullpath, DISC_PREFIX);
-  strcat(fullpath, path);
+  char filename_safe[128];
+  memcpy(filename_safe, DISC_PREFIX, strlen(DISC_PREFIX)+1);
+  strcat(filename_safe, path);
 
-  bin_fd = fopen(fullpath, "rb");
+  bin_fd = fopen(filename_safe, "rb");
 #endif
 
+  printf("DAT:Open %s (%s)\n", filename_safe, path);
+
   if (!bin_fd) {
-    printf("Err: Cant read input %s!\n", fullpath);
+    printf("DAT:Error Cant read input %s!\n", filename_safe);
     return 1;
   }
 
   fread(&file_header, sizeof(bin_header), 1, bin_fd);
   if (file_header.magic.rich.version != 1) {
-    printf("Err: Incorrect input file format!\n");
+    printf("DAT:Error Incorrect input file format!\n");
     return 1;
   }
 
@@ -87,10 +89,11 @@ int DAT_load_parse(dat_file *bin, const char *path) {
 }
 
 void DAT_dump(const dat_file *bin) {
-  DBG_PRINT("BIN Stats:\nChunk Size: %u\nNum Chunks: %u\n\n", bin->chunk_size, bin->num_chunks);
+  DBG_PRINT("DAT:Stats\nChunk Size: %u\nNum Chunks: %u\n\n", bin->chunk_size, bin->num_chunks);
   for (int i = 0; i < bin->num_chunks; i++) {
     DBG_PRINT("Record[%u] %s at 0x%X\n", bin->items[i].offset, bin->items[i].ID, (unsigned int)(bin->items[i].offset * bin->chunk_size));
   }
+  DBG_PRINT("\n");
 }
 
 uint32_t DAT_get_offset_by_ID(const dat_file *bin, const char *ID) {

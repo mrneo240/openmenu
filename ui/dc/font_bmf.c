@@ -444,11 +444,9 @@ static image font_texture;
 /* Font prototype generics */
 int font_bmf_init(const char *fnt, const char *texture) {
   int ret = 0;
-  char temp_txr[128] = {0}, temp_fnt[128] = {0};
-  memcpy(temp_fnt, DISC_PREFIX, strlen(DISC_PREFIX));
-  memcpy(temp_txr, DISC_PREFIX, strlen(DISC_PREFIX));
+  char temp_fnt[128];
+  memcpy(temp_fnt, DISC_PREFIX, strlen(DISC_PREFIX)+1);
   strcat(temp_fnt, fnt);
-  strcat(temp_txr, texture);
 
   /* If we arent loaded then load eveyrthing, otherwise just load texture */
   if (!font_loaded) {
@@ -456,7 +454,7 @@ int font_bmf_init(const char *fnt, const char *texture) {
   }
 
   unsigned int temp = texman_create();
-  draw_load_texture_buffer(temp_txr, &font_texture, texman_get_tex_data(temp));
+  draw_load_texture_buffer(texture, &font_texture, texman_get_tex_data(temp));
   texman_reserve_memory(font_texture.width, font_texture.height, 2 /* 16Bit */);
 
   return ret;

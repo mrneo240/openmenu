@@ -143,7 +143,7 @@ void* pvr_get_internal_buffer(void) {
 static void pvr_read_to_internal(const char* filename) {
   unsigned int texSize;
   FD_TYPE tex_fd = (FD_TYPE)NULL;
-  strcpy(filename_safe, DISC_PREFIX);
+  memcpy(filename_safe, DISC_PREFIX, strlen(DISC_PREFIX)+1);
   strcat(filename_safe, filename);
 
   /* replace all - with _ */
@@ -158,7 +158,7 @@ static void pvr_read_to_internal(const char* filename) {
 
   tex_fd = fopen(filename_safe, "rb");
   if (!tex_fd) {
-    printf("PVR:Error opening %s!\n", filename);
+    printf("PVR:Error opening %s!\n", filename_safe);
     return;
   }
 
