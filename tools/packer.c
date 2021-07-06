@@ -71,15 +71,18 @@ int add_pvr_file(const char *path, const char *folder, struct stat *statptr) {
 
   /* Use filename as ID, remove extension */
   printf("Working on %s\n", path);
-  memcpy(temp_id, path, 11);
-  temp_id[11] = '\0';
+  memset(temp_id, '\0', sizeof(temp_id));
+  strncpy(temp_id, path, 11);
   char *end = strrchr(temp_id, '.');
   if (end) {
-    memset(end, '\0', sizeof(temp_id) - ((size_t)end - (size_t)temp_id));
+    const size_t nul_len = sizeof(temp_id) - ((size_t)end - (size_t)temp_id);
+    memset(end, '\0', nul_len);
   }
   char *temp_start = temp_id;
   while (*temp_start)
     *temp_start++ = toupper(*temp_start);
+  temp_id[11] = '\0';
+  temp_id[10] = '\0';
   memcpy(&bin_items[file_header.num_chunks].ID, temp_id, sizeof(bin_items->ID));
 
   bin_items[file_header.num_chunks].offset = file_header.num_chunks + 1;
