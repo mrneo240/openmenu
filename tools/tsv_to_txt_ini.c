@@ -99,7 +99,7 @@ size_t getline(char **lineptr, size_t *n, FILE *stream) {
 }
 #endif
 
-static void write_ini(const char *filename, const char *players, const char *vmu_blocks, const char *genre, const char *synopsis) {
+static void write_ini(const char *filename, const char *players, const char *vmu_blocks, const char *accessories, const char *genre, const char *synopsis) {
   FILE *ini_fd = fopen(filename, "w");
   if (!ini_fd) {
     printf("Error: Couldn't write %s!\n");
@@ -107,7 +107,8 @@ static void write_ini(const char *filename, const char *players, const char *vmu
   }
 
   const char *_players = (players && (strlen(players) > 0) ? players : "0");
-  const char *_vmu_blocks = (vmu_blocks &&  (strlen(vmu_blocks) > 0) ? vmu_blocks : "0");
+  const char *_vmu_blocks = (vmu_blocks && (strlen(vmu_blocks) > 0) ? vmu_blocks : "0");
+  const char *_accessories = (accessories && (strlen(accessories) > 0) ? accessories : "0");
   const char *_genre = (genre && (strlen(genre) > 0) ? genre : "0");
   const char *_synopsis = (synopsis && (strlen(synopsis) > 0) ? synopsis : "0");
 
@@ -115,13 +116,13 @@ static void write_ini(const char *filename, const char *players, const char *vmu
       "[ITEM]\n"
       "num_players=%s\n"
       "vmu_blocks=%s\n"
-      "accessories=0\n"
+      "accessories=%s\n"
       "network=0\n"
       "genre=%s\n"
       "description=%s\n"
       "padding1=0\n"
       "padding2=0\n";
-  fprintf(ini_fd, meta_template, _players, _vmu_blocks, _genre, _synopsis);
+  fprintf(ini_fd, meta_template, _players, _vmu_blocks, _accessories, _genre, _synopsis);
 
   fclose(ini_fd);
 }
@@ -146,11 +147,11 @@ int main(int argc, char **argv) {
   if (tsv_fd == 0)
     exit(EXIT_FAILURE);
 
-  int i=0;
+  int i = 0;
 
   while ((read = getline(&line, &len, tsv_fd)) != -1) {
     line[read - 1] = '\0';
-    /* Region | Players | VMU Blocks | Genre | Network | Num | Product no | Name | Synopsis */
+    /* Region | Players | VMU Blocks | Genre | Network | Accesories | Product ID | Name | Synopsis */
 
     const char *delim = "\t";
     char *token = strsep(&line, delim);
@@ -159,7 +160,7 @@ int main(int argc, char **argv) {
     const char *vmu_blocks = strsep(&line, delim);
     const char *genre = strsep(&line, delim);
     const char *network = strsep(&line, delim);
-    const char *num = strsep(&line, delim);
+    const char *accesories = strsep(&line, delim);
     const char *product_no = strsep(&line, delim);
     const char *name = strsep(&line, delim);
     char *synopsis = strsep(&line, delim);
@@ -178,7 +179,7 @@ int main(int argc, char **argv) {
     strcat(filename_temp, product_no);
     strcat(filename_temp, ".txt");
 
-    write_ini(filename_temp, players, vmu_blocks, genre, synopsis);
+    write_ini(filename_temp, players, vmu_blocks, accesories, genre, synopsis);
     i++;
   }
 
