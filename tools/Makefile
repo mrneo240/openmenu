@@ -64,12 +64,12 @@ datpack$(EXT): packer.c dat_packer_internal.c
 
 metapack$(EXT): metapacker.c dat_packer_internal.c ../backend/ini.c
 	@echo "$(CC) $<"
-	@$(CC) $(DEFINES) -O0 -g -o $@ $^
+	@$(CC) $(DEFINES) -O2 -s -o $@ $^
 	@echo "> $@"
 
 tsv2ini$(EXT): tsv_to_txt_ini.c
 	@echo "$(CC) $<"
-	@$(CC) $(DEFINES) -O0 -g  -o $@ $^
+	@$(CC) $(DEFINES) -O2 -s  -o $@ $^
 	@echo "> $@"
 
 renamecsv$(EXT): renamecsv.c
