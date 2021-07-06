@@ -33,6 +33,7 @@ typedef struct anim2d {
 } anim2d;
 
 void anim_update_2d(anim2d *anim);
+void anim_clear(anim2d *anim);
 
 static inline bool anim_finished(AnimBare *anim) {
   return anim->frame_now == anim->frame_len;
