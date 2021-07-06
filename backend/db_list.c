@@ -14,6 +14,7 @@
 
 #include "../gdrom/gdrom_fs.h"
 #include "../inc/dat_format.h"
+#include "../texture/serial_sanitize.h"
 #include "db_item.h"
 
 static dat_file dat_meta;
@@ -37,7 +38,8 @@ int db_load_DAT(void) {
 
 /* Returns 0 on success and places a pointer in item, otherwise returns 1 and item = NULL */
 int db_get_meta(const char *id, struct db_item **item) {
-  uint32_t index = DAT_get_index_by_ID(&dat_meta, id);
+  const char *id_santized = serial_santize_meta(id);
+  uint32_t index = DAT_get_index_by_ID(&dat_meta, id_santized);
 
   if (index == 0xFFFFFFFF) {
     *item = NULL;

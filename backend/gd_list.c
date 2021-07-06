@@ -17,8 +17,6 @@
 #include <strings.h>
 #endif
 
-#define stricmp strcasecmp
-
 #include "gd_item.h"
 #include "ini.h"
 
@@ -72,8 +70,8 @@ static int read_openmenu_ini(void *user, const char *section, const char *name, 
 
       if (0)
         ;
-#define CFG(s, n, default) else if (stricmp(section, #s) == 0 && \
-                                    stricmp(plain_name, #n) == 0) strcpy(item->n, value);
+#define CFG(s, n, default) else if (strcasecmp(section, #s) == 0 && \
+                                    strcasecmp(plain_name, #n) == 0) strcpy(item->n, value);
 #include "gd_item.def"
     } else {
       /* error */
