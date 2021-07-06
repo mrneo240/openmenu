@@ -9,7 +9,6 @@
  */
 
 #ifdef COSMO
-#define stricmp strcasecmp
 #include "cosmo/cosmopolitan.h"
 #else
 #include <ctype.h>
@@ -23,6 +22,8 @@
 #include <unistd.h>
 #endif
 
+#define strcasecmp strcasecmp
+
 #include "../backend/db_item.h"
 #include "../backend/ini.h"
 #include "dat_packer_interface.h"
@@ -34,22 +35,43 @@ packs the items in the folder into the output.dat
 */
 
 enum FLAGS_GENRE {
-  GENRE_NONE = (0 << 0),         // 0
-  GENRE_ACTION = (1 << 1),       // 1
-  GENRE_RACING = (1 << 2),       // 2
-  GENRE_SIMULATION = (1 << 3),   // 4
-  GENRE_SPORTS = (1 << 4),       // 8
-  GENRE_LIGHTGUN = (1 << 5),     // 16
-  GENRE_FIGHTING = (1 << 6),     // 32
-  GENRE_SHOOTER = (1 << 7),      // 64
-  GENRE_SURVIVAL = (1 << 8),     // 128
-  GENRE_ADVENTURE = (1 << 9),    // 256
-  GENRE_PLATFORMER = (1 << 10),  // 512
-  GENRE_RPG = (1 << 11),         // 1024
-  GENRE_SHMUP = (1 << 12),       // 2048
-  GENRE_STRATEGY = (1 << 13),    // 4096
-  GENRE_PUZZLE = (1 << 14),      // 8192
-  GENRE_ARCADE = (1 << 15),      // 16384
+  GENRE_NONE = (0 << 0),        // 0
+  GENRE_ACTION = (1 << 0),      // 1
+  GENRE_RACING = (1 << 1),      // 2
+  GENRE_SIMULATION = (1 << 2),  // 4
+  GENRE_SPORTS = (1 << 3),      // 8
+  GENRE_LIGHTGUN = (1 << 4),    // 16
+  GENRE_FIGHTING = (1 << 5),    // 32
+  GENRE_SHOOTER = (1 << 6),     // 64
+  GENRE_SURVIVAL = (1 << 7),    // 128
+  GENRE_ADVENTURE = (1 << 8),   // 256
+  GENRE_PLATFORMER = (1 << 9),  // 512
+  GENRE_RPG = (1 << 10),        // 1024
+  GENRE_SHMUP = (1 << 11),      // 2048
+  GENRE_STRATEGY = (1 << 12),   // 4096
+  GENRE_PUZZLE = (1 << 13),     // 8192
+  GENRE_ARCADE = (1 << 14),     // 16384
+  GENRE_MUSIC = (1 << 15),      // 32768
+};
+
+enum FLAGS_ACCESORIES {
+  ACCESORIES_NONE = (0 << 0),          // 0
+  ACCESORIES_JUMP_PACK = (1 << 0),     // 1
+  ACCESORIES_KEYBOARD = (1 << 1),      // 2
+  ACCESORIES_VGA = (1 << 2),           // 4
+  ACCESORIES_MOUSE = (1 << 3),         // 8
+  ACCESORIES_MARACAS = (1 << 4),       // 16
+  ACCESORIES_RACING_WHEEL = (1 << 5),  // 32
+  ACCESORIES_MICROPHONE = (1 << 6),    // 64
+  ACCESORIES_ARCADE_STICK = (1 << 7),  // 128
+  ACCESORIES_LIGHTGUN = (1 << 8),      // 256
+  ACCESORIES_BBA = (1 << 9),           // 512
+  ACCESORIES_FISHING_ROD = (1 << 10),  // 1024
+  ACCESORIES_ASCII_PAD = (1 << 11),    // 2048
+  ACCESORIES_DREAMEYE = (1 << 12),     // 4096
+  ACCESORIES_MODEM = (1 << 13),        // 8192
+  ACCESORIES_UNUSED = (1 << 14),       // 16384
+  ACCESORIES_UNUSED2 = (1 << 15),      // 32768
 };
 
 #define NUM_ARGS (2)
@@ -69,7 +91,8 @@ static inline long int filelen(FILE *f) {
 }
 
 static unsigned short meta_genre_to_enum(const char *genre) {
-  if (strcmp(genre, "Action") == 0) {
+  if (0 == 0) {
+  } else if (strcmp(genre, "Action") == 0) {
     return GENRE_ACTION;
   } else if (strcmp(genre, "Racing") == 0) {
     return GENRE_RACING;
@@ -99,12 +122,53 @@ static unsigned short meta_genre_to_enum(const char *genre) {
     return GENRE_PUZZLE;
   } else if (strcmp(genre, "Arcade") == 0) {
     return GENRE_ARCADE;
+  } else if (strcmp(genre, "Music") == 0) {
+    return GENRE_MUSIC;
   } else if (strcmp(genre, "0") == 0) {
     return GENRE_NONE;
   } else /* default: */
   {
     printf("META: Unknown genre: %s\n", genre);
     return GENRE_NONE;
+  }
+}
+
+static unsigned short meta_accessory_to_enum(const char *accessory) {
+  if (0 == 0) {
+  } else if (strcmp(accessory, "JUMP") == 0) {
+    return ACCESORIES_JUMP_PACK;
+  } else if (strcmp(accessory, "KEY") == 0) {
+    return ACCESORIES_KEYBOARD;
+  } else if (strcmp(accessory, "VGA") == 0) {
+    return ACCESORIES_VGA;
+  } else if (strcmp(accessory, "MS") == 0) {
+    return ACCESORIES_MOUSE;
+  } else if (strcmp(accessory, "OLE") == 0) {
+    return ACCESORIES_MARACAS;
+  } else if (strcmp(accessory, "RACE") == 0) {
+    return ACCESORIES_RACING_WHEEL;
+  } else if (strcmp(accessory, "MIC") == 0) {
+    return ACCESORIES_MICROPHONE;
+  } else if (strcmp(accessory, "ARC") == 0) {
+    return ACCESORIES_ARCADE_STICK;
+  } else if (strcmp(accessory, "GUN") == 0) {
+    return ACCESORIES_LIGHTGUN;
+  } else if (strcmp(accessory, "ETH") == 0) {
+    return ACCESORIES_BBA;
+  } else if (strcmp(accessory, "FISH") == 0) {
+    return ACCESORIES_FISHING_ROD;
+  } else if (strcmp(accessory, "ASC") == 0) {
+    return ACCESORIES_ASCII_PAD;
+  } else if (strcmp(accessory, "CAM") == 0) {
+    return ACCESORIES_DREAMEYE;
+  } else if (strcmp(accessory, "MOD") == 0) {
+    return ACCESORIES_MODEM;
+  } else if (strcmp(accessory, "0") == 0 || strcmp(accessory, "-") == 0) {
+    return ACCESORIES_NONE;
+  } else /* default: */
+  {
+    printf("META: Unknown accessory: %s\n", accessory);
+    return ACCESORIES_NONE;
   }
 }
 
@@ -123,6 +187,21 @@ static unsigned short meta_parse_genre(const char *genre) {
   return ret;
 }
 
+static unsigned short meta_parse_accessories(const char *genre) {
+  unsigned short ret = GENRE_NONE;
+  char temp[64];
+  const char *delim = "+";
+  memcpy(temp, genre, strlen(genre) + 1);
+
+  char *token = strtok(temp, delim);
+  const char *item = token;
+  do {
+    ret += meta_accessory_to_enum(item);
+    item = strtok(NULL, delim);
+  } while (item);
+  return ret;
+}
+
 static int read_meta_ini(void *user, const char *section, const char *name, const char *value) {
   /* Parsing Meta into struct */
   db_item *item = (db_item *)user;
@@ -131,12 +210,14 @@ static int read_meta_ini(void *user, const char *section, const char *name, cons
 
   if (0)
     ;
-#define DB_ITEM_STRI(s, n, default) else if (stricmp(section, #s) == 0 && \
-                                             stricmp(name, #n) == 0) strcpy(item->n, value);
-#define DB_ITEM_CHAR(s, n, default) else if (stricmp(section, #s) == 0 && \
-                                             stricmp(name, #n) == 0) item->n = value[0] - '0';
-#define DB_ITEM_GENRE(s, n, default) else if (stricmp(section, #s) == 0 && \
-                                              stricmp(name, #n) == 0) item->n = meta_parse_genre(value);
+#define DB_ITEM_STRI(s, n, default) else if (strcasecmp(section, #s) == 0 && \
+                                             strcasecmp(name, #n) == 0) strcpy(item->n, value);
+#define DB_ITEM_CHAR(s, n, default) else if (strcasecmp(section, #s) == 0 && \
+                                             strcasecmp(name, #n) == 0) item->n = value[0] - '0';
+#define DB_ITEM_GENRE(s, n, default) else if (strcasecmp(section, #s) == 0 && \
+                                              strcasecmp(name, #n) == 0) item->n = meta_parse_genre(value);
+#define DB_ITEM_ACCESSORY(s, n, default) else if (strcasecmp(section, #s) == 0 && \
+                                                  strcasecmp(name, #n) == 0) item->n = meta_parse_accessories(value);
 #include "../backend/db_item.def"
 
   return 1;
@@ -147,6 +228,7 @@ static void meta_init_item(db_item *item) {
 #define DB_ITEM_STRI(s, n, default) strcpy(item->n, default);
 #define DB_ITEM_CHAR(s, n, default) item->n = default;
 #define DB_ITEM_GENRE(s, n, default) item->n = default;
+#define DB_ITEM_ACCESSORY(s, n, default) item->n = default;
 #include "../backend/db_item.def"
 }
 
@@ -210,15 +292,18 @@ int add_bin_file(const char *path, const char *folder, struct stat *statptr) {
   game_meta_read(temp_file, data_buf + (file_header.num_chunks * file_header.chunk_size));
 
   /* Use filename as ID, remove extension */
-  memcpy(temp_id, path, 11);
-  temp_id[11] = '\0';
+  memset(temp_id, '\0', sizeof(temp_id));
+  strncpy(temp_id, path, 11);
   char *end = strrchr(temp_id, '.');
   if (end) {
-    memset(end, '\0', sizeof(temp_id) - ((size_t)end - (size_t)temp_id));
+    const size_t nul_len = sizeof(temp_id) - ((size_t)end - (size_t)temp_id);
+    memset(end, '\0', nul_len);
   }
   char *temp_start = temp_id;
   while (*temp_start)
     *temp_start++ = toupper(*temp_start);
+  temp_id[11] = '\0';
+  temp_id[10] = '\0';
   memcpy(&bin_items[file_header.num_chunks].ID, temp_id, sizeof(bin_items->ID));
 
   bin_items[file_header.num_chunks].offset = file_header.padding0 + file_header.num_chunks + 1;
