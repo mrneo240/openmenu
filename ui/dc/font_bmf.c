@@ -432,6 +432,20 @@ void font_bmf_set_scale(float scale) {
   current_scale = scale;
 }
 
+/* Scaling */
+#define ASPECT_WIDE (0)
+#define X_SCALE_4_3 (1.0f)
+#define X_SCALE_16_9 (0.74941452f)
+
+#if defined(ASPECT_WIDE) && ASPECT_WIDE
+#define X_SCALE (X_SCALE_16_9)
+#define SCR_WIDTH (854)
+#else
+#define X_SCALE (X_SCALE_4_3)
+#define SCR_WIDTH (640)
+#endif
+#define SCR_HEIGHT (480)
+
 #ifdef KOS_SPRITE
 static pvr_sprite_hdr_t font_header;
 #define VERT_PER_CHAR (1)
@@ -445,7 +459,7 @@ static image font_texture;
 int font_bmf_init(const char *fnt, const char *texture) {
   int ret = 0;
   char temp_fnt[128];
-  memcpy(temp_fnt, DISC_PREFIX, strlen(DISC_PREFIX)+1);
+  memcpy(temp_fnt, DISC_PREFIX, strlen(DISC_PREFIX) + 1);
   strcat(temp_fnt, fnt);
 
   /* If we arent loaded then load eveyrthing, otherwise just load texture */
@@ -493,13 +507,13 @@ static int font_bmf_draw_char(int x, int y, unsigned char chr) {
   bm_font *font = &font_basilea;
 
   /* Upper left */
-  const float x1 = round(x + current_scale * (float)font->chars[chr].xoffset);
+  const float x1 = round(x + (current_scale * (float)font->chars[chr].xoffset) * X_SCALE);
   const float y1 = round(y + current_scale * (float)font->chars[chr].yoffset);
   const float u1 = (float)font->chars[chr].x / (float)font->width;
   const float v1 = (float)font->chars[chr].y / (float)font->height;
 
   /* Lower right */
-  const float x2 = round(x + current_scale * ((float)font->chars[chr].width + font->chars[chr].xoffset));
+  const float x2 = round(x + (current_scale * ((float)font->chars[chr].width + font->chars[chr].xoffset)) * X_SCALE);
   const float y2 = round(y + current_scale * ((float)font->chars[chr].height + font->chars[chr].yoffset));
   const float u2 = (float)(font->chars[chr].x + font->chars[chr].width) / (float)font->width;
   const float v2 = (float)(font->chars[chr].y + font->chars[chr].height) / (float)font->height;
@@ -580,7 +594,7 @@ static int font_bmf_draw_char(int x, int y, unsigned char chr) {
 #endif
   charbuffered += VERT_PER_CHAR;
 
-  return current_scale * font->chars[chr].xadvance;
+  return (current_scale * font->chars[chr].xadvance) * X_SCALE;
 }
 
 static void _font_bmf_draw_string(int x1, int y1, uint32_t color, const char *str) {
@@ -622,7 +636,7 @@ static float _font_bmf_calculate_length_full(const char *str, int length) {
     str++;
   }
 
-  return round(current_scale * round(width));
+  return round(current_scale * round(width)) * X_SCALE;
 }
 
 static float _font_bmf_calculate_length(const char *str) {

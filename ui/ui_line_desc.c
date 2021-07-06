@@ -62,6 +62,26 @@ typedef struct theme_region {
 } theme_region;
 
 static theme_region themes[] = {
+#if defined(ASPECT_WIDE) && ASPECT_WIDE
+    (theme_region){
+        .bg_left = "THEME/NTSC_U/BG_U_L.PVR",
+        .bg_right = "THEME/NTSC_U/BG_U_R.PVR",
+        .icon_set = &txr_icons_white,
+        .text_color = COLOR_WHITE,
+        .highlight_color = COLOR_ORANGE_U},
+    (theme_region){
+        .bg_left = "THEME/NTSC_J/BG_J_L_WIDE.PVR",
+        .bg_right = "THEME/NTSC_J/BG_J_R_WIDE.PVR",
+        .icon_set = &txr_icons_black,
+        .text_color = COLOR_BLACK,
+        .highlight_color = COLOR_ORANGE_J},
+    (theme_region){
+        .bg_left = "THEME/PAL/BG_E_L_WIDE.PVR",
+        .bg_right = "THEME/PAL/BG_E_R_WIDE.PVR",
+        .icon_set = &txr_icons_black,
+        .text_color = COLOR_BLACK,
+        .highlight_color = COLOR_BLUE},
+#else
     (theme_region){
         .bg_left = "THEME/NTSC_U/BG_U_L.PVR",
         .bg_right = "THEME/NTSC_U/BG_U_R.PVR",
@@ -80,12 +100,13 @@ static theme_region themes[] = {
         .icon_set = &txr_icons_black,
         .text_color = COLOR_BLACK,
         .highlight_color = COLOR_BLUE},
+#endif
 };
 enum theme { NTSC_U = 0,
-             NTSC_J = 1,
-             PAL = 2,
+             NTSC_J,
+             PAL,
              THEME_END };
-static enum theme theme_current = NTSC_J;
+static enum theme theme_current = NTSC_U;
 
 static void
 draw_bg_layers(void) {

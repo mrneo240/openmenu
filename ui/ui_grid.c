@@ -23,9 +23,49 @@
 
 extern void ui_cycle_next(void);
 
+/* Scaling */
+#define ASPECT_WIDE (0)
+#define X_SCALE_4_3 ((float)1.0f)
+#define X_SCALE_16_9 ((float)0.74941452f)
+
+#if defined(ASPECT_WIDE) && ASPECT_WIDE
+#define X_SCALE (X_SCALE_16_9)
+#define SCR_WIDTH (854)
+#else
+#define X_SCALE (X_SCALE_4_3)
+#define SCR_WIDTH (640)
+#endif
+#define SCR_HEIGHT (480)
+
 /* List managment */
 #define INPUT_TIMEOUT (10)
 #define FOCUSED_HIRES_FRAMES (60 * 1) /* 1 second load in */
+
+/* Tile parameters */
+#if defined(ASPECT_WIDE) && ASPECT_WIDE
+#define TILE_AREA_WIDTH (600)
+#define TILE_AREA_HEIGHT (380)
+#define COLUMNS (4)
+#define ROWS (3)
+#else
+#define TILE_AREA_WIDTH (440)
+#define TILE_AREA_HEIGHT (380)
+#define COLUMNS (3)
+#define ROWS (3)
+#endif
+#define GUTTER_SIDE ((SCR_WIDTH - TILE_AREA_WIDTH) / 2)
+#define GUTTER_TOP ((SCR_HEIGHT - TILE_AREA_HEIGHT) / 2)
+#define HORIZONTAL_SPACING (40)
+#define VERTICAL_SPACING (10)
+#define HIGHLIGHT_OVERHANG (4)
+#define TILE_SIZE_X (((TILE_AREA_WIDTH - ((COLUMNS - 1) * HORIZONTAL_SPACING)) / COLUMNS))
+#define TILE_SIZE_Y ((TILE_AREA_HEIGHT - ((ROWS - 1) * VERTICAL_SPACING)) / ROWS)
+
+#define ANIM_FRAMES (15)
+#define HIGHLIGHT_X_POS(col) (GUTTER_SIDE - HIGHLIGHT_OVERHANG + ((HORIZONTAL_SPACING + TILE_SIZE_X) * (col)))
+#define HIGHLIGHT_Y_POS(row) (GUTTER_TOP - HIGHLIGHT_OVERHANG + ((VERTICAL_SPACING + TILE_SIZE_Y) * (row)))
+#define TILE_X_POS(col) (GUTTER_SIDE + ((HORIZONTAL_SPACING + TILE_SIZE_X) * (col)))
+#define TILE_Y_POS(row) (GUTTER_TOP + ((VERTICAL_SPACING + TILE_SIZE_Y) * (row)))
 
 static int screen_row = 0;
 static int screen_column = 0;
@@ -33,29 +73,20 @@ static int current_starting_index = 0;
 static int navigate_timeout = INPUT_TIMEOUT;
 static int frames_focused = 0;
 
-static const int items_per_row = 3;
-static const int rows = 3;
-
 static bool boxart_button_held = false;
 
 static bool direction_last = false;
 static bool direction_current = false;
 #define direction_held (direction_last & direction_current)
 
-static vec2d pos_highlight = (vec2d){.x = 0, .y = 0};
-static anim2d anim_highlight = {0};
+static vec2d pos_highlight = (vec2d){.x = 0.f, .y = 0.f};
+static anim2d anim_highlight;
 
-static anim2d anim_large_art_pos = {0};
-static anim2d anim_large_art_scale = {0};
-
-#define ANIM_FRAMES (15)
-#define HIGHLIGHT_X_POS(col) (100 - 4 + ((40 + 120) * (col)))
-#define HIGHLIGHT_Y_POS(row) (20 - 4 + ((10 + 120) * (row)))
-#define TILE_X_POS(col) (100 + ((40 + 120) * (col)))
-#define TILE_Y_POS(row) (20 + ((10 + 120) * (row)))
+static anim2d anim_large_art_pos;
+static anim2d anim_large_art_scale;
 
 /* For drawing */
-static image txr_icon_list[9]; /* Lower list of 9 icons */
+static image txr_icon_list[ROWS * COLUMNS]; /* Lower list of 9 icons */
 static image txr_focus;
 static image txr_highlight; /* Highlight square */
 static image txr_bg_left, txr_bg_right;
@@ -82,6 +113,26 @@ typedef struct theme_region {
 } theme_region;
 
 static theme_region themes[] = {
+#if defined(ASPECT_WIDE) && ASPECT_WIDE
+    (theme_region){
+        .bg_left = "THEME/NTSC_U/BG_U_L.PVR",
+        .bg_right = "THEME/NTSC_U/BG_U_R.PVR",
+        .icon_set = &txr_icons_white,
+        .text_color = COLOR_WHITE,
+        .highlight_color = COLOR_ORANGE_U},
+    (theme_region){
+        .bg_left = "THEME/NTSC_J/BG_J_L_WIDE.PVR",
+        .bg_right = "THEME/NTSC_J/BG_J_R_WIDE.PVR",
+        .icon_set = &txr_icons_black,
+        .text_color = COLOR_BLACK,
+        .highlight_color = COLOR_ORANGE_J},
+    (theme_region){
+        .bg_left = "THEME/PAL/BG_E_L_WIDE.PVR",
+        .bg_right = "THEME/PAL/BG_E_R_WIDE.PVR",
+        .icon_set = &txr_icons_black,
+        .text_color = COLOR_BLACK,
+        .highlight_color = COLOR_BLUE},
+#else
     (theme_region){
         .bg_left = "THEME/NTSC_U/BG_U_L.PVR",
         .bg_right = "THEME/NTSC_U/BG_U_R.PVR",
@@ -100,11 +151,13 @@ static theme_region themes[] = {
         .icon_set = &txr_icons_black,
         .text_color = COLOR_BLACK,
         .highlight_color = COLOR_BLUE},
+#endif
 };
 enum theme { NTSC_U = 0,
-             NTSC_J = 1,
-             PAL = 2,
-             THEME_END };
+             NTSC_J,
+             PAL,
+             THEME_END
+};
 static enum theme theme_current = NTSC_U;
 
 static void draw_bg_layers(void) {
@@ -119,7 +172,7 @@ static void draw_bg_layers(void) {
 }
 
 static inline int current_selected(void) {
-  return current_starting_index + (screen_row * items_per_row) + (screen_column);
+  return current_starting_index + (screen_row * COLUMNS) + (screen_column);
 }
 
 static void draw_large_art(void) {
@@ -153,29 +206,22 @@ static void setup_highlight_animation(void) {
   anim_highlight.time.active = true;
 }
 
-static void draw_static_highlight(int size) {
-  draw_draw_square(pos_highlight.x, pos_highlight.y, size, themes[theme_current].highlight_color, &txr_highlight);
+static void draw_static_highlight(int width, int height) {
+  draw_draw_image(pos_highlight.x, pos_highlight.y, width, height, themes[theme_current].highlight_color, &txr_highlight);
 }
 
-static void draw_animated_highlight(int size) {
+static void draw_animated_highlight(int width, int height) {
   /* Always draw on top */
   float z = z_get();
   z_set(256.0f);
-  draw_draw_square(anim_highlight.cur.x, anim_highlight.cur.y, size, themes[theme_current].highlight_color, &txr_highlight);
+  draw_draw_image(anim_highlight.cur.x, anim_highlight.cur.y, width, height, themes[theme_current].highlight_color, &txr_highlight);
   z_set(z);
 }
 
 static void draw_grid_boxes(void) {
-  const int tile_size = 120;
-  const int gutter_side = 100;
-  const int gutter_top = 20;
-  const int horizontal_spacing = 40;
-  const int vertical_spacing = 10;
-  const int highlight_overhang = 4;
-
-  for (int row = 0; row < rows; row++) {
-    for (int column = 0; column < items_per_row; column++) {
-      int idx = (row * items_per_row) + column;
+  for (int row = 0; row < ROWS; row++) {
+    for (int column = 0; column < COLUMNS; column++) {
+      int idx = (row * COLUMNS) + column;
 
       if (current_starting_index + idx < 0) {
         continue;
@@ -183,20 +229,22 @@ static void draw_grid_boxes(void) {
       if (current_starting_index + idx >= list_len) {
         continue;
       }
-      int x_pos = gutter_side + ((horizontal_spacing + tile_size) * column); /* 100 + ((40 + 120)*{0,1,2}) */
-      int y_pos = gutter_top + ((vertical_spacing + tile_size) * row);       /* 20 + ((10 + 120)*{0,1,2}) */
+      float x_pos = GUTTER_SIDE + ((HORIZONTAL_SPACING + TILE_SIZE_X) * column); /* 100 + ((40 + 120)*{0,1,2}) */
+      float y_pos = GUTTER_TOP + ((VERTICAL_SPACING + TILE_SIZE_Y) * row);       /* 20 + ((10 + 120)*{0,1,2}) */
+
+      x_pos *= X_SCALE;
 
       txr_get_small(list_current[current_starting_index + idx]->product, &txr_icon_list[idx]);
-      draw_draw_square(x_pos, y_pos, tile_size, COLOR_WHITE, &txr_icon_list[idx]);
+      draw_draw_image((int)x_pos, (int)y_pos, TILE_SIZE_X * X_SCALE, TILE_SIZE_Y, COLOR_WHITE, &txr_icon_list[idx]);
 
       /* Highlight */
       if ((current_starting_index + idx) == current_selected()) {
         if (anim_alive(&anim_highlight.time)) {
-          draw_animated_highlight(tile_size + (highlight_overhang * 2));
+          draw_animated_highlight((TILE_SIZE_X + (HIGHLIGHT_OVERHANG * 2)) * X_SCALE, TILE_SIZE_Y + (HIGHLIGHT_OVERHANG * 2));
         } else {
-          pos_highlight.x = x_pos - highlight_overhang;
-          pos_highlight.y = y_pos - highlight_overhang;
-          draw_static_highlight(tile_size + (highlight_overhang * 2));
+          pos_highlight.x = x_pos - (HIGHLIGHT_OVERHANG * X_SCALE);
+          pos_highlight.y = y_pos - (HIGHLIGHT_OVERHANG);
+          draw_static_highlight((TILE_SIZE_X + (HIGHLIGHT_OVERHANG * 2)) * X_SCALE, TILE_SIZE_Y + (HIGHLIGHT_OVERHANG * 2));
         }
       }
     }
@@ -233,7 +281,7 @@ static void menu_row_up(void) {
   screen_row--;
   if (screen_row < 0) {
     screen_row = 0;
-    current_starting_index -= items_per_row;
+    current_starting_index -= COLUMNS;
     if (current_starting_index < 0) {
       current_starting_index = 0;
     }
@@ -242,17 +290,17 @@ static void menu_row_up(void) {
 
 static void menu_row_down(void) {
   screen_row++;
-  if (screen_row >= rows) {
-    screen_row--;
-    current_starting_index += items_per_row;
+  if (screen_row >= ROWS) {
+    screen_row = ROWS - 1;
+    current_starting_index += COLUMNS;
     if (current_selected() > list_len) {
-      current_starting_index -= items_per_row;
+      current_starting_index -= COLUMNS;
     }
   }
   while (current_selected() >= list_len) {
     screen_column--;
     if (screen_column < 0) {
-      screen_column = items_per_row - 1;
+      screen_column = COLUMNS - 1;
       menu_row_up();
     }
   }
@@ -306,7 +354,7 @@ static void menu_left(void) {
     screen_column = 0;
   }
   if (screen_column < 0) {
-    screen_column = items_per_row - 1;
+    screen_column = COLUMNS - 1;
     menu_row_up();
   }
 
@@ -326,7 +374,7 @@ static void menu_right(void) {
   if (current_selected() >= list_len) {
     screen_column--;
   }
-  if (screen_column >= items_per_row) {
+  if (screen_column >= COLUMNS) {
     screen_column = 0;
     menu_row_down();
   }
@@ -389,7 +437,7 @@ static void menu_theme_cycle(void) {
   }
   theme_current++;
   if (theme_current == THEME_END) {
-    theme_current = NTSC_U;
+    theme_current = 0;
   }
   GRID_3_init();
   navigate_timeout = INPUT_TIMEOUT;
@@ -399,20 +447,20 @@ static void menu_show_large_art(void) {
   if (!boxart_button_held && !anim_active(&anim_large_art_scale.time)) {
     /* Setup positioning */
     {
-      anim_large_art_pos.start.x = TILE_X_POS(screen_column) + (120 / 2);
-      anim_large_art_pos.start.y = TILE_Y_POS(screen_row) + (120 / 2);
-      anim_large_art_pos.end.x = TILE_X_POS(1) + (120 / 2);
-      anim_large_art_pos.end.y = TILE_Y_POS(1) + (120 / 2);
+      anim_large_art_pos.start.x = TILE_X_POS(screen_column) + (TILE_SIZE_X / 2);
+      anim_large_art_pos.start.y = TILE_Y_POS(screen_row) + (TILE_SIZE_Y / 2);
+      anim_large_art_pos.end.x = TILE_X_POS(1) + (TILE_SIZE_X / 2);
+      anim_large_art_pos.end.y = TILE_Y_POS(1) + (TILE_SIZE_Y / 2);
       anim_large_art_pos.time.frame_now = 0;
       anim_large_art_pos.time.frame_len = 30;
       anim_large_art_pos.time.active = true;
     }
     /* Setup Scaling */
     {
-      anim_large_art_scale.start.x = 120;
-      anim_large_art_scale.start.y = 120;
-      anim_large_art_scale.end.x = (120 * 3) + (40 * (3 - 1)) + 8;
-      anim_large_art_scale.end.y = (120 * 3) + (10 * (3 - 1)) + 8;
+      anim_large_art_scale.start.x = TILE_SIZE_X;
+      anim_large_art_scale.start.y = TILE_SIZE_X;
+      anim_large_art_scale.end.x = (TILE_AREA_WIDTH + HIGHLIGHT_OVERHANG * 2) * X_SCALE;
+      anim_large_art_scale.end.y = TILE_AREA_HEIGHT + HIGHLIGHT_OVERHANG * 2;
       anim_large_art_scale.time.frame_now = 0;
       anim_large_art_scale.time.frame_len = 30;
       anim_large_art_scale.time.active = true;
@@ -467,6 +515,10 @@ FUNCTION(UI_NAME, setup) {
   current_starting_index = 0;
   navigate_timeout = INPUT_TIMEOUT;
   sort_current = DEFAULT;
+
+  anim_clear(&anim_highlight);
+  anim_clear(&anim_large_art_pos);
+  anim_clear(&anim_large_art_scale);
 }
 
 FUNCTION_INPUT(UI_NAME, handle_input) {
@@ -494,11 +546,11 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
       break;
     case TRIG_L:
       direction_current = true;
-      menu_up(3);
+      menu_up(ROWS);
       break;
     case TRIG_R:
       direction_current = true;
-      menu_down(3);
+      menu_down(ROWS);
       break;
     case A:
       menu_accept();
@@ -537,10 +589,11 @@ FUNCTION(UI_NAME, drawOP) {
 }
 
 FUNCTION(UI_NAME, drawTR) {
+  //anim_highlight.time.active = false;
   update_time();
 
   draw_grid_boxes();
 
   font_bmf_begin_draw();
-  font_bmf_draw_centered_auto_size(320, 430, themes[theme_current].text_color, list_current[current_selected()]->name, 640 - (10 * 2));
+  font_bmf_draw_centered_auto_size((SCR_WIDTH / 2) * X_SCALE, 434, themes[theme_current].text_color, list_current[current_selected()]->name, (SCR_WIDTH - (10 * 2)) * X_SCALE);
 }
