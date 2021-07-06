@@ -19,6 +19,7 @@
 #include "../ui/draw_prototypes.h"
 #include "block_pool.h"
 #include "lru.h"
+#include "serial_sanitize.h"
 
 /* CFG for small pvr pool (128x128 16bit, 16 spaces) */
 #define SM_SLOT_NUM (16)
@@ -37,9 +38,6 @@ static block_pool pvr_large;
 static dat_file dat_icon;
 static dat_file dat_box;
 
-extern const char *serial_santize(const char *id);
-extern int serial_sanitizer_init(void);
-
 unsigned int block_pool_add_cb(const char *key, void *user) {
   block_pool *pool = (block_pool *)user;
   unsigned int ret;
@@ -56,7 +54,7 @@ unsigned int block_pool_del_cb(const char *key, void *value, void *user) {
 }
 
 int txr_load_DATs(void) {
-  serial_sanitizer_init();
+  serial_sanitizer_init(); /*@Todo: Move this */
 
   DAT_init(&dat_icon);
   DAT_init(&dat_box);
@@ -98,26 +96,12 @@ returns pointer to use for texture upload/reference
 int txr_get_small(const char *id, struct image *img) {
   void *txr_ptr;
   int slot_num;
-  const char *id_santized = serial_santize(id);
+  const char *id_santized = serial_santize_art(id);
 
-#ifdef LOOSE_FILES
-  /* construct full filename */
-  char buffer[64] = {0};
-  strcat(buffer, "/cd/icon/");
-  strcat(buffer, id_santized);
-  strcat(buffer, ".PVR");
-
-  /* check if exists and if not, return missing image */
-  if (!file_exists(buffer)) {
-    draw_load_missing_icon(img);
-  } else
-#else
   /* check if exists in DAT and if not, return missing image */
   if (!DAT_get_offset_by_ID(&dat_icon, id_santized)) {
     draw_load_missing_icon(img);
-  } else
-#endif
-  {
+  } else {
     slot_num = find_in_cache(&cache_small, id_santized);
     if (slot_num == -1) {
       add_to_cache(&cache_small, id_santized, 0);
@@ -125,11 +109,7 @@ int txr_get_small(const char *id, struct image *img) {
       txr_ptr = pool_get_slot_addr(&pvr_small, slot_num);
 
       /* now load the texture into vram */
-#ifdef LOOSE_FILES
-      draw_load_texture_buffer(buffer, img, txr_ptr);
-#else
       draw_load_texture_from_DAT_to_buffer(&dat_icon, id_santized, img, txr_ptr);
-#endif
     } else {
       img->width = 128;
       img->height = 128;
@@ -141,29 +121,14 @@ int txr_get_small(const char *id, struct image *img) {
 }
 
 int txr_get_large(const char *id, struct image *img) {
-#if 1
   void *txr_ptr;
   int slot_num;
-  const char *id_santized = serial_santize(id);
+  const char *id_santized = serial_santize_art(id);
 
-#ifdef LOOSE_FILES
-  /* construct full filename */
-  char buffer[64] = {0};
-  strcat(buffer, "/cd/box/");
-  strcat(buffer, id_santized);
-  strcat(buffer, ".pvr");
-
-  /* check if exists and if not, return missing image */
-  if (!file_exists(buffer)) {
-    draw_load_missing_icon(img);
-  } else
-#else
   /* check if exists in DAT and if not, return missing image */
   if (!DAT_get_offset_by_ID(&dat_box, id_santized)) {
     draw_load_missing_icon(img);
-  } else
-#endif
-  {
+  } else {
     slot_num = find_in_cache(&cache_large, id_santized);
     if (slot_num == -1) {
       add_to_cache(&cache_large, id_santized, 0);
@@ -171,11 +136,7 @@ int txr_get_large(const char *id, struct image *img) {
       txr_ptr = pool_get_slot_addr(&pvr_large, slot_num);
 
       /* now load the texture into vram */
-#ifdef LOOSE_FILES
-      draw_load_texture_buffer(buffer, img, txr_ptr);
-#else
       draw_load_texture_from_DAT_to_buffer(&dat_box, id_santized, img, txr_ptr);
-#endif
     } else {
       img->width = 256;
       img->height = 256;
@@ -183,6 +144,5 @@ int txr_get_large(const char *id, struct image *img) {
       img->texture = pool_get_slot_addr(&pvr_large, slot_num);
     }
   }
-#endif
   return 0;
 }
