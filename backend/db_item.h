@@ -10,13 +10,12 @@
 
 #pragma once
 typedef struct db_item {
-  char num_players;
-  char vmu_blocks;
-  char accessories;     /* @Todo: describe how to use this */
-  char network;         /* 0, none. 1, modem. 2, bba. 3, both */
-  unsigned short genre; /* Genres Described in metapacker.c */
-  char padding1;        /*Expansion */
-  char padding2;        /*Expansion */
-  /*char description[364];*/
+  unsigned char num_players;
+  unsigned char vmu_blocks;
+  unsigned char accessories; /* Accessories Described in metapacker.c */
+  unsigned char network;     /* 0, none. 1, modem. 2, bba. 3, both */
+  unsigned short genre;      /* Genres Described in metapacker.c */
+  char padding1;             /*Currently Unused, for expansion */
+  char padding2;             /*Currently Unused, for expansion */
   char description[376];
 } db_item;

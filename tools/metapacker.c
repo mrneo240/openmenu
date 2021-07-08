@@ -213,7 +213,7 @@ static int read_meta_ini(void *user, const char *section, const char *name, cons
 #define DB_ITEM_STRI(s, n, default) else if (strcasecmp(section, #s) == 0 && \
                                              strcasecmp(name, #n) == 0) strcpy(item->n, value);
 #define DB_ITEM_CHAR(s, n, default) else if (strcasecmp(section, #s) == 0 && \
-                                             strcasecmp(name, #n) == 0) item->n = value[0] - '0';
+                                             strcasecmp(name, #n) == 0) item->n = (unsigned char)atoi(value);
 #define DB_ITEM_GENRE(s, n, default) else if (strcasecmp(section, #s) == 0 && \
                                               strcasecmp(name, #n) == 0) item->n = meta_parse_genre(value);
 #define DB_ITEM_ACCESSORY(s, n, default) else if (strcasecmp(section, #s) == 0 && \
@@ -289,7 +289,8 @@ int add_bin_file(const char *path, const char *folder, struct stat *statptr) {
   strcpy(temp_file, folder);
   strcat(temp_file, PATH_SEP);
   strcat(temp_file, path);
-  game_meta_read(temp_file, data_buf + (file_header.num_chunks * file_header.chunk_size));
+  db_item *record = (db_item *)(data_buf + (file_header.num_chunks * file_header.chunk_size));
+  game_meta_read(temp_file, record);
 
   /* Use filename as ID, remove extension */
   memset(temp_id, '\0', sizeof(temp_id));
@@ -305,6 +306,8 @@ int add_bin_file(const char *path, const char *folder, struct stat *statptr) {
   temp_id[11] = '\0';
   temp_id[10] = '\0';
   memcpy(&bin_items[file_header.num_chunks].ID, temp_id, sizeof(bin_items->ID));
+
+  printf("id:%s\nnum_players:%d\nvmu_blocks:%d\naccessories:%d\ngenre:%d\ndesc:%s\n\n", temp_id, record->num_players, record->vmu_blocks, record->accessories, record->genre, record->description);
 
   bin_items[file_header.num_chunks].offset = file_header.padding0 + file_header.num_chunks + 1;
   (void)file_header.num_chunks++;

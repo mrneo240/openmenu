@@ -11,10 +11,10 @@ win: CC:=x86_64-w64-mingw32-gcc
 win: native
 
 .PHONY: cosmo
-cosmo: datread.com datpack.com metapack.com datstrip.com tsv2ini.com renamecsv.com
+cosmo: datread.com datpack.com metapack.com datstrip.com tsv2ini.com renamecsv.com menufaker.com
 
 .PHONY: native
-native: datread$(EXT) datpack$(EXT) metapack$(EXT) datstrip$(EXT) tsv2ini$(EXT) renamecsv$(EXT)
+native: datread$(EXT) datpack$(EXT) metapack$(EXT) datstrip$(EXT) tsv2ini$(EXT) renamecsv$(EXT) menufaker$(EXT)
 
 datread.com: reader.c ../texture/dat_reader.c
 	@echo "$(CC) $<"
@@ -52,6 +52,12 @@ renamecsv.com: renamecsv.c
 	@$(OBJCOPY) -S -O binary $@.dbg $@
 	@echo "$(OBJCOPY) $@.dbg -> $@"
 
+menufaker.com: menufaker.c
+	@echo "$(CC) $<"
+	@$(CC) $(DEFINES) $(CFLAGS)  -o $@.dbg $^ $(LDFLAGS)
+	@$(OBJCOPY) -S -O binary $@.dbg $@
+	@echo "$(OBJCOPY) $@.dbg -> $@"
+
 datread$(EXT): reader.c ../texture/dat_reader.c
 	@echo "$(CC) $<"
 	@$(CC) $(DEFINES) -O2 -s -o $@ $^
@@ -78,6 +84,11 @@ renamecsv$(EXT): renamecsv.c
 	@echo "> $@"
 
 datstrip$(EXT): stripper.c ../backend/gd_list.c ../backend/ini.c
+	@echo "$(CC) $<"
+	@$(CC) $(DEFINES) -O2 -s -o $@ $^
+	@echo "> $@"
+
+menufaker$(EXT): menufaker.c
 	@echo "$(CC) $<"
 	@$(CC) $(DEFINES) -O2 -s -o $@ $^
 	@echo "> $@"

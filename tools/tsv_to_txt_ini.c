@@ -111,6 +111,7 @@ static void write_ini(const char *filename, const char *players, const char *vmu
   const char *_accessories = (accessories && (strlen(accessories) > 0) ? accessories : "0");
   const char *_genre = (genre && (strlen(genre) > 0) ? genre : "0");
   const char *_synopsis = (synopsis && (strlen(synopsis) > 0) ? synopsis : "0");
+  _synopsis += (synopsis[0] == '"'); /* Strip leading quotation mark */
 
   const char *meta_template =
       "[ITEM]\n"
