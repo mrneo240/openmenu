@@ -24,13 +24,16 @@ static inline void _pool_mark_open(block_pool *pool, unsigned int slot_num) {
 
 void pool_create(block_pool *pool, void *buffer, unsigned int size, unsigned int slots) {
   const unsigned int state_size = sizeof(unsigned char) * slots;
+  const unsigned int format_size = sizeof(slot_format) * slots;
 
   pool->base = buffer;
   pool->size = size;
   pool->slots = slots;
   pool->slot_size = size / slots;
   pool->state = malloc(state_size);
+  pool->format = malloc(format_size);
   memset(pool->state, '\0', state_size);
+  memset(pool->format, '\0', format_size);
 }
 
 void pool_get_next_free(block_pool *pool, unsigned int *slot_num, void **ptr) {
@@ -58,11 +61,12 @@ void pool_dealloc_slot(block_pool *pool, unsigned int slot_num) {
     _pool_mark_open(pool, slot_num);
 }
 
-void pool_destroy_user(block_pool *pool, void (*user_free)(void *ptr)){
+void pool_destroy_user(block_pool *pool, void (*user_free)(void *ptr)) {
   pool->base = NULL;
   pool->size = 0;
   pool->slots = 0;
   (*user_free)(pool->state);
+  (*user_free)(pool->format);
 }
 
 void pool_destroy(block_pool *pool) {
@@ -70,4 +74,7 @@ void pool_destroy(block_pool *pool) {
   pool->size = 0;
   pool->slots = 0;
   free(pool->state);
+  free(pool->format);
+  pool->state = NULL;
+  pool->format = NULL;
 }

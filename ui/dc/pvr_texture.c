@@ -24,7 +24,7 @@ static uint32_t pvr_get_texture_size(const void* input, uint32_t* w, uint32_t* h
 
   const int texW = texBuf[PVR_HDR_SIZE - 4] | texBuf[PVR_HDR_SIZE - 3] << 8;
   const int texH = texBuf[PVR_HDR_SIZE - 2] | texBuf[PVR_HDR_SIZE - 1] << 8;
-  int texFormat, texColor;
+  int texFormat = 0, texColor = 0;
   int bpp = 2;
 
   switch ((unsigned int)texBuf[PVR_HDR_SIZE - 8]) {
@@ -143,7 +143,7 @@ void* pvr_get_internal_buffer(void) {
 static void pvr_read_to_internal(const char* filename) {
   unsigned int texSize;
   FD_TYPE tex_fd = (FD_TYPE)NULL;
-  memcpy(filename_safe, DISC_PREFIX, strlen(DISC_PREFIX)+1);
+  memcpy(filename_safe, DISC_PREFIX, strlen(DISC_PREFIX) + 1);
   strcat(filename_safe, filename);
 
   /* replace all - with _ */

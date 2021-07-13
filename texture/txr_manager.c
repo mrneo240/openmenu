@@ -110,10 +110,12 @@ int txr_get_small(const char *id, struct image *img) {
 
       /* now load the texture into vram */
       draw_load_texture_from_DAT_to_buffer(&dat_icon, id_santized, img, txr_ptr);
+      pool_set_slot_format(&pvr_small, slot_num, img->width, img->height, img->format);
     } else {
-      img->width = 128;
-      img->height = 128;
-      img->format = (0 << 26) | (1 << 27); /* RGB565, Twiddled */
+      const slot_format *fmt = pool_get_slot_format(&pvr_small, slot_num);
+      img->width = fmt->width;
+      img->height = fmt->height;
+      img->format = fmt->format;
       img->texture = pool_get_slot_addr(&pvr_small, slot_num);
     }
   }
@@ -137,10 +139,12 @@ int txr_get_large(const char *id, struct image *img) {
 
       /* now load the texture into vram */
       draw_load_texture_from_DAT_to_buffer(&dat_box, id_santized, img, txr_ptr);
+      pool_set_slot_format(&pvr_large, slot_num, img->width, img->height, img->format);
     } else {
-      img->width = 256;
-      img->height = 256;
-      img->format = (0 << 26) | (1 << 27); /* RGB565, Twiddled */
+      const slot_format *fmt = pool_get_slot_format(&pvr_large, slot_num);
+      img->width = fmt->width;
+      img->height = fmt->height;
+      img->format = fmt->format;
       img->texture = pool_get_slot_addr(&pvr_large, slot_num);
     }
   }
