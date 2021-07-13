@@ -49,11 +49,6 @@ replace:  REMAP_ADD_META("$1", "$2"),\n
 */
 
 static serial_remap serial_remap_members[] = {
-    /* Unknown, @Todo: check and possibly remove */
-    REMAP_ADD_ART("MK0100", "T8119N"),
-    REMAP_ADD_META("T12501D61", "T12502N"),
-    REMAP_ADD_META("T7011D50", "T40217N"),
-
     /* PAL Regional Duplicates */
     REMAP_ADD_BOTH("T13001D05", "T13001D"), /* Blue Stinger */
     REMAP_ADD_BOTH("T8111D58", "T8111D50"), /* ECW Hardcore Revolution */
