@@ -15,9 +15,10 @@
 #include <stdlib.h>
 #endif
 
+#include <external/uthash.h>
+
 #include "../gdrom/gdrom_fs.h"
 #include "../inc/dat_format.h"
-#include "../inc/uthash.h"
 
 /* Define configure constants */
 /* only defined when building the binary tool */
@@ -50,7 +51,7 @@ int DAT_load_parse(dat_file *bin, const char *path) {
   const char *filename_safe = path;
 #else
   char filename_safe[128];
-  memcpy(filename_safe, DISC_PREFIX, strlen(DISC_PREFIX)+1);
+  memcpy(filename_safe, DISC_PREFIX, strlen(DISC_PREFIX) + 1);
   strcat(filename_safe, path);
 
   bin_fd = fopen(filename_safe, "rb");
@@ -77,7 +78,7 @@ int DAT_load_parse(dat_file *bin, const char *path) {
   bin->hash = NULL;
 
   /* Parse file table to Hash table */
-  for (int i = 0; i < file_header.num_chunks; i++) {
+  for (unsigned int i = 0; i < file_header.num_chunks; i++) {
     fread(&bin->items[i], sizeof(bin_item_raw), 1, (FD_TYPE)bin->handle);
     HASH_ADD_STR(bin->hash, ID, &bin->items[i]);
   }
@@ -88,9 +89,9 @@ int DAT_load_parse(dat_file *bin, const char *path) {
   return 0;
 }
 
-void DAT_dump(const dat_file *bin) {
+void DAT_info(const dat_file *bin) {
   DBG_PRINT("DAT:Stats\nChunk Size: %u\nNum Chunks: %u\n\n", bin->chunk_size, bin->num_chunks);
-  for (int i = 0; i < bin->num_chunks; i++) {
+  for (unsigned int i = 0; i < bin->num_chunks; i++) {
     DBG_PRINT("Record[%u] %s at 0x%X\n", bin->items[i].offset, bin->items[i].ID, (unsigned int)(bin->items[i].offset * bin->chunk_size));
   }
   DBG_PRINT("\n");

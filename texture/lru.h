@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../inc/uthash.h"
+#include <external/uthash.h>
 
 /* Function callbacks */
 typedef unsigned int (*user_add_cb)(const char* key, void* user);

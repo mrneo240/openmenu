@@ -8,7 +8,7 @@
  * License: BSD 3-clause "New" or "Revised" License, http://www.opensource.org/licenses/BSD-3-Clause
  */
 
-#include "../inc/uthash.h"
+#include <external/uthash.h>
 
 // Disc serial will be the filename, e.g. T8119N.PVR
 /* Name, IP Serial, Disc Serial */

@@ -22,10 +22,11 @@
 #include <unistd.h>
 #endif
 
+#include <external/uthash.h>
+
 #include "../backend/gd_item.h"
 #include "../backend/gd_list.h"
 #include "../inc/dat_format.h"
-#include "../inc/uthash.h"
 
 /* Called:
 ./datstrip input.dat openmenu.ini output.dat
@@ -264,7 +265,7 @@ int DAT_load_parse(dat_file *bin, const char *path) {
   return 0;
 }
 
-void DAT_dump(const dat_file *bin) {
+void DAT_info(const dat_file *bin) {
   DBG_PRINT("BIN Stats:\nChunk Size: %d\nNum Chunks: %d\n\n", bin->chunk_size, bin->num_chunks);
   for (int i = 0; i < bin->num_chunks; i++) {
     DBG_PRINT("Record[%d] %s at 0x%X\n", bin->items[i].offset, bin->items[i].ID, bin->items[i].offset * bin->chunk_size);
@@ -327,7 +328,7 @@ int main(int argc, char **argv) {
   }
 
   /* Dump info and files */
-  //DAT_dump(&input_bin);
+  //DAT_info(&input_bin);
 
   /* Load INI and Parse entries */
   int entry_intersections = 0;

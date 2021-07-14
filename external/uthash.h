@@ -27,7 +27,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define UTHASH_VERSION 2.3.0
 
 #ifdef COSMO
-#include "../tools/cosmo/cosmopolitan.h"
+#include <tools/cosmo/cosmopolitan.h>
 #define HASH_NO_STDINT (1)
 typedef unsigned int uint32_t;
 typedef unsigned char uint8_t;
