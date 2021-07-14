@@ -20,6 +20,8 @@
 #include "../texture/txr_manager.h"
 #include "draw_prototypes.h"
 #include "font_prototypes.h"
+#include "global_settings.h"
+#include "ui_menu_credits.h"
 
 #define UNUSED __attribute__((unused))
 
@@ -85,10 +87,6 @@ static const int pos_gametxr_y = 213;
 /* Our actual gdemu items */
 static const gd_item **list_current;
 static int list_len;
-enum sort_type { DEFAULT,
-                 ALPHA,
-                 SORT_END };
-static enum sort_type sort_current = DEFAULT;
 
 static image txr_focus;
 extern image img_empty_boxart;
@@ -98,6 +96,7 @@ extern image img_empty_boxart;
 static int current_selected_item = 0;
 static int current_starting_index = 0;
 static int navigate_timeout = INPUT_TIMEOUT;
+static enum draw_state draw_current = DRAW_UI;
 
 static void draw_bg_layers(void) {
   {
@@ -163,6 +162,8 @@ static const char *region_code_to_readable(const char *in) {
       return STR_NTSC_U;
     case 'E':
       return STR_PAL;
+    default:
+      return STR_FREE;
   }
   return STR_FREE;
 }
@@ -170,6 +171,10 @@ static const char *region_code_to_readable(const char *in) {
 static void draw_gameinfo(void) {
   char line_buf[26];
   char date_buf[11];
+
+  if (current_selected_item >= list_len) {
+    return;
+  }
 
   font_bmp_begin_draw();
   font_bmp_set_color(color_image_name_highlight); /* Unsure */
@@ -191,6 +196,10 @@ static void draw_gameinfo(void) {
 }
 
 static void draw_gameart(void) {
+  if (current_selected_item >= list_len) {
+    return;
+  }
+
   txr_get_large(list_current[current_selected_item]->product, &txr_focus);
   if (txr_focus.texture == img_empty_boxart.texture) {
     txr_get_small(list_current[current_selected_item]->product, &txr_focus);
@@ -203,16 +212,15 @@ static void draw_gameart(void) {
   draw_draw_image(pos_gametxr_x, pos_gametxr_y, 210, 210, COLOR_WHITE, &txr_focus);
 }
 
-static void menu_decrement(void) {
+static void menu_decrement(int amount) {
   if (navigate_timeout > 0) {
-    navigate_timeout--;
     return;
   }
   if (current_selected_item > 0) {
-    current_selected_item--;
+    current_selected_item -= amount;
   }
   if (current_selected_item < current_starting_index) {
-    current_starting_index--;
+    current_starting_index -= amount;
     if (current_starting_index < 0) {
       current_starting_index = 0;
     }
@@ -220,50 +228,32 @@ static void menu_decrement(void) {
   navigate_timeout = INPUT_TIMEOUT;
 }
 
-static void menu_increment(void) {
+static void menu_increment(int amount) {
   if (navigate_timeout > 0) {
-    navigate_timeout--;
     return;
   }
-
-  if (++current_selected_item >= list_len) {
+  current_selected_item += amount;
+  if (current_selected_item >= list_len) {
     current_selected_item = list_len - 1;
   }
   if (current_selected_item >= current_starting_index + items_per_page) {
-    current_starting_index++;
+    current_starting_index += amount;
   }
   navigate_timeout = INPUT_TIMEOUT;
 }
 
-static void menu_swap_sort(void) {
+static void menu_accept(void) {
   if (navigate_timeout > 0) {
-    navigate_timeout--;
     return;
   }
-  sort_current++;
-  if (sort_current == SORT_END) {
-    sort_current = DEFAULT;
-  }
-  switch (sort_current) {
-    case ALPHA:
-      list_current = list_get_sort_name();
-      break;
-    case DEFAULT:
-    default:
-      list_current = list_get_sort_default();
-      break;
-  }
-  current_selected_item = 0;
-  current_starting_index = 0;
-  navigate_timeout = INPUT_TIMEOUT * 2;
-}
-
-static void menu_accept(void) {
   dreamcast_rungd(list_current[current_selected_item]->slot_num);
 }
 
 FUNCTION(UI_NAME, init) {
   texman_clear();
+  /* @Note: these exist but do we really care? Naturally this will happen without forcing it and old data doesn't matter */
+  //txr_empty_small_pool();
+  //txr_empty_large_pool();
 
   unsigned int temp = texman_create();
   draw_load_texture_buffer("THEME/GDMENU/BG_L.PVR", &txr_bg_left, texman_get_tex_data(temp));
@@ -278,28 +268,35 @@ FUNCTION(UI_NAME, init) {
   printf("Texture scratch free: %d/%d KB (%d/%d bytes)\n", texman_get_space_available() / 1024, (1024 * 1024) / 1024, texman_get_space_available(), (1024 * 1024));
 }
 
-FUNCTION(UI_NAME, setup) {
-  list_current = list_get();
-  list_len = list_length();
-
-  current_selected_item = 0;
-  sort_current = DEFAULT;
-}
-
-FUNCTION_INPUT(UI_NAME, handle_input) {
-  enum control input_current = button;
-  switch (input_current) {
+static void handle_input_ui(enum control input) {
+  switch (input) {
     case UP:
-      menu_decrement();
+      menu_decrement(1);
       break;
     case DOWN:
-      menu_increment();
+      menu_increment(1);
+      break;
+    case TRIG_L:
+      menu_decrement(5);
+      break;
+    case TRIG_R:
+      menu_increment(5);
       break;
     case A:
       menu_accept();
       break;
-    case Y:
-      menu_swap_sort();
+    case START: {
+      draw_current = DRAW_MENU;
+      menu_setup(&draw_current, color_main_default, color_main_highlight);
+      navigate_timeout = INPUT_TIMEOUT * 2;
+    } break;
+    case Y: {
+      extern void arch_menu(void);
+      arch_menu();
+    } break;
+
+      /* These dont do anything */
+    case B:
       break;
 
     /* Always nothing */
@@ -307,14 +304,69 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
     default:
       break;
   }
+  navigate_timeout--;
+}
+
+FUNCTION(UI_NAME, setup) {
+  list_current = list_get();
+  list_len = list_length();
+
+  current_selected_item = 0;
+  current_starting_index = 0;
+  navigate_timeout = INPUT_TIMEOUT * 2;
+  draw_current = DRAW_UI;
+}
+
+FUNCTION_INPUT(UI_NAME, handle_input) {
+  enum control input_current = button;
+  switch (draw_current) {
+    case DRAW_MENU: {
+      handle_input_menu(input_current);
+    } break;
+    case DRAW_CREDITS: {
+      handle_input_credits(input_current);
+    } break;
+    default:
+    case DRAW_UI: {
+      handle_input_ui(input_current);
+    } break;
+  }
 }
 
 FUNCTION(UI_NAME, drawOP) {
   draw_bg_layers();
   draw_gameart();
+  switch (draw_current) {
+    case DRAW_MENU: {
+      /* Menu on top */
+      draw_menu_op();
+    } break;
+    case DRAW_CREDITS: {
+      /* Credits on top */
+      draw_credits_op();
+    } break;
+    default:
+    case DRAW_UI: {
+      /* always drawn */
+    } break;
+  }
 }
 
 FUNCTION(UI_NAME, drawTR) {
   draw_gamelist();
   draw_gameinfo();
+  switch (draw_current) {
+    case DRAW_MENU: {
+      /* Menu on top */
+      draw_menu_tr();
+    } break;
+    case DRAW_CREDITS: {
+      /* Credits on top */
+      draw_credits_tr();
+    } break;
+    default:
+    case DRAW_UI: {
+      /* always drawn */
+    } break;
+  }
 }
