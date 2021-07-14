@@ -30,6 +30,7 @@ void pool_create(block_pool *pool, void *buffer, unsigned int size, unsigned int
 void pool_destroy(block_pool *pool);
 void pool_destroy_user(block_pool *pool, void (*user_free)(void *ptr));
 void pool_get_next_free(block_pool *pool, unsigned int *slot_num, void **ptr);
+void pool_dealloc_all(block_pool *pool);
 void pool_dealloc_slot(block_pool *pool, unsigned int slot_num);
 
 /* inline funcs */

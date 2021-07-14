@@ -14,6 +14,8 @@ struct image;
 
 int txr_create_small_pool(void);
 int txr_create_large_pool(void);
+void txr_empty_small_pool(void);
+void txr_empty_large_pool(void);
 
 int txr_load_DATs(void); /* Loads our DAT files full of images */
 

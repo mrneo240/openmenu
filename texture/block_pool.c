@@ -37,8 +37,7 @@ void pool_create(block_pool *pool, void *buffer, unsigned int size, unsigned int
 }
 
 void pool_get_next_free(block_pool *pool, unsigned int *slot_num, void **ptr) {
-  int i;
-  for (i = 0; i < pool->slots; i++) {
+  for (unsigned int i = 0; i < pool->slots; i++) {
     if (!pool->state[i]) {
       _pool_mark_used(pool, i);
 
@@ -54,6 +53,12 @@ void pool_get_next_free(block_pool *pool, unsigned int *slot_num, void **ptr) {
   /* Error condition */
   *slot_num = 0xFFFFFFFF;
   *ptr = NULL;
+}
+
+void pool_dealloc_all(block_pool *pool) {
+  for (unsigned int i = 0; i < pool->slots; i++) {
+    _pool_mark_open(pool, i);
+  }
 }
 
 void pool_dealloc_slot(block_pool *pool, unsigned int slot_num) {

@@ -87,3 +87,18 @@ void add_to_cache(cache_instance *cache, const char *key, int value) {
     }
   }
 }
+
+void empty_cache(cache_instance *cache) {
+  struct CacheEntry *entry, *tmp_entry;
+  HASH_ITER(hh, cache->cache, entry, tmp_entry) {
+    // prune all entries
+    HASH_DELETE(hh, cache->cache, entry);
+    DBG_PRINT("-del_from_cache( %s )\n", key);
+    if (cache->callback_del) {
+      (*cache->callback_del)(entry->key, &entry->value, cache->callback_data);
+    }
+
+    free(entry->key);
+    free(entry);
+  }
+}

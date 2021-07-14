@@ -39,6 +39,9 @@ static dat_file dat_icon;
 static dat_file dat_box;
 
 unsigned int block_pool_add_cb(const char *key, void *user) {
+  /* unused here but could be good info to know */
+  (void)key;
+
   block_pool *pool = (block_pool *)user;
   unsigned int ret;
   char *ptr;
@@ -47,6 +50,9 @@ unsigned int block_pool_add_cb(const char *key, void *user) {
 }
 
 unsigned int block_pool_del_cb(const char *key, void *value, void *user) {
+  /* unused here but could be good info to know */
+  (void)key;
+
   block_pool *pool = (block_pool *)user;
   unsigned int slot_num = *(unsigned int *)value;
   pool_dealloc_slot(pool, slot_num);
@@ -87,6 +93,16 @@ int txr_create_large_pool(void) {
   cache_callback_add(&cache_large, block_pool_add_cb);
   cache_callback_del(&cache_large, block_pool_del_cb);
   return 0;
+}
+
+void txr_empty_small_pool(void) {
+  empty_cache(&cache_small);
+  pool_dealloc_all(&pvr_small);
+}
+
+void txr_empty_large_pool(void) {
+  empty_cache(&cache_large);
+  pool_dealloc_all(&pvr_large);
 }
 
 /*
