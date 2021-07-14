@@ -20,8 +20,8 @@
 #include "animation.h"
 #include "draw_prototypes.h"
 #include "font_prototypes.h"
-
-extern void ui_cycle_next(void);
+#include "global_settings.h"
+#include "ui_menu_credits.h"
 
 /* Scaling */
 #define ASPECT_WIDE (0)
@@ -79,7 +79,7 @@ static bool direction_last = false;
 static bool direction_current = false;
 #define direction_held (direction_last & direction_current)
 
-static vec2d pos_highlight = (vec2d){.x = 0.f, .y = 0.f};
+static vec2d pos_highlight = {.x = 0.f, .y = 0.f};
 static anim2d anim_highlight;
 
 static anim2d anim_large_art_pos;
@@ -97,12 +97,6 @@ extern image img_empty_boxart;
 /* Our actual gdemu items */
 static const gd_item **list_current;
 static int list_len;
-enum sort_type { DEFAULT,
-                 ALPHA,
-                 DATE,
-                 PRODUCT,
-                 SORT_END };
-static enum sort_type sort_current = DEFAULT;
 
 typedef struct theme_region {
   const char *bg_left;
@@ -112,53 +106,44 @@ typedef struct theme_region {
   uint32_t highlight_color;
 } theme_region;
 
-static theme_region themes[] = {
+static theme_region region_themes[] = {
 #if defined(ASPECT_WIDE) && ASPECT_WIDE
-    (theme_region){
-        .bg_left = "THEME/NTSC_U/BG_U_L.PVR",
-        .bg_right = "THEME/NTSC_U/BG_U_R.PVR",
-        .icon_set = &txr_icons_white,
-        .text_color = COLOR_WHITE,
-        .highlight_color = COLOR_ORANGE_U},
-    (theme_region){
-        .bg_left = "THEME/NTSC_J/BG_J_L_WIDE.PVR",
-        .bg_right = "THEME/NTSC_J/BG_J_R_WIDE.PVR",
-        .icon_set = &txr_icons_black,
-        .text_color = COLOR_BLACK,
-        .highlight_color = COLOR_ORANGE_J},
-    (theme_region){
-        .bg_left = "THEME/PAL/BG_E_L_WIDE.PVR",
-        .bg_right = "THEME/PAL/BG_E_R_WIDE.PVR",
-        .icon_set = &txr_icons_black,
-        .text_color = COLOR_BLACK,
-        .highlight_color = COLOR_BLUE},
+    {.bg_left = "THEME/NTSC_U/BG_U_L.PVR",
+     .bg_right = "THEME/NTSC_U/BG_U_R.PVR",
+     .icon_set = &txr_icons_white,
+     .text_color = COLOR_WHITE,
+     .highlight_color = COLOR_ORANGE_U},
+    {.bg_left = "THEME/NTSC_J/BG_J_L_WIDE.PVR",
+     .bg_right = "THEME/NTSC_J/BG_J_R_WIDE.PVR",
+     .icon_set = &txr_icons_black,
+     .text_color = COLOR_BLACK,
+     .highlight_color = COLOR_ORANGE_J},
+    {.bg_left = "THEME/PAL/BG_E_L_WIDE.PVR",
+     .bg_right = "THEME/PAL/BG_E_R_WIDE.PVR",
+     .icon_set = &txr_icons_black,
+     .text_color = COLOR_BLACK,
+     .highlight_color = COLOR_BLUE},
 #else
-    (theme_region){
-        .bg_left = "THEME/NTSC_U/BG_U_L.PVR",
-        .bg_right = "THEME/NTSC_U/BG_U_R.PVR",
-        .icon_set = &txr_icons_white,
-        .text_color = COLOR_WHITE,
-        .highlight_color = COLOR_ORANGE_U},
-    (theme_region){
-        .bg_left = "THEME/NTSC_J/BG_J_L.PVR",
-        .bg_right = "THEME/NTSC_J/BG_J_R.PVR",
-        .icon_set = &txr_icons_black,
-        .text_color = COLOR_BLACK,
-        .highlight_color = COLOR_ORANGE_J},
-    (theme_region){
-        .bg_left = "THEME/PAL/BG_E_L.PVR",
-        .bg_right = "THEME/PAL/BG_E_R.PVR",
-        .icon_set = &txr_icons_black,
-        .text_color = COLOR_BLACK,
-        .highlight_color = COLOR_BLUE},
+    {.bg_left = "THEME/NTSC_U/BG_U_L.PVR",
+     .bg_right = "THEME/NTSC_U/BG_U_R.PVR",
+     .icon_set = &txr_icons_white,
+     .text_color = COLOR_WHITE,
+     .highlight_color = COLOR_ORANGE_U},
+    {.bg_left = "THEME/NTSC_J/BG_J_L.PVR",
+     .bg_right = "THEME/NTSC_J/BG_J_R.PVR",
+     .icon_set = &txr_icons_black,
+     .text_color = COLOR_BLACK,
+     .highlight_color = COLOR_ORANGE_J},
+    {.bg_left = "THEME/PAL/BG_E_L.PVR",
+     .bg_right = "THEME/PAL/BG_E_R.PVR",
+     .icon_set = &txr_icons_black,
+     .text_color = COLOR_BLACK,
+     .highlight_color = COLOR_BLUE},
 #endif
 };
-enum theme { NTSC_U = 0,
-             NTSC_J,
-             PAL,
-             THEME_END
-};
-static enum theme theme_current = NTSC_U;
+
+static region region_current = REGION_NTSC_U;
+static enum draw_state draw_current = DRAW_UI;
 
 static void draw_bg_layers(void) {
   {
@@ -199,22 +184,22 @@ static void setup_highlight_animation(void) {
   }
   anim_highlight.start.x = start_x;
   anim_highlight.start.y = start_y;
-  anim_highlight.end.x = HIGHLIGHT_X_POS(screen_column);
-  anim_highlight.end.y = HIGHLIGHT_Y_POS(screen_row);
+  anim_highlight.end.x = (float)HIGHLIGHT_X_POS(screen_column);
+  anim_highlight.end.y = (float)HIGHLIGHT_Y_POS(screen_row);
   anim_highlight.time.frame_now = 0;
   anim_highlight.time.frame_len = ANIM_FRAMES;
   anim_highlight.time.active = true;
 }
 
 static void draw_static_highlight(int width, int height) {
-  draw_draw_image(pos_highlight.x, pos_highlight.y, width, height, themes[theme_current].highlight_color, &txr_highlight);
+  draw_draw_image(pos_highlight.x, pos_highlight.y, width, height, region_themes[region_current].highlight_color, &txr_highlight);
 }
 
 static void draw_animated_highlight(int width, int height) {
   /* Always draw on top */
   float z = z_get();
-  z_set(256.0f);
-  draw_draw_image(anim_highlight.cur.x, anim_highlight.cur.y, width, height, themes[theme_current].highlight_color, &txr_highlight);
+  z_set(200.0f);
+  draw_draw_image(anim_highlight.cur.x, anim_highlight.cur.y, width, height, region_themes[region_current].highlight_color, &txr_highlight);
   z_set(z);
 }
 
@@ -313,7 +298,6 @@ static void kill_large_art_animation(void) {
 
 static void menu_up(int amount) {
   if (direction_held && navigate_timeout > 0) {
-    navigate_timeout--;
     return;
   }
 
@@ -329,7 +313,6 @@ static void menu_up(int amount) {
 
 static void menu_down(int amount) {
   if (direction_held && navigate_timeout > 0) {
-    navigate_timeout--;
     return;
   }
 
@@ -345,7 +328,6 @@ static void menu_down(int amount) {
 
 static void menu_left(void) {
   if (direction_held && navigate_timeout > 0) {
-    navigate_timeout--;
     return;
   }
 
@@ -367,7 +349,6 @@ static void menu_left(void) {
 
 static void menu_right(void) {
   if (direction_held && navigate_timeout > 0) {
-    navigate_timeout--;
     return;
   }
   screen_column++;
@@ -387,60 +368,10 @@ static void menu_right(void) {
 }
 
 static void menu_accept(void) {
+  if (navigate_timeout > 0) {
+    return;
+  }
   dreamcast_rungd(list_current[current_selected()]->slot_num);
-}
-
-static void menu_swap_sort(void) {
-  if (navigate_timeout > 0) {
-    navigate_timeout--;
-    return;
-  }
-  sort_current++;
-  if (sort_current == SORT_END) {
-    sort_current = DEFAULT;
-  }
-  switch (sort_current) {
-    case ALPHA:
-      list_current = list_get_sort_name();
-      break;
-    case DATE:
-      list_current = list_get_sort_date();
-      break;
-    case PRODUCT:
-      list_current = list_get_sort_product();
-      break;
-    case DEFAULT:
-    default:
-      list_current = list_get_sort_default();
-      break;
-  }
-
-  frames_focused = 0;
-  screen_column = screen_row = 0;
-  current_starting_index = 0;
-  navigate_timeout = INPUT_TIMEOUT;
-}
-
-static void menu_cycle_ui(void) {
-  if (navigate_timeout > 0) {
-    navigate_timeout--;
-    return;
-  }
-  ui_cycle_next();
-  navigate_timeout = INPUT_TIMEOUT;
-}
-
-static void menu_theme_cycle(void) {
-  if (navigate_timeout > 0) {
-    navigate_timeout--;
-    return;
-  }
-  theme_current++;
-  if (theme_current == THEME_END) {
-    theme_current = 0;
-  }
-  GRID_3_init();
-  navigate_timeout = INPUT_TIMEOUT;
 }
 
 static void menu_show_large_art(void) {
@@ -473,6 +404,10 @@ static void menu_show_large_art(void) {
 FUNCTION(UI_NAME, init) {
   texman_clear();
 
+  /* Set region from preferences */
+  openmenu_settings *settings = settings_get();
+  region_current = settings->region;
+
   /* on user for now, may change */
   unsigned int temp = texman_create();
   draw_load_texture_buffer("EMPTY.PVR", &img_empty_boxart, texman_get_tex_data(temp));
@@ -483,11 +418,11 @@ FUNCTION(UI_NAME, init) {
   texman_reserve_memory(txr_highlight.width, txr_highlight.height, 2 /* 16Bit */);
 
   temp = texman_create();
-  draw_load_texture_buffer(themes[theme_current].bg_left, &txr_bg_left, texman_get_tex_data(temp));
+  draw_load_texture_buffer(region_themes[region_current].bg_left, &txr_bg_left, texman_get_tex_data(temp));
   texman_reserve_memory(txr_bg_left.width, txr_bg_left.height, 2 /* 16Bit */);
 
   temp = texman_create();
-  draw_load_texture_buffer(themes[theme_current].bg_right, &txr_bg_right, texman_get_tex_data(temp));
+  draw_load_texture_buffer(region_themes[region_current].bg_right, &txr_bg_right, texman_get_tex_data(temp));
   texman_reserve_memory(txr_bg_right.width, txr_bg_right.height, 2 /* 16Bit */);
 
 #if 0
@@ -498,7 +433,7 @@ FUNCTION(UI_NAME, init) {
   draw_load_texture_buffer("THEME/SHARED/ICON_WHITE.PVR", &txr_icons_white, texman_get_tex_data(temp));
   texman_reserve_memory(txr_icons_white.width, txr_icons_white.height, 2 /* 16Bit */);
   //txr_icons_current = &txr_icons_white;
-  txr_icons_current = themes[theme_current].icon_set;
+  txr_icons_current = themes[region_current].icon_set;
 #endif
 
   font_bmf_init("FONT/BASILEA.FNT", "FONT/BASILEA_W.PVR");
@@ -506,28 +441,11 @@ FUNCTION(UI_NAME, init) {
   printf("Texture scratch free: %d/%d KB (%d/%d bytes)\n", texman_get_space_available() / 1024, (1024 * 1024) / 1024, texman_get_space_available(), (1024 * 1024));
 }
 
-/* Reset variables sensibly */
-FUNCTION(UI_NAME, setup) {
-  list_current = list_get();
-  list_len = list_length();
-
-  screen_column = screen_row = 0;
-  current_starting_index = 0;
-  navigate_timeout = INPUT_TIMEOUT;
-  sort_current = DEFAULT;
-
-  anim_clear(&anim_highlight);
-  anim_clear(&anim_large_art_pos);
-  anim_clear(&anim_large_art_scale);
-}
-
-FUNCTION_INPUT(UI_NAME, handle_input) {
+static void handle_input_ui(enum control input) {
   direction_last = direction_current;
   direction_current = false;
   boxart_button_held = false;
-
-  enum control input_current = button;
-  switch (input_current) {
+  switch (input) {
     case LEFT:
       direction_current = true;
       menu_left();
@@ -555,21 +473,23 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
     case A:
       menu_accept();
       break;
-    case START:
-      menu_swap_sort();
-      break;
-    case Y:
-      menu_cycle_ui();
-      break;
+    case START: {
+      draw_current = DRAW_MENU;
+      menu_setup(&draw_current, region_themes[region_current].text_color, region_themes[region_current].highlight_color);
+      navigate_timeout = INPUT_TIMEOUT * 2;
+    } break;
+    case Y: {
+      extern void arch_menu(void);
+      arch_menu();
+    } break;
     case X:
       menu_show_large_art();
       boxart_button_held = true;
       break;
-    case B:
-      menu_theme_cycle();
-      break;
 
     /* These dont do anything */
+    case B:
+      break;
 
     /* Always nothing */
     case NONE:
@@ -582,18 +502,80 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
   if (screen_column < 0) {
     screen_column = 0;
   }
+
+  navigate_timeout--;
+}
+
+/* Reset variables sensibly */
+FUNCTION(UI_NAME, setup) {
+  list_current = list_get();
+  list_len = list_length();
+
+  screen_column = screen_row = 0;
+  current_starting_index = 0;
+  draw_current = DRAW_UI;
+
+  navigate_timeout = INPUT_TIMEOUT * 2;
+
+  anim_clear(&anim_highlight);
+  anim_clear(&anim_large_art_pos);
+  anim_clear(&anim_large_art_scale);
+}
+
+FUNCTION_INPUT(UI_NAME, handle_input) {
+  enum control input_current = button;
+  switch (draw_current) {
+    case DRAW_MENU: {
+      handle_input_menu(input_current);
+    } break;
+    case DRAW_CREDITS: {
+      handle_input_credits(input_current);
+    } break;
+    default:
+    case DRAW_UI: {
+      handle_input_ui(input_current);
+    } break;
+  }
 }
 
 FUNCTION(UI_NAME, drawOP) {
   draw_bg_layers();
+  switch (draw_current) {
+    case DRAW_MENU: {
+      /* Menu on top */
+      draw_menu_op();
+    } break;
+    case DRAW_CREDITS: {
+      /* Credits on top */
+      draw_credits_op();
+    } break;
+    default:
+    case DRAW_UI: {
+      /* always drawn */
+    } break;
+  }
 }
 
 FUNCTION(UI_NAME, drawTR) {
-  //anim_highlight.time.active = false;
   update_time();
 
   draw_grid_boxes();
 
   font_bmf_begin_draw();
-  font_bmf_draw_centered_auto_size((SCR_WIDTH / 2) * X_SCALE, 434, themes[theme_current].text_color, list_current[current_selected()]->name, (SCR_WIDTH - (10 * 2)) * X_SCALE);
+  font_bmf_draw_centered_auto_size((SCR_WIDTH / 2) * X_SCALE, 434, region_themes[region_current].text_color, list_current[current_selected()]->name, (SCR_WIDTH - (10 * 2)) * X_SCALE);
+
+  switch (draw_current) {
+    case DRAW_MENU: {
+      /* Menu on top */
+      draw_menu_tr();
+    } break;
+    case DRAW_CREDITS: {
+      /* Credits on top */
+      draw_credits_tr();
+    } break;
+    default:
+    case DRAW_UI: {
+      /* always drawn */
+    } break;
+  }
 }
