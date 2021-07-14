@@ -187,7 +187,9 @@ static void _font_bmp_draw_string(int x1, int y1, const char *str) {
   pvr_prim(charbuf, charbuffered * sizeof(charbuf[0]));
 }
 
+/* @Note: revisit this */
 void font_bmp_draw_sub_wrap(int x1, int y1, int width, const char *str) {
+  (void)width;
 #if 0
   int x_start = x1;
   do {

@@ -13,6 +13,8 @@
 
 #include "../backend/gd_list.h"
 
+/* @Note: whats the plan here? */
+
 FUNCTION(UI_NAME, init) {
 }
 
@@ -20,6 +22,7 @@ FUNCTION(UI_NAME, setup) {
 }
 
 FUNCTION_INPUT(UI_NAME, handle_input) {
+  (void)button;
 }
 
 FUNCTION(UI_NAME, draw) {
