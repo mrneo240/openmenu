@@ -23,6 +23,7 @@
 #include "ui/common.h"
 #include "ui/dc/input.h"
 #include "ui/draw_prototypes.h"
+#include "ui/global_settings.h"
 
 /* UI Collection */
 #include "ui/ui_grid.h"
@@ -54,40 +55,29 @@ typedef struct ui_template {
   }
 
 static ui_template ui_choices[] = {
-    //UI_TEMPLATE(GDMENU_EMU),
     UI_TEMPLATE(LIST_DESC),
     UI_TEMPLATE(GRID_3),
+    UI_TEMPLATE(GDMENU_EMU),
 };
 
 static const int num_ui_choices = sizeof(ui_choices) / sizeof(ui_template);
 static int ui_choice_current = 0;
 
-void ui_set_choice(int choice) {
-  if (choice >= 0 && choice < num_ui_choices) {
-    current_ui_init = ui_choices[choice].init;
-    current_ui_setup = ui_choices[choice].setup;
-    current_ui_draw_OP = ui_choices[choice].drawOP;
-    current_ui_draw_TR = ui_choices[choice].drawTR;
-    current_ui_handle_input = ui_choices[choice].handle_input;
-
-    ui_choice_current = choice;
-
-    /* Call init & setup */
-    (*current_ui_init)();
-    (*current_ui_setup)();
+static void ui_set_choice(int choice) {
+  if (choice < UI_START || choice >= num_ui_choices) {
+    choice = UI_START;
   }
-}
+  current_ui_init = ui_choices[choice].init;
+  current_ui_setup = ui_choices[choice].setup;
+  current_ui_draw_OP = ui_choices[choice].drawOP;
+  current_ui_draw_TR = ui_choices[choice].drawTR;
+  current_ui_handle_input = ui_choices[choice].handle_input;
 
-void ui_set_default(void) {
-  ui_set_choice(0);
-}
+  ui_choice_current = choice;
 
-void ui_cycle_next(void) {
-  ui_choice_current++;
-  if (ui_choice_current > num_ui_choices) {
-    ui_choice_current = 0;
-  }
-  ui_set_choice(ui_choice_current);
+  /* Call init & setup */
+  (*current_ui_init)();
+  (*current_ui_setup)();
 }
 
 int round(float x) {
@@ -95,6 +85,11 @@ int round(float x) {
     return (int)(x - 0.5f);
   else
     return (int)(x + 0.5f);
+}
+
+void reload_ui(void) {
+  openmenu_settings *settings = settings_get();
+  ui_set_choice(settings->ui);
 }
 
 static int init(void) {
@@ -106,9 +101,14 @@ static int init(void) {
   ret += list_read_default();
   ret += db_load_DAT();
 
+  /* setup internal memory zones */
   draw_init();
 
-  ui_set_default();
+  /* Load settings */
+  settings_init();
+
+  /* Load UI */
+  reload_ui();
 
   return ret;
 }
@@ -290,6 +290,10 @@ static void init_gfx_pvr(void) {
 }
 
 int main(int argc, char *argv[]) {
+  /* unused */
+  (void)argc;
+  (void)argv;
+
   fflush(stdout);
   setbuf(stdout, NULL);
   init_gfx_pvr();
