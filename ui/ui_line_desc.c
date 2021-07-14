@@ -20,8 +20,8 @@
 #include "../texture/txr_manager.h"
 #include "draw_prototypes.h"
 #include "font_prototypes.h"
-
-extern void ui_cycle_next(void);
+#include "global_settings.h"
+#include "ui_menu_credits.h"
 
 /* List managment */
 #define INPUT_TIMEOUT (10)
@@ -46,12 +46,6 @@ extern image img_empty_boxart;
 /* Our actual gdemu items */
 static const gd_item **list_current;
 static int list_len;
-enum sort_type { DEFAULT,
-                 ALPHA,
-                 DATE,
-                 PRODUCT,
-                 SORT_END };
-static enum sort_type sort_current = DEFAULT;
 
 typedef struct theme_region {
   const char *bg_left;
@@ -61,55 +55,46 @@ typedef struct theme_region {
   uint32_t highlight_color;
 } theme_region;
 
-static theme_region themes[] = {
+static theme_region region_themes[] = {
 #if defined(ASPECT_WIDE) && ASPECT_WIDE
-    (theme_region){
-        .bg_left = "THEME/NTSC_U/BG_U_L.PVR",
-        .bg_right = "THEME/NTSC_U/BG_U_R.PVR",
-        .icon_set = &txr_icons_white,
-        .text_color = COLOR_WHITE,
-        .highlight_color = COLOR_ORANGE_U},
-    (theme_region){
-        .bg_left = "THEME/NTSC_J/BG_J_L_WIDE.PVR",
-        .bg_right = "THEME/NTSC_J/BG_J_R_WIDE.PVR",
-        .icon_set = &txr_icons_black,
-        .text_color = COLOR_BLACK,
-        .highlight_color = COLOR_ORANGE_J},
-    (theme_region){
-        .bg_left = "THEME/PAL/BG_E_L_WIDE.PVR",
-        .bg_right = "THEME/PAL/BG_E_R_WIDE.PVR",
-        .icon_set = &txr_icons_black,
-        .text_color = COLOR_BLACK,
-        .highlight_color = COLOR_BLUE},
+    {.bg_left = "THEME/NTSC_U/BG_U_L.PVR",
+     .bg_right = "THEME/NTSC_U/BG_U_R.PVR",
+     .icon_set = &txr_icons_white,
+     .text_color = COLOR_WHITE,
+     .highlight_color = COLOR_ORANGE_U},
+    {.bg_left = "THEME/NTSC_J/BG_J_L_WIDE.PVR",
+     .bg_right = "THEME/NTSC_J/BG_J_R_WIDE.PVR",
+     .icon_set = &txr_icons_black,
+     .text_color = COLOR_BLACK,
+     .highlight_color = COLOR_ORANGE_J},
+    {.bg_left = "THEME/PAL/BG_E_L_WIDE.PVR",
+     .bg_right = "THEME/PAL/BG_E_R_WIDE.PVR",
+     .icon_set = &txr_icons_black,
+     .text_color = COLOR_BLACK,
+     .highlight_color = COLOR_BLUE},
 #else
-    (theme_region){
-        .bg_left = "THEME/NTSC_U/BG_U_L.PVR",
-        .bg_right = "THEME/NTSC_U/BG_U_R.PVR",
-        .icon_set = &txr_icons_white,
-        .text_color = COLOR_WHITE,
-        .highlight_color = COLOR_ORANGE_U},
-    (theme_region){
-        .bg_left = "THEME/NTSC_J/BG_J_L.PVR",
-        .bg_right = "THEME/NTSC_J/BG_J_R.PVR",
-        .icon_set = &txr_icons_black,
-        .text_color = COLOR_BLACK,
-        .highlight_color = COLOR_ORANGE_J},
-    (theme_region){
-        .bg_left = "THEME/PAL/BG_E_L.PVR",
-        .bg_right = "THEME/PAL/BG_E_R.PVR",
-        .icon_set = &txr_icons_black,
-        .text_color = COLOR_BLACK,
-        .highlight_color = COLOR_BLUE},
+    {.bg_left = "THEME/NTSC_U/BG_U_L.PVR",
+     .bg_right = "THEME/NTSC_U/BG_U_R.PVR",
+     .icon_set = &txr_icons_white,
+     .text_color = COLOR_WHITE,
+     .highlight_color = COLOR_ORANGE_U},
+    {.bg_left = "THEME/NTSC_J/BG_J_L.PVR",
+     .bg_right = "THEME/NTSC_J/BG_J_R.PVR",
+     .icon_set = &txr_icons_black,
+     .text_color = COLOR_BLACK,
+     .highlight_color = COLOR_ORANGE_J},
+    {.bg_left = "THEME/PAL/BG_E_L.PVR",
+     .bg_right = "THEME/PAL/BG_E_R.PVR",
+     .icon_set = &txr_icons_black,
+     .text_color = COLOR_BLACK,
+     .highlight_color = COLOR_BLUE},
 #endif
 };
-enum theme { NTSC_U = 0,
-             NTSC_J,
-             PAL,
-             THEME_END };
-static enum theme theme_current = NTSC_U;
 
-static void
-draw_bg_layers(void) {
+static region region_current = REGION_NTSC_U;
+static enum draw_state draw_current = DRAW_UI;
+
+static void draw_bg_layers(void) {
   {
     const dimen_RECT left = {.x = 0, .y = 0, .w = 512, .h = 480};
     draw_draw_sub_image(0, 0, 512, 480, COLOR_WHITE, &txr_bg_left, &left);
@@ -167,7 +152,7 @@ static void draw_small_box_highlight(void) {
     num_icons++;
   }
 
-  draw_draw_square(x_start + (icon_size + icon_spacing) * highlighted_icon - 4.0f, y_pos - 4.0f, icon_size + 8, themes[theme_current].highlight_color, &txr_highlight);
+  draw_draw_square(x_start + (icon_size + icon_spacing) * highlighted_icon - 4.0f, y_pos - 4.0f, icon_size + 8, region_themes[region_current].highlight_color, &txr_highlight);
 
 #undef LIST_ADJUST
 }
@@ -178,20 +163,20 @@ static void draw_game_meta(void) {
   /* Then text after */
   font_bmf_begin_draw();
   font_bmf_set_height_default();
-  font_bmf_draw_auto_size(316, 92 - 20, themes[theme_current].text_color, list_current[current_selected_item]->name, 640 - 316 - 10);
+  font_bmf_draw_auto_size(316, 92 - 20, region_themes[region_current].text_color, list_current[current_selected_item]->name, 640 - 316 - 10);
 
   const char *synopsis;
   if (current_meta) {
     /* success! */
     synopsis = current_meta->description;
-    font_bmf_draw_sub_wrap(316, 136 - 20 - 8, themes[theme_current].text_color, synopsis, 640 - 316 - 10); /* was 316,128 */
+    font_bmf_draw_sub_wrap(316, 136 - 20 - 8, region_themes[region_current].text_color, synopsis, 640 - 316 - 10); /* was 316,128 */
 
     font_bmf_set_height(12.0f);
-    font_bmf_draw_centered(326 + (20 / 2), 282 + 12, themes[theme_current].text_color, db_format_nplayers_str(current_meta->num_players));
-    //font_bmf_draw_centered(396 + (16 / 2), 282 + 12, themes[theme_current].text_color, "VMU");
-    font_bmf_draw_centered(396 + (16 / 2), 282 + 12, themes[theme_current].text_color, db_format_vmu_blocks_str(current_meta->vmu_blocks));
-    font_bmf_draw_centered(460 + (34 / 2), 282 + 12, themes[theme_current].text_color, "Jump Pack");
-    font_bmf_draw_centered(534 + (22 / 2), 282 + 12, themes[theme_current].text_color, "Modem");
+    font_bmf_draw_centered(326 + (20 / 2), 282 + 12, region_themes[region_current].text_color, db_format_nplayers_str(current_meta->num_players));
+    //font_bmf_draw_centered(396 + (16 / 2), 282 + 12, region_themes[region_current].text_color, "VMU");
+    font_bmf_draw_centered(396 + (16 / 2), 282 + 12, region_themes[region_current].text_color, db_format_vmu_blocks_str(current_meta->vmu_blocks));
+    font_bmf_draw_centered(460 + (34 / 2), 282 + 12, region_themes[region_current].text_color, "Jump Pack");
+    font_bmf_draw_centered(534 + (22 / 2), 282 + 12, region_themes[region_current].text_color, "Modem");
 
     /* Draw Icons */
     {
@@ -224,7 +209,6 @@ static void menu_changed_item(void) {
 
 static void menu_decrement(int amount) {
   if (navigate_timeout > 0) {
-    navigate_timeout--;
     return;
   }
   current_selected_item -= amount;
@@ -237,7 +221,6 @@ static void menu_decrement(int amount) {
 
 static void menu_increment(int amount) {
   if (navigate_timeout > 0) {
-    navigate_timeout--;
     return;
   }
   current_selected_item += amount;
@@ -249,58 +232,10 @@ static void menu_increment(int amount) {
 }
 
 static void menu_accept(void) {
+  if (navigate_timeout > 0) {
+    return;
+  }
   dreamcast_rungd(list_current[current_selected_item]->slot_num);
-}
-
-static void menu_swap_sort(void) {
-  if (navigate_timeout > 0) {
-    navigate_timeout--;
-    return;
-  }
-  sort_current++;
-  if (sort_current == SORT_END) {
-    sort_current = DEFAULT;
-  }
-  switch (sort_current) {
-    case ALPHA:
-      list_current = list_get_sort_name();
-      break;
-    case DATE:
-      list_current = list_get_sort_date();
-      break;
-    case PRODUCT:
-      list_current = list_get_sort_product();
-      break;
-    case DEFAULT:
-    default:
-      list_current = list_get_sort_default();
-      break;
-  }
-  current_selected_item = 0;
-  navigate_timeout = INPUT_TIMEOUT;
-  frames_focused = 0;
-}
-
-static void menu_theme_cycle(void) {
-  if (navigate_timeout > 0) {
-    navigate_timeout--;
-    return;
-  }
-  theme_current++;
-  if (theme_current == THEME_END) {
-    theme_current = NTSC_U;
-  }
-  LIST_DESC_init();
-  navigate_timeout = INPUT_TIMEOUT;
-}
-
-static void menu_cycle_ui(void) {
-  if (navigate_timeout > 0) {
-    navigate_timeout--;
-    return;
-  }
-  ui_cycle_next();
-  navigate_timeout = INPUT_TIMEOUT;
 }
 
 static void update_data(void) {
@@ -321,6 +256,10 @@ static void update_data(void) {
 FUNCTION(UI_NAME, init) {
   texman_clear();
 
+  /* Set region from preferences */
+  openmenu_settings *settings = settings_get();
+  region_current = settings->region;
+
   /* on user for now, may change */
   unsigned int temp = texman_create();
   draw_load_texture_buffer("EMPTY.PVR", &img_empty_boxart, texman_get_tex_data(temp));
@@ -331,11 +270,11 @@ FUNCTION(UI_NAME, init) {
   texman_reserve_memory(txr_highlight.width, txr_highlight.height, 2 /* 16Bit */);
 
   temp = texman_create();
-  draw_load_texture_buffer(themes[theme_current].bg_left, &txr_bg_left, texman_get_tex_data(temp));
+  draw_load_texture_buffer(region_themes[region_current].bg_left, &txr_bg_left, texman_get_tex_data(temp));
   texman_reserve_memory(txr_bg_left.width, txr_bg_left.height, 2 /* 16Bit */);
 
   temp = texman_create();
-  draw_load_texture_buffer(themes[theme_current].bg_right, &txr_bg_right, texman_get_tex_data(temp));
+  draw_load_texture_buffer(region_themes[region_current].bg_right, &txr_bg_right, texman_get_tex_data(temp));
   texman_reserve_memory(txr_bg_right.width, txr_bg_right.height, 2 /* 16Bit */);
 
   temp = texman_create();
@@ -346,28 +285,15 @@ FUNCTION(UI_NAME, init) {
   draw_load_texture_buffer("THEME/SHARED/ICON_WHITE.PVR", &txr_icons_white, texman_get_tex_data(temp));
   texman_reserve_memory(txr_icons_white.width, txr_icons_white.height, 2 /* 16Bit */);
 
-  txr_icons_current = themes[theme_current].icon_set;
+  txr_icons_current = region_themes[region_current].icon_set;
 
   font_bmf_init("FONT/BASILEA.FNT", "FONT/BASILEA_W.PVR");
 
   printf("Texture scratch free: %d/%d KB (%d/%d bytes)\n", texman_get_space_available() / 1024, (1024 * 1024) / 1024, texman_get_space_available(), (1024 * 1024));
 }
 
-FUNCTION(UI_NAME, setup) {
-  list_current = list_get();
-  list_len = list_length();
-
-  current_selected_item = 0;
-  sort_current = DEFAULT;
-  frames_focused = 0;
-
-  navigate_timeout = INPUT_TIMEOUT;
-  menu_changed_item();
-}
-
-FUNCTION_INPUT(UI_NAME, handle_input) {
-  enum control input_current = button;
-  switch (input_current) {
+static void handle_input_ui(enum control input) {
+  switch (input) {
     case LEFT:
       menu_decrement(1);
       break;
@@ -389,17 +315,19 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
     case A:
       menu_accept();
       break;
-    case START:
-      menu_swap_sort();
-      break;
-    case Y:
-      menu_cycle_ui();
-      break;
-    case B:
-      menu_theme_cycle();
-      break;
+    case START: {
+      draw_current = DRAW_MENU;
+      menu_setup(&draw_current, region_themes[region_current].text_color, region_themes[region_current].highlight_color);
+      navigate_timeout = INPUT_TIMEOUT * 2;
+    } break;
+    case Y: {
+      extern void arch_menu(void);
+      arch_menu();
+    } break;
 
       /* These dont do anything */
+    case B:
+      break;
     case X:
       break;
     /* Always nothing */
@@ -407,36 +335,77 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
     default:
       break;
   }
+
+  navigate_timeout--;
+}
+
+FUNCTION(UI_NAME, setup) {
+  list_current = list_get();
+  list_len = list_length();
+
+  current_selected_item = 0;
+  frames_focused = 0;
+  draw_current = DRAW_UI;
+
+  navigate_timeout = INPUT_TIMEOUT * 2;
+  menu_changed_item();
+}
+
+FUNCTION_INPUT(UI_NAME, handle_input) {
+  enum control input_current = button;
+  switch (draw_current) {
+    case DRAW_MENU: {
+      handle_input_menu(input_current);
+    } break;
+    case DRAW_CREDITS: {
+      handle_input_credits(input_current);
+    } break;
+    default:
+    case DRAW_UI: {
+      handle_input_ui(input_current);
+    } break;
+  }
 }
 
 FUNCTION(UI_NAME, drawOP) {
   update_data();
-
   draw_bg_layers();
-  draw_small_boxes();
-  draw_big_box();
+
+  switch (draw_current) {
+    case DRAW_MENU: {
+      /* Menu on top */
+      draw_menu_op();
+    } break;
+    case DRAW_CREDITS: {
+      /* Credits on top */
+      draw_credits_op();
+    } break;
+    default:
+    case DRAW_UI: {
+      /* always drawn */
+    } break;
+  }
 }
 
 FUNCTION(UI_NAME, drawTR) {
   draw_small_box_highlight();
   draw_game_meta();
-#if 0
-  const char *text = NULL;
-  switch (sort_current) {
-    case ALPHA:
-      text = "Name";
-      break;
-    case DATE:
-      text = "Date";
-      break;
-    case PRODUCT:
-      text = "Product ID";
-      break;
-    case DEFAULT:
+
+  draw_small_boxes();
+  draw_big_box();
+
+  switch (draw_current) {
+    case DRAW_MENU: {
+      /* Menu on top */
+      draw_menu_tr();
+    } break;
+    case DRAW_CREDITS: {
+      /* Credits on top */
+      draw_credits_tr();
+    } break;
     default:
-      text = "SD Card Order";
-      break;
+    case DRAW_UI: {
+      /* always drawn */
+    } break;
   }
-  //font_bmf_draw_main(4, 440, themes[theme_current].text_color, text);
-#endif
 }
