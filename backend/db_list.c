@@ -31,7 +31,7 @@ int db_load_DAT(void) {
   fread(db, sizeof(db_item), dat_meta.num_chunks, (FD_TYPE)dat_meta.handle);
   fclose((FD_TYPE)dat_meta.handle);
 
-  DAT_dump(&dat_meta);
+  DAT_info(&dat_meta);
 
   return 0;
 }

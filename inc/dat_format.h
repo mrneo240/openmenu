@@ -10,7 +10,7 @@
 
 #pragma once
 
-#include "uthash.h"
+#include <external/uthash.h>
 
 typedef struct bin_item {
   char ID[12];
@@ -42,7 +42,7 @@ typedef struct dat_file {
 
 int DAT_init(dat_file *bin);
 int DAT_load_parse(dat_file *bin, const char *path);
-void DAT_dump(const dat_file *bin);
+void DAT_info(const dat_file *bin);
 
 uint32_t DAT_get_offset_by_ID(const dat_file *bin, const char *ID);
 uint32_t DAT_get_index_by_ID(const dat_file *bin, const char *ID);
