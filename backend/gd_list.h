@@ -9,6 +9,7 @@
  */
 
 #pragma once
+
 struct gd_item;
 int list_read(const char *filename);
 int list_read_default(void);
@@ -17,11 +18,15 @@ void list_print_slots(void);
 void list_print_temp(void);
 void list_print(const struct gd_item **list);
 
+/* simple sorting methods */
 const struct gd_item **list_get(void);
 const struct gd_item **list_get_sort_name(void);
 const struct gd_item **list_get_sort_date(void);
 const struct gd_item **list_get_sort_product(void);
 const struct gd_item **list_get_sort_default(void);
+/* complex filtering and sorting */
+const struct gd_item **list_get_genre(int genre);
+const struct gd_item **list_get_genre_sort(int genre, int sort);
 int list_length(void);
 
-const struct gd_item *list_item_get(unsigned int idx);
+const struct gd_item *list_item_get(int idx);

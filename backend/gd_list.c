@@ -17,7 +17,10 @@
 #include <strings.h>
 #endif
 
+#include "db_item.h"
+#include "db_list.h"
 #include "gd_item.h"
+#include "gd_list.h"
 #include "ini.h"
 
 #ifdef _arch_dreamcast
@@ -28,9 +31,12 @@
 #define FD_TYPE FILE *
 #endif
 
-static int num_items = -1;
+/* Base internal original */
+static int num_items_BASE = -1;
 static gd_item *gd_slots_BASE = NULL;
 
+/* Current client facing pointer copy, may be sorted/filtered */
+static int num_items_temp = -1;
 static gd_item **list_temp = NULL;
 
 static inline long int filelength(FD_TYPE f) {
@@ -43,13 +49,17 @@ static inline long int filelength(FD_TYPE f) {
 }
 
 static int read_openmenu_ini(void *user, const char *section, const char *name, const char *value) {
-  if ((strcmp(section, "OPENMENU") == 0) && (strcmp(name, "num_items") == 0)) {
-    num_items = atoi(value);
-    gd_slots_BASE = malloc(num_items * sizeof(struct gd_item));
-    list_temp = malloc(num_items * sizeof(struct gd_item *));
+  /* unused */
+  (void)user;
 
-    memset(gd_slots_BASE, '\0', num_items * sizeof(struct gd_item));
-    memset(list_temp, '\0', num_items * sizeof(struct gd_item *));
+  if ((strcmp(section, "OPENMENU") == 0) && (strcmp(name, "num_items") == 0)) {
+    num_items_BASE = atoi(value);
+    num_items_temp = num_items_BASE - 1;
+    gd_slots_BASE = malloc(num_items_BASE * sizeof(struct gd_item));
+    list_temp = malloc(num_items_BASE * sizeof(struct gd_item *));
+
+    memset(gd_slots_BASE, '\0', num_items_BASE * sizeof(struct gd_item));
+    memset(list_temp, '\0', num_items_BASE * sizeof(struct gd_item *));
   } else {
     /* Parsing games */
     char slot_string[4] = {0, 0, 0, 0};
@@ -83,7 +93,7 @@ static int read_openmenu_ini(void *user, const char *section, const char *name, 
 }
 
 void list_print_slots(void) {
-  for (int i = 0; i < num_items; i++) {
+  for (int i = 0; i < num_items_BASE; i++) {
     printf("slot %d\n", i);
     gd_item *item = &gd_slots_BASE[i];
 #define CFG(s, n, default) printf("%s = %s\n", #n, item->n);
@@ -93,7 +103,7 @@ void list_print_slots(void) {
 }
 
 void list_print_temp(void) {
-  for (int i = 0; i < num_items - 1; i++) {
+  for (int i = 0; i < num_items_temp; i++) {
     printf("slot %d\n", i);
     gd_item *item = list_temp[i];
 #define CFG(s, n, default) printf("%s = %s\n", #n, item->n);
@@ -102,8 +112,9 @@ void list_print_temp(void) {
   }
 }
 
+/* Might need a rework */
 void list_print(const gd_item **list) {
-  for (int i = 0; i < num_items - 1; i++) {
+  for (int i = 0; i < num_items_temp; i++) {
     //printf("slot %d\n", i);
     const gd_item *item = list[i];
 #define CFG(s, n, default) printf("%s = %s\n", #n, item->n);
@@ -114,7 +125,7 @@ void list_print(const gd_item **list) {
 }
 
 static void list_temp_reset(void) {
-  for (int i = 0; i < num_items - 1; i++) {
+  for (int i = 0; i < num_items_BASE - 1; i++) {
     list_temp[i] = &gd_slots_BASE[i + 1];
   }
 }
@@ -139,30 +150,34 @@ static int struct_cmp_by_product(const void *a, const void *b) {
 
 const gd_item **list_get_sort_name(void) {
   list_temp_reset();
+  num_items_temp = num_items_BASE - 1;
 
   /* Sort according to name alphabetically */
-  qsort(list_temp, num_items - 1, sizeof(gd_item *), struct_cmp_by_name);
+  qsort(list_temp, num_items_temp, sizeof(gd_item *), struct_cmp_by_name);
   return (const gd_item **)list_temp;
 }
 
 const gd_item **list_get_sort_date(void) {
   list_temp_reset();
+  num_items_temp = num_items_BASE - 1;
 
   /* Sort according to name alphabetically */
-  qsort(list_temp, num_items - 1, sizeof(gd_item *), struct_cmp_by_date);
+  qsort(list_temp, num_items_temp, sizeof(gd_item *), struct_cmp_by_date);
   return (const gd_item **)list_temp;
 }
 
 const gd_item **list_get_sort_product(void) {
   list_temp_reset();
+  num_items_temp = num_items_BASE - 1;
 
   /* Sort according to name alphabetically */
-  qsort(list_temp, num_items - 1, sizeof(gd_item *), struct_cmp_by_product);
+  qsort(list_temp, num_items_temp, sizeof(gd_item *), struct_cmp_by_product);
   return (const gd_item **)list_temp;
 }
 
 const gd_item **list_get_sort_default(void) {
   list_temp_reset();
+  num_items_temp = num_items_BASE;
 
   return (const gd_item **)list_temp;
 }
@@ -171,8 +186,49 @@ const struct gd_item **list_get(void) {
   return (const gd_item **)list_temp;
 }
 
+const struct gd_item **list_get_genre(int genre) {
+#if !defined(STANDALONE_BINARY)
+  FLAGS_GENRE matching_genre = (1 << genre);
+  int idx = 0;
+  for (int i = 0; i < num_items_BASE - 1; i++) {
+    gd_item *temp_item = &gd_slots_BASE[i + 1];
+    db_item *temp_meta;
+    if (!db_get_meta(temp_item->product, &temp_meta)) {
+      if (temp_meta->genre & matching_genre) {
+        list_temp[idx++] = temp_item;
+      }
+    }
+  }
+  num_items_temp = idx;
+  return (const gd_item **)list_temp;
+#endif
+}
+
+const struct gd_item **list_get_genre_sort(int genre, int sort) {
+  list_get_genre(genre);
+
+  switch (sort) {
+    case 1:
+      qsort(list_temp, num_items_temp, sizeof(gd_item *), struct_cmp_by_name);
+      break;
+    case 2:
+      qsort(list_temp, num_items_temp, sizeof(gd_item *), struct_cmp_by_date);
+      break;
+    case 3:
+      qsort(list_temp, num_items_temp, sizeof(gd_item *), struct_cmp_by_product);
+      break;
+
+    default:
+    case 0:
+      /* @Note: no sort, strange codeflow */
+      break;
+  }
+
+  return (const gd_item **)list_temp;
+}
+
 int list_length(void) {
-  return num_items - 1;
+  return num_items_temp;
 }
 
 int list_read(const char *filename) {
@@ -198,8 +254,9 @@ int list_read(const char *filename) {
     /*exit or something */
     return -1;
   }
+  free(ini_buffer);
 
-  printf("INI:Parse success (%d items)!\n", num_items);
+  printf("INI:Parse success (%d items)!\n", num_items_BASE);
   list_temp_reset();
   fflush(stdout);
 
@@ -211,15 +268,16 @@ int list_read_default(void) {
 }
 
 void list_destroy(void) {
-  num_items = -1;
+  num_items_BASE = -1;
+  num_items_temp = -1;
   free(gd_slots_BASE);
   free(list_temp);
   gd_slots_BASE = NULL;
   list_temp = NULL;
 }
 
-const gd_item *list_item_get(unsigned int idx) {
-  if (idx < num_items - 1)
+const gd_item *list_item_get(int idx) {
+  if ((idx >= 0) && (idx < num_items_temp))
     return (const gd_item *)list_temp[idx];
 
   return NULL;
