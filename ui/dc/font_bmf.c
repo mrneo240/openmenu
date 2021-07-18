@@ -433,18 +433,9 @@ void font_bmf_set_scale(float scale) {
 }
 
 /* Scaling */
-#define ASPECT_WIDE (0)
 #define X_SCALE_4_3 (1.0f)
 #define X_SCALE_16_9 (0.74941452f)
-
-#if defined(ASPECT_WIDE) && ASPECT_WIDE
-#define X_SCALE (X_SCALE_16_9)
-#define SCR_WIDTH (854)
-#else
-#define X_SCALE (X_SCALE_4_3)
-#define SCR_WIDTH (640)
-#endif
-#define SCR_HEIGHT (480)
+static float X_SCALE;
 
 #ifdef KOS_SPRITE
 static pvr_sprite_hdr_t font_header;
@@ -456,7 +447,12 @@ static pvr_poly_hdr_t font_header;
 static image font_texture;
 
 /* Font prototype generics */
-int font_bmf_init(const char *fnt, const char *texture) {
+int font_bmf_init(const char *fnt, const char *texture, int is_wide) {
+  if (is_wide) {
+    X_SCALE = (X_SCALE_16_9);
+  } else {
+    X_SCALE = (X_SCALE_4_3);
+  }
   int ret = 0;
   char temp_fnt[128];
   memcpy(temp_fnt, DISC_PREFIX, strlen(DISC_PREFIX) + 1);

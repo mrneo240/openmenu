@@ -56,23 +56,6 @@ typedef struct theme_region {
 } theme_region;
 
 static theme_region region_themes[] = {
-#if defined(ASPECT_WIDE) && ASPECT_WIDE
-    {.bg_left = "THEME/NTSC_U/BG_U_L.PVR",
-     .bg_right = "THEME/NTSC_U/BG_U_R.PVR",
-     .icon_set = &txr_icons_white,
-     .text_color = COLOR_WHITE,
-     .highlight_color = COLOR_ORANGE_U},
-    {.bg_left = "THEME/NTSC_J/BG_J_L_WIDE.PVR",
-     .bg_right = "THEME/NTSC_J/BG_J_R_WIDE.PVR",
-     .icon_set = &txr_icons_black,
-     .text_color = COLOR_BLACK,
-     .highlight_color = COLOR_ORANGE_J},
-    {.bg_left = "THEME/PAL/BG_E_L_WIDE.PVR",
-     .bg_right = "THEME/PAL/BG_E_R_WIDE.PVR",
-     .icon_set = &txr_icons_black,
-     .text_color = COLOR_BLACK,
-     .highlight_color = COLOR_BLUE},
-#else
     {.bg_left = "THEME/NTSC_U/BG_U_L.PVR",
      .bg_right = "THEME/NTSC_U/BG_U_R.PVR",
      .icon_set = &txr_icons_white,
@@ -88,8 +71,29 @@ static theme_region region_themes[] = {
      .icon_set = &txr_icons_black,
      .text_color = COLOR_BLACK,
      .highlight_color = COLOR_BLUE},
-#endif
 };
+
+static void select_art_by_aspect(CFG_ASPECT aspect) {
+  if (aspect == ASPECT_NORMAL) {
+    region_themes[REGION_NTSC_U].bg_left = "THEME/NTSC_U/BG_U_L.PVR";
+    region_themes[REGION_NTSC_U].bg_right = "THEME/NTSC_U/BG_U_R.PVR";
+
+    region_themes[REGION_NTSC_J].bg_left = "THEME/NTSC_J/BG_J_L.PVR";
+    region_themes[REGION_NTSC_J].bg_right = "THEME/NTSC_J/BG_J_R.PVR";
+
+    region_themes[REGION_PAL].bg_left = "THEME/PAL/BG_E_L.PVR";
+    region_themes[REGION_PAL].bg_right = "THEME/PAL/BG_E_R.PVR";
+  } else {
+    region_themes[REGION_NTSC_U].bg_left = "THEME/NTSC_U/BG_U_L.PVR";
+    region_themes[REGION_NTSC_U].bg_right = "THEME/NTSC_U/BG_U_R.PVR";
+
+    region_themes[REGION_NTSC_J].bg_left = "THEME/NTSC_J/BG_J_L_WIDE.PVR";
+    region_themes[REGION_NTSC_J].bg_right = "THEME/NTSC_J/BG_J_R_WIDE.PVR";
+
+    region_themes[REGION_PAL].bg_left = "THEME/PAL/BG_E_L_WIDE.PVR";
+    region_themes[REGION_PAL].bg_right = "THEME/PAL/BG_E_R_WIDE.PVR";
+  }
+}
 
 static region region_current = REGION_NTSC_U;
 static enum draw_state draw_current = DRAW_UI;
@@ -163,6 +167,10 @@ static void draw_game_meta(void) {
   /* Then text after */
   font_bmf_begin_draw();
   font_bmf_set_height_default();
+  if (list_len <= 0) {
+    font_bmf_draw_auto_size(316, 92 - 20, region_themes[region_current].text_color, "Empty Game List!", 640 - 316 - 10);
+    return;
+  }
   font_bmf_draw_auto_size(316, 92 - 20, region_themes[region_current].text_color, list_current[current_selected_item]->name, 640 - 316 - 10);
 
   const char *synopsis;
@@ -199,6 +207,11 @@ static void draw_game_meta(void) {
       const dimen_RECT uv_modem = {.x = 0, .y = 86, .w = 42, .h = 42};
       draw_draw_sub_image(534, 254 + 12, 22, 22, COLOR_WHITE, txr_icons_current, &uv_modem);  //22x22
     }
+    {
+      //560x282
+      const dimen_RECT uv_disc = {.x = 42, .y = 86, .w = 42, .h = 42};
+      draw_draw_sub_image(560, 254 + 12, 22, 22, COLOR_WHITE, txr_icons_current, &uv_disc);  //22x22
+    }
   }
 }
 
@@ -232,9 +245,10 @@ static void menu_increment(int amount) {
 }
 
 static void menu_accept(void) {
-  if (navigate_timeout > 0) {
+  if ((navigate_timeout > 0) || (list_len <= 0)) {
     return;
   }
+
   dreamcast_rungd(list_current[current_selected_item]->slot_num);
 }
 
@@ -259,6 +273,8 @@ FUNCTION(UI_NAME, init) {
   /* Set region from preferences */
   openmenu_settings *settings = settings_get();
   region_current = settings->region;
+
+  select_art_by_aspect(settings->aspect);
 
   /* on user for now, may change */
   unsigned int temp = texman_create();
@@ -287,7 +303,7 @@ FUNCTION(UI_NAME, init) {
 
   txr_icons_current = region_themes[region_current].icon_set;
 
-  font_bmf_init("FONT/BASILEA.FNT", "FONT/BASILEA_W.PVR");
+  font_bmf_init("FONT/BASILEA.FNT", "FONT/BASILEA_W.PVR", settings->aspect);
 
   printf("Texture scratch free: %d/%d KB (%d/%d bytes)\n", texman_get_space_available() / 1024, (1024 * 1024) / 1024, texman_get_space_available(), (1024 * 1024));
 }
@@ -388,11 +404,12 @@ FUNCTION(UI_NAME, drawOP) {
 }
 
 FUNCTION(UI_NAME, drawTR) {
-  draw_small_box_highlight();
   draw_game_meta();
-
-  draw_small_boxes();
-  draw_big_box();
+  if (list_len > 0) {
+    draw_small_box_highlight();
+    draw_small_boxes();
+    draw_big_box();
+  }
 
   switch (draw_current) {
     case DRAW_MENU: {

@@ -24,48 +24,44 @@
 #include "ui_menu_credits.h"
 
 /* Scaling */
-#define ASPECT_WIDE (0)
 #define X_SCALE_4_3 ((float)1.0f)
 #define X_SCALE_16_9 ((float)0.74941452f)
-
-#if defined(ASPECT_WIDE) && ASPECT_WIDE
-#define X_SCALE (X_SCALE_16_9)
-#define SCR_WIDTH (854)
-#else
-#define X_SCALE (X_SCALE_4_3)
-#define SCR_WIDTH (640)
-#endif
-#define SCR_HEIGHT (480)
 
 /* List managment */
 #define INPUT_TIMEOUT (10)
 #define FOCUSED_HIRES_FRAMES (60 * 1) /* 1 second load in */
+#define ANIM_FRAMES (15)
 
 /* Tile parameters */
-#if defined(ASPECT_WIDE) && ASPECT_WIDE
-#define TILE_AREA_WIDTH (600)
-#define TILE_AREA_HEIGHT (380)
-#define COLUMNS (4)
-#define ROWS (3)
-#else
-#define TILE_AREA_WIDTH (440)
-#define TILE_AREA_HEIGHT (380)
-#define COLUMNS (3)
-#define ROWS (3)
-#endif
-#define GUTTER_SIDE ((SCR_WIDTH - TILE_AREA_WIDTH) / 2)
-#define GUTTER_TOP ((SCR_HEIGHT - TILE_AREA_HEIGHT) / 2)
-#define HORIZONTAL_SPACING (40)
-#define VERTICAL_SPACING (10)
-#define HIGHLIGHT_OVERHANG (4)
-#define TILE_SIZE_X (((TILE_AREA_WIDTH - ((COLUMNS - 1) * HORIZONTAL_SPACING)) / COLUMNS))
-#define TILE_SIZE_Y ((TILE_AREA_HEIGHT - ((ROWS - 1) * VERTICAL_SPACING)) / ROWS)
-
-#define ANIM_FRAMES (15)
-#define HIGHLIGHT_X_POS(col) (GUTTER_SIDE - HIGHLIGHT_OVERHANG + ((HORIZONTAL_SPACING + TILE_SIZE_X) * (col)))
-#define HIGHLIGHT_Y_POS(row) (GUTTER_TOP - HIGHLIGHT_OVERHANG + ((VERTICAL_SPACING + TILE_SIZE_Y) * (row)))
-#define TILE_X_POS(col) (GUTTER_SIDE + ((HORIZONTAL_SPACING + TILE_SIZE_X) * (col)))
-#define TILE_Y_POS(row) (GUTTER_TOP + ((VERTICAL_SPACING + TILE_SIZE_Y) * (row)))
+/* Basic Info */
+static float X_SCALE;
+static short SCR_WIDTH;
+static short SCR_HEIGHT;
+static short TILE_AREA_WIDTH;
+static short TILE_AREA_HEIGHT;
+static short COLUMNS;
+static short ROWS;
+/* Calculated params */
+static short GUTTER_SIDE;
+static short GUTTER_TOP;
+static short HORIZONTAL_SPACING;
+static short VERTICAL_SPACING;
+static short HIGHLIGHT_OVERHANG;
+static short TILE_SIZE_X;
+static short TILE_SIZE_Y;
+/* Helpers */
+static inline int HIGHLIGHT_X_POS(int col) {
+  return (GUTTER_SIDE - HIGHLIGHT_OVERHANG + ((HORIZONTAL_SPACING + TILE_SIZE_X) * (col)));
+}
+static inline int HIGHLIGHT_Y_POS(int row) {
+  return (GUTTER_TOP - HIGHLIGHT_OVERHANG + ((VERTICAL_SPACING + TILE_SIZE_Y) * (row)));
+}
+static inline int TILE_X_POS(int col) {
+  return (GUTTER_SIDE + ((HORIZONTAL_SPACING + TILE_SIZE_X) * (col)));
+}
+static inline int TILE_Y_POS(int row) {
+  return (GUTTER_TOP + ((VERTICAL_SPACING + TILE_SIZE_Y) * (row)));
+}
 
 static int screen_row = 0;
 static int screen_column = 0;
@@ -86,7 +82,7 @@ static anim2d anim_large_art_pos;
 static anim2d anim_large_art_scale;
 
 /* For drawing */
-static image txr_icon_list[ROWS * COLUMNS]; /* Lower list of 9 icons */
+static image txr_icon_list[/*ROWS * COLUMNS*/ 4 * 3 /* Assume the worst */]; /* Lower list of 9 or 12 icons */
 static image txr_focus;
 static image txr_highlight; /* Highlight square */
 static image txr_bg_left, txr_bg_right;
@@ -107,29 +103,12 @@ typedef struct theme_region {
 } theme_region;
 
 static theme_region region_themes[] = {
-#if defined(ASPECT_WIDE) && ASPECT_WIDE
     {.bg_left = "THEME/NTSC_U/BG_U_L.PVR",
      .bg_right = "THEME/NTSC_U/BG_U_R.PVR",
      .icon_set = &txr_icons_white,
      .text_color = COLOR_WHITE,
      .highlight_color = COLOR_ORANGE_U},
-    {.bg_left = "THEME/NTSC_J/BG_J_L_WIDE.PVR",
-     .bg_right = "THEME/NTSC_J/BG_J_R_WIDE.PVR",
-     .icon_set = &txr_icons_black,
-     .text_color = COLOR_BLACK,
-     .highlight_color = COLOR_ORANGE_J},
-    {.bg_left = "THEME/PAL/BG_E_L_WIDE.PVR",
-     .bg_right = "THEME/PAL/BG_E_R_WIDE.PVR",
-     .icon_set = &txr_icons_black,
-     .text_color = COLOR_BLACK,
-     .highlight_color = COLOR_BLUE},
-#else
-    {.bg_left = "THEME/NTSC_U/BG_U_L.PVR",
-     .bg_right = "THEME/NTSC_U/BG_U_R.PVR",
-     .icon_set = &txr_icons_white,
-     .text_color = COLOR_WHITE,
-     .highlight_color = COLOR_ORANGE_U},
-    {.bg_left = "THEME/NTSC_J/BG_J_L.PVR",
+    {.bg_left =  "THEME/NTSC_J/BG_J_L.PVR",
      .bg_right = "THEME/NTSC_J/BG_J_R.PVR",
      .icon_set = &txr_icons_black,
      .text_color = COLOR_BLACK,
@@ -139,11 +118,58 @@ static theme_region region_themes[] = {
      .icon_set = &txr_icons_black,
      .text_color = COLOR_BLACK,
      .highlight_color = COLOR_BLUE},
-#endif
 };
+
+static void select_art_by_aspect(CFG_ASPECT aspect) {
+  if (aspect == ASPECT_NORMAL) {
+    region_themes[REGION_NTSC_U].bg_left = "THEME/NTSC_U/BG_U_L.PVR";
+    region_themes[REGION_NTSC_U].bg_right = "THEME/NTSC_U/BG_U_R.PVR";
+
+    region_themes[REGION_NTSC_J].bg_left =  "THEME/NTSC_J/BG_J_L.PVR";
+    region_themes[REGION_NTSC_J].bg_right = "THEME/NTSC_J/BG_J_R.PVR";
+
+    region_themes[REGION_PAL].bg_left = "THEME/PAL/BG_E_L.PVR";
+    region_themes[REGION_PAL].bg_right = "THEME/PAL/BG_E_R.PVR";
+  } else {
+    region_themes[REGION_NTSC_U].bg_left = "THEME/NTSC_U/BG_U_L.PVR";
+    region_themes[REGION_NTSC_U].bg_right = "THEME/NTSC_U/BG_U_R.PVR";
+
+    region_themes[REGION_NTSC_J].bg_left = "THEME/NTSC_J/BG_J_L_WIDE.PVR";
+    region_themes[REGION_NTSC_J].bg_right = "THEME/NTSC_J/BG_J_R_WIDE.PVR";
+
+    region_themes[REGION_PAL].bg_left = "THEME/PAL/BG_E_L_WIDE.PVR";
+    region_themes[REGION_PAL].bg_right = "THEME/PAL/BG_E_R_WIDE.PVR";
+  }
+}
 
 static region region_current = REGION_NTSC_U;
 static enum draw_state draw_current = DRAW_UI;
+
+static void recalculate_aspect(CFG_ASPECT aspect) {
+  if (aspect == ASPECT_NORMAL) {
+    SCR_WIDTH = (640);
+    X_SCALE = (X_SCALE_4_3);
+    TILE_AREA_WIDTH = (440);
+    TILE_AREA_HEIGHT = (380);
+    COLUMNS = (3);
+    ROWS = (3);
+  } else {
+    X_SCALE = (X_SCALE_16_9);
+    SCR_WIDTH = (854);
+    TILE_AREA_WIDTH = (600);
+    TILE_AREA_HEIGHT = (380);
+    COLUMNS = (4);
+    ROWS = (3);
+  }
+  SCR_HEIGHT = (480);
+  GUTTER_SIDE = ((SCR_WIDTH - TILE_AREA_WIDTH) / 2);
+  GUTTER_TOP = ((SCR_HEIGHT - TILE_AREA_HEIGHT) / 2);
+  HORIZONTAL_SPACING = (40);
+  VERTICAL_SPACING = (10);
+  HIGHLIGHT_OVERHANG = (4);
+  TILE_SIZE_X = (((TILE_AREA_WIDTH - ((COLUMNS - 1) * HORIZONTAL_SPACING)) / COLUMNS));
+  TILE_SIZE_Y = ((TILE_AREA_HEIGHT - ((ROWS - 1) * VERTICAL_SPACING)) / ROWS);
+}
 
 static void draw_bg_layers(void) {
   {
@@ -212,7 +238,7 @@ static void draw_grid_boxes(void) {
         continue;
       }
       if (current_starting_index + idx >= list_len) {
-        continue;
+        break;
       }
       float x_pos = GUTTER_SIDE + ((HORIZONTAL_SPACING + TILE_SIZE_X) * column); /* 100 + ((40 + 120)*{0,1,2}) */
       float y_pos = GUTTER_TOP + ((VERTICAL_SPACING + TILE_SIZE_Y) * row);       /* 20 + ((10 + 120)*{0,1,2}) */
@@ -237,6 +263,15 @@ static void draw_grid_boxes(void) {
 
   /* If focused, draw large cover art */
   draw_large_art();
+}
+
+static void draw_game_title(void) {
+  font_bmf_begin_draw();
+  if (list_len <= 0) {
+    font_bmf_draw_centered_auto_size((SCR_WIDTH / 2) * X_SCALE, 434, region_themes[region_current].text_color, "Empty Game List!", (SCR_WIDTH - (10 * 2)) * X_SCALE);
+    return;
+  }
+  font_bmf_draw_centered_auto_size((SCR_WIDTH / 2) * X_SCALE, 434, region_themes[region_current].text_color, list_current[current_selected()]->name, (SCR_WIDTH - (10 * 2)) * X_SCALE);
 }
 
 static void update_time(void) {
@@ -368,9 +403,10 @@ static void menu_right(void) {
 }
 
 static void menu_accept(void) {
-  if (navigate_timeout > 0) {
+  if ((navigate_timeout > 0) || (list_len <= 0)) {
     return;
   }
+
   dreamcast_rungd(list_current[current_selected()]->slot_num);
 }
 
@@ -407,6 +443,8 @@ FUNCTION(UI_NAME, init) {
   /* Set region from preferences */
   openmenu_settings *settings = settings_get();
   region_current = settings->region;
+  recalculate_aspect(settings->aspect);
+  select_art_by_aspect(settings->aspect);
 
   /* on user for now, may change */
   unsigned int temp = texman_create();
@@ -436,7 +474,7 @@ FUNCTION(UI_NAME, init) {
   txr_icons_current = themes[region_current].icon_set;
 #endif
 
-  font_bmf_init("FONT/BASILEA.FNT", "FONT/BASILEA_W.PVR");
+  font_bmf_init("FONT/BASILEA.FNT", "FONT/BASILEA_W.PVR", settings->aspect);
 
   printf("Texture scratch free: %d/%d KB (%d/%d bytes)\n", texman_get_space_available() / 1024, (1024 * 1024) / 1024, texman_get_space_available(), (1024 * 1024));
 }
@@ -560,9 +598,7 @@ FUNCTION(UI_NAME, drawTR) {
   update_time();
 
   draw_grid_boxes();
-
-  font_bmf_begin_draw();
-  font_bmf_draw_centered_auto_size((SCR_WIDTH / 2) * X_SCALE, 434, region_themes[region_current].text_color, list_current[current_selected()]->name, (SCR_WIDTH - (10 * 2)) * X_SCALE);
+  draw_game_title();
 
   switch (draw_current) {
     case DRAW_MENU: {

@@ -115,6 +115,12 @@ static void draw_gamelist(void) {
   const int Y_ADJUST_TEXT = 4;
   const int Y_ADJUST_CRSR = 3; /* 2 pixels higher than text */
   font_bmp_begin_draw();
+  if (list_len <= 0) {
+    draw_draw_quad(pos_gameslist_x, pos_gameslist_y + Y_ADJUST_TEXT + (0 * 21) - Y_ADJUST_CRSR, cursor_width, cursor_height, color_cursor_actual);
+    font_bmp_set_color(color_main_highlight);
+    font_bmp_draw_main(pos_gameslist_x + X_ADJUST_TEXT, pos_gameslist_y + Y_ADJUST_TEXT + (0 * 21), "Empty Game List!s");
+  }
+
   for (int i = 0; i < items_per_page; i++) {
     /* Break before issues */
     if ((current_starting_index + i) >= list_len) {
@@ -169,12 +175,12 @@ static const char *region_code_to_readable(const char *in) {
 }
 
 static void draw_gameinfo(void) {
-  char line_buf[26];
-  char date_buf[11];
-
-  if (current_selected_item >= list_len) {
+  if ((current_selected_item >= list_len) || (list_len <= 0)) {
     return;
   }
+
+  char line_buf[26];
+  char date_buf[11];
 
   font_bmp_begin_draw();
   font_bmp_set_color(color_image_name_highlight); /* Unsure */
@@ -196,7 +202,7 @@ static void draw_gameinfo(void) {
 }
 
 static void draw_gameart(void) {
-  if (current_selected_item >= list_len) {
+  if ((current_selected_item >= list_len) || (list_len <= 0)) {
     return;
   }
 
@@ -243,9 +249,10 @@ static void menu_increment(int amount) {
 }
 
 static void menu_accept(void) {
-  if (navigate_timeout > 0) {
+  if ((navigate_timeout > 0) || (list_len <= 0)) {
     return;
   }
+
   dreamcast_rungd(list_current[current_selected_item]->slot_num);
 }
 

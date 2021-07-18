@@ -10,7 +10,7 @@
 
 #pragma once
 /* BMF formatted nice text */
-int font_bmf_init(const char *fnt, const char *texture);
+int font_bmf_init(const char *fnt, const char *texture, int is_wide);
 void font_bmf_destroy(void);
 
 void font_bmf_begin_draw(void);
