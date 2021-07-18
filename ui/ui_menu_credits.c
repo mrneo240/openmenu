@@ -20,10 +20,11 @@
 
 #pragma region Settings_Menu
 
-const char* menu_choice_text[] = {"Theme", "Region", "Aspect", "Sort", "Filter"};
+const char* menu_choice_text[] = {"Theme", "Region", "Aspect", "Beep", "Sort", "Filter"};
 const char* theme_choice_text[] = {"LineDesc", "Grid3", "GDMENU"};
 const char* region_choice_text[] = {"NTSC-U", "NTSC-J", "PAL"};
 const char* aspect_choice_text[] = {"4:3", "16:9"};
+const char* beep_choice_text[] = {"Off", "On"};
 const char* sort_choice_text[] = {"Default", "Name", "Date", "Product"};
 const char* filter_choice_text[] = {
     "All", "Action", "Racing", "Simulation", "Sports", "Lightgun",
@@ -37,6 +38,7 @@ const char* credits_text[] = {"Credits"};
 #define THEME_CHOICES (sizeof(theme_choice_text) / sizeof(theme_choice_text)[0])
 #define REGION_CHOICES (sizeof(region_choice_text) / sizeof(region_choice_text)[0])
 #define ASPECT_CHOICES (sizeof(aspect_choice_text) / sizeof(aspect_choice_text)[0])
+#define BEEP_CHOICES (sizeof(beep_choice_text) / sizeof(beep_choice_text)[0])
 #define SORT_CHOICES (sizeof(sort_choice_text) / sizeof(sort_choice_text)[0])
 #define FILTER_CHOICES (sizeof(filter_choice_text) / sizeof(filter_choice_text)[0])
 
@@ -45,6 +47,7 @@ typedef enum MENU_CHOICE {
   CHOICE_THEME = CHOICE_START,
   CHOICE_REGION,
   CHOICE_ASPECT,
+  CHOICE_BEEP,
   CHOICE_SORT,
   CHOICE_FILTER,
   CHOICE_SAVE,
@@ -55,9 +58,9 @@ typedef enum MENU_CHOICE {
 #define INPUT_TIMEOUT (10)
 
 static int choices[MENU_CHOICES + 1];
-static int choices_max[MENU_CHOICES + 1] = {THEME_CHOICES, REGION_CHOICES, ASPECT_CHOICES, SORT_CHOICES, FILTER_CHOICES, 2 /* Apply/Save */};
-static const char** menu_choice_array[MENU_CHOICES] = {theme_choice_text, region_choice_text, aspect_choice_text, sort_choice_text, filter_choice_text};
-static int current_choice = CHOICE_THEME;
+static int choices_max[MENU_CHOICES + 1] = {THEME_CHOICES, REGION_CHOICES, ASPECT_CHOICES, BEEP_CHOICES, SORT_CHOICES, FILTER_CHOICES, 2 /* Apply/Save */};
+static const char** menu_choice_array[MENU_CHOICES] = {theme_choice_text, region_choice_text, aspect_choice_text, beep_choice_text, sort_choice_text, filter_choice_text};
+static int current_choice = CHOICE_START;
 static int navigate_timeout;
 
 #pragma endregion Settings_Menu
@@ -99,6 +102,7 @@ void menu_setup(enum draw_state* state, uint32_t _text_color, uint32_t _highligh
   choices[CHOICE_ASPECT] = settings->aspect;
   choices[CHOICE_SORT] = settings->sort;
   choices[CHOICE_FILTER] = settings->filter;
+  choices[CHOICE_BEEP] = settings->beep;
 
   /* So we can modify the state back to normal */
   state_ptr = state;
@@ -106,7 +110,6 @@ void menu_setup(enum draw_state* state, uint32_t _text_color, uint32_t _highligh
   highlight_color = _highlight_color;
 
   navigate_timeout = INPUT_TIMEOUT;
-  current_choice = CHOICE_START;
 }
 
 static void menu_leave(void) {
@@ -136,6 +139,7 @@ static void menu_accept(void) {
     settings->aspect = choices[CHOICE_ASPECT];
     settings->sort = choices[CHOICE_SORT];
     settings->filter = choices[CHOICE_FILTER];
+    settings->beep = choices[CHOICE_BEEP];
 
     /* If not filtering, then plain sort */
     if (!choices[CHOICE_FILTER]) {
@@ -307,8 +311,8 @@ void draw_menu_tr(void) {
     }
 
     /* Draw save or apply choice, highlight the current one */
-    uint32_t save_color = ((choices[CHOICE_SAVE] == 0) ? highlight_color : text_color);
-    uint32_t apply_color = ((choices[CHOICE_SAVE] == 1) ? highlight_color : text_color);
+    uint32_t save_color = ((current_choice == CHOICE_SAVE) && (choices[CHOICE_SAVE] == 0) ? highlight_color : text_color);
+    uint32_t apply_color = ((current_choice == CHOICE_SAVE) && (choices[CHOICE_SAVE] == 1) ? highlight_color : text_color);
     font_bmp_set_color(save_color);
     cur_y += line_height;
     font_bmp_draw_main(640 / 2 - (8 * (5 + 7)), cur_y, save_choice_text[0]);
@@ -366,8 +370,8 @@ void draw_menu_tr(void) {
     }
 
     /* Draw save or apply choice, highlight the current one */
-    uint32_t save_color = ((choices[CHOICE_SAVE] == 0) ? highlight_color : text_color);
-    uint32_t apply_color = ((choices[CHOICE_SAVE] == 1) ? highlight_color : text_color);
+    uint32_t save_color = ((current_choice == CHOICE_SAVE) && (choices[CHOICE_SAVE] == 0) ? highlight_color : text_color);
+    uint32_t apply_color = ((current_choice == CHOICE_SAVE) && (choices[CHOICE_SAVE] == 1) ? highlight_color : text_color);
     cur_y += line_height;
     font_bmf_draw_centered(640 / 2 - (width / 4), cur_y, save_color, save_choice_text[0]);
     font_bmf_draw_centered(640 / 2 + (width / 4), cur_y, apply_color, save_choice_text[1]);
@@ -425,7 +429,7 @@ void draw_credits_tr(void) {
 
   } else {
     /* Menu size and placement */
-    const int line_height = 32;
+    const int line_height = 26;
     const int width = 560;
     const int height = (num_credits + 2) * line_height;
     const int x = (640 / 2) - (width / 2);
@@ -433,8 +437,6 @@ void draw_credits_tr(void) {
     const int x_choice = 344 + 24 + 60; /* magic :( */
     const int x_item = x + 4;
     const int border_width = 2;
-
-    font_bmf_set_height(24.0f);
 
     /* Draw a rectangle in the middle of the screen */
     uint32_t menu_bkg_color = COLOR_BLACK;
@@ -450,7 +452,7 @@ void draw_credits_tr(void) {
     /* overlay our text on top with options */
     int cur_y = y + 2;
     font_bmf_begin_draw();
-    font_bmf_set_height_default();
+    font_bmf_set_height(24.0f);
 
     font_bmf_draw(x_item, cur_y, text_color, "Credits");
 

@@ -27,6 +27,7 @@ static void settings_defaults(void) {
   savedata.aspect = ASPECT_NORMAL;
   savedata.sort = SORT_DEFAULT;
   savedata.filter = FILTER_ALL;
+  savedata.beep = BEEP_ON;
 }
 
 static void settings_create(void) {
@@ -73,6 +74,33 @@ void settings_init(void) {
 Exit_loop_1:
 
   settings_load();
+  settings_validate();
+}
+
+void settings_validate(void) {
+  if ((savedata.ui < UI_START) || (savedata.ui > UI_END)) {
+    savedata.ui = UI_LINE_DESC;
+  }
+
+  if ((savedata.region < REGION_START) || (savedata.region > REGION_END)) {
+    savedata.region = REGION_NTSC_U;
+  }
+
+  if ((savedata.aspect < ASPECT_START) || (savedata.aspect > ASPECT_END)) {
+    savedata.aspect = ASPECT_NORMAL;
+  }
+
+  if ((savedata.sort < SORT_START) || (savedata.sort > SORT_END)) {
+    savedata.sort = SORT_DEFAULT;
+  }
+
+  if ((savedata.filter < FILTER_START) || (savedata.filter > FILTER_END)) {
+    savedata.filter = FILTER_ALL;
+  }
+
+  if ((savedata.beep < BEEP_START) || (savedata.beep > BEEP_END)) {
+    savedata.beep = BEEP_ON;
+  }
 }
 
 void settings_load(void) {
@@ -85,13 +113,17 @@ void settings_load(void) {
   }
 }
 
+/* Beeps while saving if enabled */
 void settings_save(void) {
+  maple_device_t *vmu = NULL;
+  if ((savedata.beep == BEEP_ON) && (vmu = maple_enum_dev(savefile_details.savefile_port, savefile_details.savefile_slot))) {
+    vmu_beep_raw(vmu, 0x000065f0); /* Turn on Beep */
+  }
   if (savefile_details.valid_memcards) {
     crayon_savefile_save(&savefile_details);
     savefile_details.valid_saves = crayon_savefile_get_valid_saves(&savefile_details);
-    maple_device_t *vmu;
-    if ((vmu = maple_enum_dev(savefile_details.savefile_port, savefile_details.savefile_slot))) {
-      vmu_beep_raw(vmu, 0x000065f0);
+    if ((savedata.beep == BEEP_ON) && (vmu)) {
+      vmu_beep_raw(vmu, 0x00000000); /* Turn off Beep */
     }
   }
 }

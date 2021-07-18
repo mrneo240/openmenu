@@ -14,23 +14,26 @@
 #include <stdio.h>
 
 typedef enum CFG_REGION {
-  REGION_NTSC_U = 0,
+  REGION_START = 0,
+  REGION_NTSC_U = REGION_START,
   REGION_NTSC_J,
   REGION_PAL,
-  REGION_END,
+  REGION_END = REGION_PAL,
 } CFG_REGION;
 
 typedef enum CFG_ASPECT {
-  ASPECT_NORMAL = 0,
+  ASPECT_START = 0,
+  ASPECT_NORMAL = ASPECT_START,
   ASPECT_WIDE,
+  ASPECT_END = ASPECT_WIDE
 } CFG_ASPECT;
 
 typedef enum CFG_UI {
   UI_START = 0,
-  UI_LINE_DESC = 0,
+  UI_LINE_DESC = UI_START,
   UI_GRID3,
   UI_GDMENU,
-  UI_END
+  UI_END = UI_GDMENU
 } CFG_UI;
 
 typedef enum CFG_SORT {
@@ -38,11 +41,13 @@ typedef enum CFG_SORT {
   SORT_DEFAULT = SORT_START,
   SORT_NAME,
   SORT_DATE,
-  SORT_PRODUCT
+  SORT_PRODUCT,
+  SORT_END = SORT_PRODUCT
 } CFG_SORT;
 
 typedef enum CFG_FILTER {
-  FILTER_ALL,
+  FILTER_START = 0,
+  FILTER_ALL = FILTER_START,
   FILTER_ACTION,
   FILTER_RACING,
   FILTER_SIMULATION,
@@ -58,8 +63,16 @@ typedef enum CFG_FILTER {
   FILTER_STRATEGY,
   FILTER_PUZZLE,
   FILTER_ARCADE,
-  FILTER_MUSIC
+  FILTER_MUSIC,
+  FILTER_END = FILTER_MUSIC
 } CFG_FILTER;
+
+typedef enum CFG_BEEP {
+  BEEP_START = 0,
+  BEEP_OFF = BEEP_START,
+  BEEP_ON,
+  BEEP_END = BEEP_ON
+} CFG_BEEP;
 
 typedef struct openmenu_settings {
   CFG_REGION region;
@@ -67,6 +80,7 @@ typedef struct openmenu_settings {
   CFG_UI ui;
   CFG_SORT sort;
   CFG_FILTER filter;
+  CFG_BEEP beep;
 } openmenu_settings;
 
 typedef CFG_REGION region;
@@ -78,4 +92,5 @@ enum draw_state { DRAW_UI = 0,
 void settings_init(void);
 void settings_load(void);
 void settings_save(void);
+void settings_validate(void);
 openmenu_settings* settings_get(void);
