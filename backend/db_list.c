@@ -58,6 +58,6 @@ const char *db_format_nplayers_str(int nplayers) {
 
 const char *db_format_vmu_blocks_str(int num_blocks) {
   static char str[12];
-  sprintf(str, "%d Block%c", num_blocks, (num_blocks > 1 ? 's' : '\0'));
+  sprintf(str, "%d Block%c", num_blocks, (num_blocks != 1 ? 's' : '\0'));
   return str;
 }

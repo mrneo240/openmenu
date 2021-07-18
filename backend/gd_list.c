@@ -177,7 +177,7 @@ const gd_item **list_get_sort_product(void) {
 
 const gd_item **list_get_sort_default(void) {
   list_temp_reset();
-  num_items_temp = num_items_BASE;
+  num_items_temp = num_items_BASE - 1;
 
   return (const gd_item **)list_temp;
 }
