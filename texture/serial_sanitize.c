@@ -30,9 +30,9 @@ enum REMAP_TYPE {
     .ip_serial = ip, .meta_serial = disc, .remap_choice = REMAP_META \
   }
 
-#define REMAP_ADD_BOTH(ip, disc)                                                 \
-  (serial_remap) {                                                               \
-    .ip_serial = ip, .meta_serial = disc, .remap_choice = REMAP_META | REMAP_ART \
+#define REMAP_ADD_BOTH(ip, disc)                                                                     \
+  (serial_remap) {                                                                                   \
+    .ip_serial = ip, .meta_serial = disc, .art_serial = disc, .remap_choice = REMAP_META | REMAP_ART \
   }
 
 typedef struct serial_remap {
