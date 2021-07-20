@@ -289,6 +289,15 @@ static void menu_accept(void) {
   dreamcast_rungd(list_current[current_selected_item]->slot_num);
 }
 
+static void menu_settings(void) {
+  if ((navigate_timeout > 0) || (list_len <= 0)) {
+    return;
+  }
+
+  draw_current = DRAW_MENU;
+  menu_setup(&draw_current, region_themes[region_current].text_color, region_themes[region_current].highlight_color, &navigate_timeout);
+}
+
 static void update_data(void) {
   if (frames_focused > FOCUSED_HIRES_FRAMES) {
     txr_get_large(list_current[current_selected_item]->product, &txr_focus);
@@ -368,10 +377,9 @@ static void handle_input_ui(enum control input) {
     case A:
       menu_accept();
       break;
-    case START: {
-      draw_current = DRAW_MENU;
-      menu_setup(&draw_current, region_themes[region_current].text_color, region_themes[region_current].highlight_color, &navigate_timeout);
-    } break;
+    case START:
+      menu_settings();
+      break;
     case Y: {
       extern void arch_menu(void);
       arch_menu();

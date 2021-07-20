@@ -465,6 +465,15 @@ static void menu_accept(void) {
   dreamcast_rungd(list_current[current_selected()]->slot_num);
 }
 
+static void menu_settings(void) {
+  if ((navigate_timeout > 0) || (list_len <= 0)) {
+    return;
+  }
+
+  draw_current = DRAW_MENU;
+  menu_setup(&draw_current, region_themes[region_current].text_color, region_themes[region_current].highlight_color, &navigate_timeout);
+}
+
 static void menu_show_large_art(void) {
   if (!boxart_button_held && !anim_active(&anim_large_art_scale.time)) {
     /* Setup positioning */
@@ -566,11 +575,9 @@ static void handle_input_ui(enum control input) {
     case A:
       menu_accept();
       break;
-    case START: {
-      draw_current = DRAW_MENU;
-      menu_setup(&draw_current, region_themes[region_current].text_color, region_themes[region_current].highlight_color, &navigate_timeout);
-      navigate_timeout = INPUT_TIMEOUT * 2;
-    } break;
+    case START:
+      menu_settings();
+      break;
     case Y: {
       extern void arch_menu(void);
       arch_menu();

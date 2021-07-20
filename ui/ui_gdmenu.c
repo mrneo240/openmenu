@@ -283,6 +283,15 @@ static void menu_accept(void) {
   dreamcast_rungd(list_current[current_selected_item]->slot_num);
 }
 
+static void menu_settings(void) {
+  if ((navigate_timeout > 0) || (list_len <= 0)) {
+    return;
+  }
+
+  draw_current = DRAW_MENU;
+  menu_setup(&draw_current, color_main_default, color_main_highlight, &navigate_timeout);
+}
+
 FUNCTION(UI_NAME, init) {
   texman_clear();
   /* @Note: these exist but do we really care? Naturally this will happen without forcing it and old data doesn't matter */
@@ -319,11 +328,9 @@ static void handle_input_ui(enum control input) {
     case A:
       menu_accept();
       break;
-    case START: {
-      draw_current = DRAW_MENU;
-      menu_setup(&draw_current, color_main_default, color_main_highlight, &navigate_timeout);
-      navigate_timeout = INPUT_TIMEOUT * 2;
-    } break;
+    case START:
+      menu_settings();
+      break;
     case Y: {
       extern void arch_menu(void);
       arch_menu();
