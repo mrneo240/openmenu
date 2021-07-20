@@ -95,6 +95,9 @@ void reload_ui(void) {
 static int init(void) {
   int ret = 0;
 
+  /* Load settings */
+  settings_init();
+
   ret += txr_create_small_pool();
   ret += txr_create_large_pool();
   ret += txr_load_DATs();
@@ -103,9 +106,6 @@ static int init(void) {
 
   /* setup internal memory zones */
   draw_init();
-
-  /* Load settings */
-  settings_init();
 
   /* Load UI */
   reload_ui();
