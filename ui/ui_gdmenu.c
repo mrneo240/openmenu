@@ -47,6 +47,7 @@ static const uint32_t UNUSED color_image_name_default = PVR_PACK_ARGB(255, 152, 
 static const uint32_t UNUSED color_image_name_highlight = PVR_PACK_ARGB(255, 103, 193, 245);
 static const uint32_t UNUSED color_cursor_default = PVR_PACK_ARGB(255, 33, 56, 82); /* unsure */
 static const uint32_t UNUSED color_cursor_actual = PVR_PACK_ARGB(255, 29, 44, 66);
+static const uint32_t UNUSED color_gdmenu_green = PVR_PACK_ARGB(255, 100, 255, 225);
 
 /* GDMENU Default positions */
 static const int cursor_width = 404;
@@ -129,8 +130,19 @@ static void draw_gamelist(void) {
 
     sprintf(buffer, "%02d %s", current_starting_index + i + 1, list_current[current_starting_index + i]->name);
     if ((current_starting_index + i) == current_selected_item) {
+      /* grab the disc number and if there is more than one */
+      int disc_set = list_current[current_selected_item]->disc[2] - '0';
+
+      /* Get multidisc settings */
+      openmenu_settings *settings = settings_get();
+      int hide_multidisc = settings->multidisc;
+
+      uint32_t highlight_text_color = color_main_highlight;
+      if (hide_multidisc && (disc_set > 1)) {
+        highlight_text_color = color_gdmenu_green;
+      }
       draw_draw_quad(pos_gameslist_x, pos_gameslist_y + Y_ADJUST_TEXT + (i * 21) - Y_ADJUST_CRSR, cursor_width, cursor_height, color_cursor_actual);
-      font_bmp_set_color(color_main_highlight);
+      font_bmp_set_color(highlight_text_color);
     } else {
       font_bmp_set_color(color_main_default);
     }
@@ -253,6 +265,21 @@ static void menu_accept(void) {
     return;
   }
 
+  /* grab the disc number and if there is more than one */
+  int disc_set = list_current[current_selected_item]->disc[2] - '0';
+
+  /* Get multidisc settings */
+  openmenu_settings *settings = settings_get();
+  int hide_multidisc = settings->multidisc;
+
+  /* prepare to show multidisc chooser menu */
+  if (hide_multidisc && (disc_set > 1)) {
+    draw_current = DRAW_MULTIDISC;
+    popup_setup(&draw_current, color_main_default, color_main_highlight, &navigate_timeout);
+    list_set_multidisc(list_current[current_selected_item]->product);
+    return;
+  }
+
   dreamcast_rungd(list_current[current_selected_item]->slot_num);
 }
 
@@ -294,7 +321,7 @@ static void handle_input_ui(enum control input) {
       break;
     case START: {
       draw_current = DRAW_MENU;
-      menu_setup(&draw_current, color_main_default, color_main_highlight);
+      menu_setup(&draw_current, color_main_default, color_main_highlight, &navigate_timeout);
       navigate_timeout = INPUT_TIMEOUT * 2;
     } break;
     case Y: {
@@ -311,7 +338,6 @@ static void handle_input_ui(enum control input) {
     default:
       break;
   }
-  navigate_timeout--;
 }
 
 FUNCTION(UI_NAME, setup) {
@@ -333,16 +359,24 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
     case DRAW_CREDITS: {
       handle_input_credits(input_current);
     } break;
+    case DRAW_MULTIDISC: {
+      handle_input_multidisc(input_current);
+    } break;
+    case DRAW_EXIT: {
+      handle_input_exit(input_current);
+    } break;
     default:
     case DRAW_UI: {
       handle_input_ui(input_current);
     } break;
   }
+  navigate_timeout--;
 }
 
 FUNCTION(UI_NAME, drawOP) {
   draw_bg_layers();
   draw_gameart();
+
   switch (draw_current) {
     case DRAW_MENU: {
       /* Menu on top */
@@ -351,6 +385,14 @@ FUNCTION(UI_NAME, drawOP) {
     case DRAW_CREDITS: {
       /* Credits on top */
       draw_credits_op();
+    } break;
+    case DRAW_MULTIDISC: {
+      /* Multidisc choice on top */
+      draw_multidisc_op();
+    } break;
+    case DRAW_EXIT: {
+      /* Exit popup on top */
+      draw_exit_op();
     } break;
     default:
     case DRAW_UI: {
@@ -362,6 +404,7 @@ FUNCTION(UI_NAME, drawOP) {
 FUNCTION(UI_NAME, drawTR) {
   draw_gamelist();
   draw_gameinfo();
+
   switch (draw_current) {
     case DRAW_MENU: {
       /* Menu on top */
@@ -370,6 +413,14 @@ FUNCTION(UI_NAME, drawTR) {
     case DRAW_CREDITS: {
       /* Credits on top */
       draw_credits_tr();
+    } break;
+    case DRAW_MULTIDISC: {
+      /* Multidisc choice on top */
+      draw_multidisc_tr();
+    } break;
+    case DRAW_EXIT: {
+      /* Exit popup on top */
+      draw_exit_tr();
     } break;
     default:
     case DRAW_UI: {

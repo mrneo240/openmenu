@@ -162,9 +162,15 @@ static void draw_small_box_highlight(void) {
 }
 
 static void draw_game_meta(void) {
-  /* Icons if we have them*/
+  /* grab the disc number and if there is more than one */
+  int disc_num = list_current[current_selected_item]->disc[0] - '0';
+  int disc_set = list_current[current_selected_item]->disc[2] - '0';
 
-  /* Then text after */
+  /* Get multidisc settings */
+  openmenu_settings *settings = settings_get();
+  int hide_multidisc = settings->multidisc;
+
+  /* Game Title */
   font_bmf_begin_draw();
   font_bmf_set_height_default();
   if (list_len <= 0) {
@@ -172,6 +178,22 @@ static void draw_game_meta(void) {
     return;
   }
   font_bmf_draw_auto_size(316, 92 - 20, region_themes[region_current].text_color, list_current[current_selected_item]->name, 640 - 316 - 10);
+
+  /* Disc # above name, position 316x33 */
+  {
+    if (disc_set > 1) {
+      if (!hide_multidisc) {
+        char disc_str[8];
+        snprintf(disc_str, 8, "Disc %d", disc_num);
+        font_bmf_draw_sub(316 + 22 + 4, 36, region_themes[region_current].text_color, disc_str);
+      } else {
+        /* Draw multiple discs and how many */
+        char disc_str[8];
+        snprintf(disc_str, 8, "%d Discs", disc_set);
+        font_bmf_draw_sub(316 + 22 + 4, 36, region_themes[region_current].text_color, disc_str);
+      }
+    }
+  }
 
   const char *synopsis;
   if (current_meta) {
@@ -207,11 +229,11 @@ static void draw_game_meta(void) {
       const dimen_RECT uv_modem = {.x = 0, .y = 86, .w = 42, .h = 42};
       draw_draw_sub_image(534, 254 + 12, 22, 22, COLOR_WHITE, txr_icons_current, &uv_modem);  //22x22
     }
-    {
-      //560x282
-      const dimen_RECT uv_disc = {.x = 42, .y = 86, .w = 42, .h = 42};
-      draw_draw_sub_image(560, 254 + 12, 22, 22, COLOR_WHITE, txr_icons_current, &uv_disc);  //22x22
-    }
+  }
+
+  if (disc_set > 1) {
+    const dimen_RECT uv_disc = {.x = 42, .y = 86, .w = 42, .h = 42};
+    draw_draw_sub_image(314, 33, 22, 22, region_themes[region_current].text_color, txr_icons_current, &uv_disc);  //22x22
   }
 }
 
@@ -246,6 +268,21 @@ static void menu_increment(int amount) {
 
 static void menu_accept(void) {
   if ((navigate_timeout > 0) || (list_len <= 0)) {
+    return;
+  }
+
+  /* grab the disc number and if there is more than one */
+  int disc_set = list_current[current_selected_item]->disc[2] - '0';
+
+  /* Get multidisc settings */
+  openmenu_settings *settings = settings_get();
+  int hide_multidisc = settings->multidisc;
+
+  /* prepare to show multidisc chooser menu */
+  if (hide_multidisc && (disc_set > 1)) {
+    draw_current = DRAW_MULTIDISC;
+    popup_setup(&draw_current, region_themes[region_current].text_color, region_themes[region_current].highlight_color, &navigate_timeout);
+    list_set_multidisc(list_current[current_selected_item]->product);
     return;
   }
 
@@ -333,8 +370,7 @@ static void handle_input_ui(enum control input) {
       break;
     case START: {
       draw_current = DRAW_MENU;
-      menu_setup(&draw_current, region_themes[region_current].text_color, region_themes[region_current].highlight_color);
-      navigate_timeout = INPUT_TIMEOUT * 2;
+      menu_setup(&draw_current, region_themes[region_current].text_color, region_themes[region_current].highlight_color, &navigate_timeout);
     } break;
     case Y: {
       extern void arch_menu(void);
@@ -351,8 +387,6 @@ static void handle_input_ui(enum control input) {
     default:
       break;
   }
-
-  navigate_timeout--;
 }
 
 FUNCTION(UI_NAME, setup) {
@@ -376,11 +410,18 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
     case DRAW_CREDITS: {
       handle_input_credits(input_current);
     } break;
+    case DRAW_MULTIDISC: {
+      handle_input_multidisc(input_current);
+    } break;
+    case DRAW_EXIT: {
+      handle_input_exit(input_current);
+    } break;
     default:
     case DRAW_UI: {
       handle_input_ui(input_current);
     } break;
   }
+  navigate_timeout--;
 }
 
 FUNCTION(UI_NAME, drawOP) {
@@ -395,6 +436,14 @@ FUNCTION(UI_NAME, drawOP) {
     case DRAW_CREDITS: {
       /* Credits on top */
       draw_credits_op();
+    } break;
+    case DRAW_MULTIDISC: {
+      /* Multidisc choice on top */
+      draw_multidisc_op();
+    } break;
+    case DRAW_EXIT: {
+      /* Exit popup on top */
+      draw_exit_op();
     } break;
     default:
     case DRAW_UI: {
@@ -419,6 +468,14 @@ FUNCTION(UI_NAME, drawTR) {
     case DRAW_CREDITS: {
       /* Credits on top */
       draw_credits_tr();
+    } break;
+    case DRAW_MULTIDISC: {
+      /* Multidisc choice on top */
+      draw_multidisc_tr();
+    } break;
+    case DRAW_EXIT: {
+      /* Exit popup on top */
+      draw_exit_tr();
     } break;
     default:
     case DRAW_UI: {

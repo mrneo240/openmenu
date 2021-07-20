@@ -51,13 +51,13 @@ static short TILE_SIZE_X;
 static short TILE_SIZE_Y;
 /* Helpers */
 static inline int HIGHLIGHT_X_POS(int col) {
-  return (GUTTER_SIDE - HIGHLIGHT_OVERHANG + ((HORIZONTAL_SPACING + TILE_SIZE_X) * (col)));
+  return (GUTTER_SIDE - HIGHLIGHT_OVERHANG + ((HORIZONTAL_SPACING + TILE_SIZE_X) * (col))) * X_SCALE;
 }
 static inline int HIGHLIGHT_Y_POS(int row) {
   return (GUTTER_TOP - HIGHLIGHT_OVERHANG + ((VERTICAL_SPACING + TILE_SIZE_Y) * (row)));
 }
 static inline int TILE_X_POS(int col) {
-  return (GUTTER_SIDE + ((HORIZONTAL_SPACING + TILE_SIZE_X) * (col)));
+  return (GUTTER_SIDE + ((HORIZONTAL_SPACING + TILE_SIZE_X) * (col))) * X_SCALE;
 }
 static inline int TILE_Y_POS(int row) {
   return (GUTTER_TOP + ((VERTICAL_SPACING + TILE_SIZE_Y) * (row)));
@@ -108,7 +108,7 @@ static theme_region region_themes[] = {
      .icon_set = &txr_icons_white,
      .text_color = COLOR_WHITE,
      .highlight_color = COLOR_ORANGE_U},
-    {.bg_left =  "THEME/NTSC_J/BG_J_L.PVR",
+    {.bg_left = "THEME/NTSC_J/BG_J_L.PVR",
      .bg_right = "THEME/NTSC_J/BG_J_R.PVR",
      .icon_set = &txr_icons_black,
      .text_color = COLOR_BLACK,
@@ -125,7 +125,7 @@ static void select_art_by_aspect(CFG_ASPECT aspect) {
     region_themes[REGION_NTSC_U].bg_left = "THEME/NTSC_U/BG_U_L.PVR";
     region_themes[REGION_NTSC_U].bg_right = "THEME/NTSC_U/BG_U_R.PVR";
 
-    region_themes[REGION_NTSC_J].bg_left =  "THEME/NTSC_J/BG_J_L.PVR";
+    region_themes[REGION_NTSC_J].bg_left = "THEME/NTSC_J/BG_J_L.PVR";
     region_themes[REGION_NTSC_J].bg_right = "THEME/NTSC_J/BG_J_R.PVR";
 
     region_themes[REGION_PAL].bg_left = "THEME/PAL/BG_E_L.PVR";
@@ -257,6 +257,46 @@ static void draw_grid_boxes(void) {
           pos_highlight.y = y_pos - (HIGHLIGHT_OVERHANG);
           draw_static_highlight((TILE_SIZE_X + (HIGHLIGHT_OVERHANG * 2)) * X_SCALE, TILE_SIZE_Y + (HIGHLIGHT_OVERHANG * 2));
         }
+      }
+    }
+  }
+
+  /* Get multidisc settings */
+  openmenu_settings *settings = settings_get();
+  int hide_multidisc = settings->multidisc;
+
+  for (int row = 0; row < ROWS; row++) {
+    for (int column = 0; column < COLUMNS; column++) {
+      int idx = (row * COLUMNS) + column;
+
+      if (current_starting_index + idx < 0) {
+        continue;
+      }
+      if (current_starting_index + idx >= list_len) {
+        break;
+      }
+
+      const int disc_set = list_current[current_selected()]->disc[2] - '0';
+
+      /* Disc # above name, position 316x33 */
+      if (((current_starting_index + idx) == current_selected()) && (hide_multidisc) && (disc_set > 1)) {
+        float x_pos = GUTTER_SIDE + ((HORIZONTAL_SPACING + TILE_SIZE_X) * column) + 4;
+        float y_pos = GUTTER_TOP + ((VERTICAL_SPACING + TILE_SIZE_Y) * row) + TILE_SIZE_Y - 24;
+        int disc_set = list_current[current_selected()]->disc[2] - '0';
+
+        x_pos *= X_SCALE;
+
+        uint32_t menu_bkg_color = COLOR_BLACK;
+        if (region_themes[region_current].text_color == COLOR_BLACK) {
+          menu_bkg_color = COLOR_WHITE;
+        }
+        /* Draw multiple discs and how many */
+        draw_draw_quad(x_pos, y_pos, TILE_SIZE_X * X_SCALE * 0.5f, 28, menu_bkg_color);
+        char disc_str[8];
+        snprintf(disc_str, 8, "%d Discs", disc_set);
+        font_bmf_begin_draw();
+        font_bmf_set_height(24);
+        font_bmf_draw_sub(x_pos + 8, y_pos + 2, region_themes[region_current].text_color, disc_str);
       }
     }
   }
@@ -407,6 +447,21 @@ static void menu_accept(void) {
     return;
   }
 
+  /* grab the disc number and if there is more than one */
+  int disc_set = list_current[current_selected()]->disc[2] - '0';
+
+  /* Get multidisc settings */
+  openmenu_settings *settings = settings_get();
+  int hide_multidisc = settings->multidisc;
+
+  /* prepare to show multidisc chooser menu */
+  if (hide_multidisc && (disc_set > 1)) {
+    draw_current = DRAW_MULTIDISC;
+    popup_setup(&draw_current, region_themes[region_current].text_color, region_themes[region_current].highlight_color, &navigate_timeout);
+    list_set_multidisc(list_current[current_selected()]->product);
+    return;
+  }
+
   dreamcast_rungd(list_current[current_selected()]->slot_num);
 }
 
@@ -513,7 +568,7 @@ static void handle_input_ui(enum control input) {
       break;
     case START: {
       draw_current = DRAW_MENU;
-      menu_setup(&draw_current, region_themes[region_current].text_color, region_themes[region_current].highlight_color);
+      menu_setup(&draw_current, region_themes[region_current].text_color, region_themes[region_current].highlight_color, &navigate_timeout);
       navigate_timeout = INPUT_TIMEOUT * 2;
     } break;
     case Y: {
@@ -540,8 +595,6 @@ static void handle_input_ui(enum control input) {
   if (screen_column < 0) {
     screen_column = 0;
   }
-
-  navigate_timeout--;
 }
 
 /* Reset variables sensibly */
@@ -569,15 +622,23 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
     case DRAW_CREDITS: {
       handle_input_credits(input_current);
     } break;
+    case DRAW_MULTIDISC: {
+      handle_input_multidisc(input_current);
+    } break;
+    case DRAW_EXIT: {
+      handle_input_exit(input_current);
+    } break;
     default:
     case DRAW_UI: {
       handle_input_ui(input_current);
     } break;
   }
+  navigate_timeout--;
 }
 
 FUNCTION(UI_NAME, drawOP) {
   draw_bg_layers();
+
   switch (draw_current) {
     case DRAW_MENU: {
       /* Menu on top */
@@ -586,6 +647,14 @@ FUNCTION(UI_NAME, drawOP) {
     case DRAW_CREDITS: {
       /* Credits on top */
       draw_credits_op();
+    } break;
+    case DRAW_MULTIDISC: {
+      /* Multidisc choice on top */
+      draw_multidisc_op();
+    } break;
+    case DRAW_EXIT: {
+      /* Exit popup on top */
+      draw_exit_op();
     } break;
     default:
     case DRAW_UI: {
@@ -608,6 +677,14 @@ FUNCTION(UI_NAME, drawTR) {
     case DRAW_CREDITS: {
       /* Credits on top */
       draw_credits_tr();
+    } break;
+    case DRAW_MULTIDISC: {
+      /* Multidisc choice on top */
+      draw_multidisc_tr();
+    } break;
+    case DRAW_EXIT: {
+      /* Exit popup on top */
+      draw_exit_tr();
     } break;
     default:
     case DRAW_UI: {
