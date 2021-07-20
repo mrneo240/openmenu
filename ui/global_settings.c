@@ -28,6 +28,7 @@ static void settings_defaults(void) {
   savedata.sort = SORT_DEFAULT;
   savedata.filter = FILTER_ALL;
   savedata.beep = BEEP_ON;
+  savedata.multidisc = MULTIDISC_SHOW;
 }
 
 static void settings_create(void) {
@@ -100,6 +101,9 @@ void settings_validate(void) {
 
   if ((savedata.beep < BEEP_START) || (savedata.beep > BEEP_END)) {
     savedata.beep = BEEP_ON;
+  }
+  if ((savedata.multidisc < MULTIDISC_START) || (savedata.multidisc > MULTIDISC_END)) {
+    savedata.multidisc = MULTIDISC_SHOW;
   }
 }
 

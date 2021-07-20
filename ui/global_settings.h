@@ -74,6 +74,13 @@ typedef enum CFG_BEEP {
   BEEP_END = BEEP_ON
 } CFG_BEEP;
 
+typedef enum CFG_MULTIDISC {
+  MULTIDISC_START = 0,
+  MULTIDISC_SHOW = MULTIDISC_START,
+  MULTIDISC_HIDE,
+  MULTIDISC_END = MULTIDISC_HIDE
+} CFG_MULTIDISC;
+
 typedef struct openmenu_settings {
   CFG_REGION region;
   CFG_ASPECT aspect;
@@ -81,11 +88,14 @@ typedef struct openmenu_settings {
   CFG_SORT sort;
   CFG_FILTER filter;
   CFG_BEEP beep;
+  CFG_MULTIDISC multidisc;
 } openmenu_settings;
 
 typedef CFG_REGION region;
 
 enum draw_state { DRAW_UI = 0,
+                  DRAW_MULTIDISC,
+                  DRAW_EXIT,
                   DRAW_MENU,
                   DRAW_CREDITS };
 
