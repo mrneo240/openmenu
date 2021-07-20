@@ -31,6 +31,10 @@
 #define FD_TYPE FILE *
 #endif
 
+#ifndef STANDALONE_BINARY
+#include "../ui/global_settings.h"
+#endif
+
 /* Base internal original */
 static int num_items_BASE = -1;
 static gd_item *gd_slots_BASE = NULL;
@@ -38,6 +42,11 @@ static gd_item *gd_slots_BASE = NULL;
 /* Current client facing pointer copy, may be sorted/filtered */
 static int num_items_temp = -1;
 static gd_item **list_temp = NULL;
+
+/* Temporary list for holding all multidisc games in a set */
+#define MULTIDISC_MAX_GAMES_PER_SET (4)
+static int num_items_multidisc = -1;
+static gd_item *list_multidisc[MULTIDISC_MAX_GAMES_PER_SET] = {NULL};
 
 static inline long int filelength(FD_TYPE f) {
   long int end;
@@ -60,6 +69,7 @@ static int read_openmenu_ini(void *user, const char *section, const char *name, 
 
     memset(gd_slots_BASE, '\0', num_items_BASE * sizeof(struct gd_item));
     memset(list_temp, '\0', num_items_BASE * sizeof(struct gd_item *));
+    memset(list_multidisc, '\0', MULTIDISC_MAX_GAMES_PER_SET * sizeof(struct gd_item *));
   } else {
     /* Parsing games */
     char slot_string[4] = {0, 0, 0, 0};
@@ -125,9 +135,20 @@ void list_print(const gd_item **list) {
 }
 
 static void list_temp_reset(void) {
-  for (int i = 0; i < num_items_BASE - 1; i++) {
-    list_temp[i] = &gd_slots_BASE[i + 1];
+  int base_idx, temp_idx = 0;
+
+  int hide_multidisc = settings_get()->multidisc;
+
+  /* Skip openMenu itself */
+  for (base_idx = 1; base_idx < num_items_BASE; base_idx++) {
+    int disc_num = gd_slots_BASE[base_idx].disc[0] - '0';
+    int disc_set = gd_slots_BASE[base_idx].disc[2] - '0';
+    if (hide_multidisc && disc_num > 1 && disc_set > 1)
+      continue;
+
+    list_temp[temp_idx++] = &gd_slots_BASE[base_idx];
   }
+  num_items_temp = temp_idx;
 }
 
 static int struct_cmp_by_name(const void *a, const void *b) {
@@ -150,7 +171,6 @@ static int struct_cmp_by_product(const void *a, const void *b) {
 
 const gd_item **list_get_sort_name(void) {
   list_temp_reset();
-  num_items_temp = num_items_BASE - 1;
 
   /* Sort according to name alphabetically */
   qsort(list_temp, num_items_temp, sizeof(gd_item *), struct_cmp_by_name);
@@ -159,7 +179,6 @@ const gd_item **list_get_sort_name(void) {
 
 const gd_item **list_get_sort_date(void) {
   list_temp_reset();
-  num_items_temp = num_items_BASE - 1;
 
   /* Sort according to name alphabetically */
   qsort(list_temp, num_items_temp, sizeof(gd_item *), struct_cmp_by_date);
@@ -168,7 +187,6 @@ const gd_item **list_get_sort_date(void) {
 
 const gd_item **list_get_sort_product(void) {
   list_temp_reset();
-  num_items_temp = num_items_BASE - 1;
 
   /* Sort according to name alphabetically */
   qsort(list_temp, num_items_temp, sizeof(gd_item *), struct_cmp_by_product);
@@ -177,7 +195,6 @@ const gd_item **list_get_sort_product(void) {
 
 const gd_item **list_get_sort_default(void) {
   list_temp_reset();
-  num_items_temp = num_items_BASE - 1;
 
   return (const gd_item **)list_temp;
 }
@@ -186,20 +203,35 @@ const struct gd_item **list_get(void) {
   return (const gd_item **)list_temp;
 }
 
+const struct gd_item **list_get_multidisc(void) {
+  return (const gd_item **)list_multidisc;
+}
+
 const struct gd_item **list_get_genre(int genre) {
 #if !defined(STANDALONE_BINARY)
   FLAGS_GENRE matching_genre = (1 << genre);
-  int idx = 0;
-  for (int i = 0; i < num_items_BASE - 1; i++) {
-    gd_item *temp_item = &gd_slots_BASE[i + 1];
+
+  int base_idx, temp_idx = 0;
+
+  int hide_multidisc = settings_get()->multidisc;
+
+  /* Skip openMenu itself */
+  for (base_idx = 1; base_idx < num_items_BASE; base_idx++) {
+    int disc_num = gd_slots_BASE[base_idx].disc[0] - '0';
+    int disc_set = gd_slots_BASE[base_idx].disc[2] - '0';
+    if (hide_multidisc && disc_num > 1 && disc_set > 1)
+      continue;
+
+    gd_item *temp_item = &gd_slots_BASE[base_idx];
     db_item *temp_meta;
     if (!db_get_meta(temp_item->product, &temp_meta)) {
       if (temp_meta->genre & matching_genre) {
-        list_temp[idx++] = temp_item;
+        list_temp[temp_idx++] = temp_item;
       }
     }
   }
-  num_items_temp = idx;
+
+  num_items_temp = temp_idx;
   return (const gd_item **)list_temp;
 #endif
 }
@@ -227,8 +259,25 @@ const struct gd_item **list_get_genre_sort(int genre, int sort) {
   return (const gd_item **)list_temp;
 }
 
+void list_set_multidisc(const char *product_id) {
+  int base_idx, temp_idx = 0;
+
+  /* Skip openMenu itself */
+  for (base_idx = 1; base_idx < num_items_BASE; base_idx++) {
+    if (strcmp(gd_slots_BASE[base_idx].product, product_id))
+      continue;
+
+    list_multidisc[temp_idx++] = &gd_slots_BASE[base_idx];
+  }
+  num_items_multidisc = temp_idx;
+}
+
 int list_length(void) {
   return num_items_temp;
+}
+
+int list_multidisc_length(void) {
+  return num_items_multidisc;
 }
 
 int list_read(const char *filename) {

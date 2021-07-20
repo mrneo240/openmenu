@@ -27,6 +27,10 @@ const struct gd_item **list_get_sort_default(void);
 /* complex filtering and sorting */
 const struct gd_item **list_get_genre(int genre);
 const struct gd_item **list_get_genre_sort(int genre, int sort);
-int list_length(void);
+/* Grab multidisc games */
+void list_set_multidisc(const char *product_id);
+const struct gd_item **list_get_multidisc(void);
 
+int list_length(void);
+int list_multidisc_length(void);
 const struct gd_item *list_item_get(int idx);
