@@ -13,6 +13,7 @@
 #include <string.h>
 
 #include "../backend/db_item.h"
+#include "../backend/gd_item.h"
 #include "../backend/gd_list.h"
 #include "draw_kos.h"
 #include "draw_prototypes.h"
@@ -20,7 +21,7 @@
 
 #pragma region Settings_Menu
 
-const char* menu_choice_text[] = {"Theme", "Region", "Aspect", "Beep", "Sort", "Filter"};
+const char* menu_choice_text[] = {"Theme", "Region", "Aspect", "Beep", "Sort", "Filter", "Multidisc"};
 const char* theme_choice_text[] = {"LineDesc", "Grid3", "GDMENU"};
 const char* region_choice_text[] = {"NTSC-U", "NTSC-J", "PAL"};
 const char* aspect_choice_text[] = {"4:3", "16:9"};
@@ -30,6 +31,7 @@ const char* filter_choice_text[] = {
     "All", "Action", "Racing", "Simulation", "Sports", "Lightgun",
     "Fighting", "Shooter", "Survival", "Adventure", "Platformer", "RPG",
     "Shmup", "Strategy", "Puzzle", "Arcade", "Music"};
+const char* multidisc_choice_text[] = {"Show", "Hide"};
 const char* save_choice_text[] = {"Save", "Apply"};
 const char* credits_text[] = {"Credits"};
 
@@ -41,6 +43,7 @@ const char* credits_text[] = {"Credits"};
 #define BEEP_CHOICES (sizeof(beep_choice_text) / sizeof(beep_choice_text)[0])
 #define SORT_CHOICES (sizeof(sort_choice_text) / sizeof(sort_choice_text)[0])
 #define FILTER_CHOICES (sizeof(filter_choice_text) / sizeof(filter_choice_text)[0])
+#define MULTIDISC_CHOICES (sizeof(multidisc_choice_text) / sizeof(multidisc_choice_text)[0])
 
 typedef enum MENU_CHOICE {
   CHOICE_START,
@@ -50,6 +53,7 @@ typedef enum MENU_CHOICE {
   CHOICE_BEEP,
   CHOICE_SORT,
   CHOICE_FILTER,
+  CHOICE_MULTIDISC,
   CHOICE_SAVE,
   CHOICE_CREDITS,
   CHOICE_END = CHOICE_CREDITS
@@ -58,10 +62,10 @@ typedef enum MENU_CHOICE {
 #define INPUT_TIMEOUT (10)
 
 static int choices[MENU_CHOICES + 1];
-static int choices_max[MENU_CHOICES + 1] = {THEME_CHOICES, REGION_CHOICES, ASPECT_CHOICES, BEEP_CHOICES, SORT_CHOICES, FILTER_CHOICES, 2 /* Apply/Save */};
-static const char** menu_choice_array[MENU_CHOICES] = {theme_choice_text, region_choice_text, aspect_choice_text, beep_choice_text, sort_choice_text, filter_choice_text};
+static int choices_max[MENU_CHOICES + 1] = {THEME_CHOICES, REGION_CHOICES, ASPECT_CHOICES, BEEP_CHOICES, SORT_CHOICES, FILTER_CHOICES, MULTIDISC_CHOICES, 2 /* Apply/Save */};
+static const char** menu_choice_array[MENU_CHOICES] = {theme_choice_text, region_choice_text, aspect_choice_text, beep_choice_text, sort_choice_text, filter_choice_text, multidisc_choice_text};
 static int current_choice = CHOICE_START;
-static int navigate_timeout;
+static int* input_timeout_ptr = NULL;
 
 #pragma endregion Settings_Menu
 
@@ -93,7 +97,20 @@ static uint32_t text_color;
 static uint32_t highlight_color;
 static openmenu_settings* settings;
 
-void menu_setup(enum draw_state* state, uint32_t _text_color, uint32_t _highlight_color) {
+static void common_setup(enum draw_state* state, uint32_t _text_color, uint32_t _highlight_color, int* timeout_ptr) {
+  /* Ensure color themeing is consistent */
+  text_color = _text_color;
+  highlight_color = _highlight_color;
+
+  /* So we can modify the shared state and input timeout */
+  state_ptr = state;
+  input_timeout_ptr = timeout_ptr;
+  *input_timeout_ptr = (30 * 1) /* half a second */;
+}
+
+void menu_setup(enum draw_state* state, uint32_t _text_color, uint32_t _highlight_color, int* timeout_ptr) {
+  common_setup(state, _text_color, _highlight_color, timeout_ptr);
+
   /* Keep local pointer to reference */
   settings = settings_get();
 
@@ -103,33 +120,33 @@ void menu_setup(enum draw_state* state, uint32_t _text_color, uint32_t _highligh
   choices[CHOICE_SORT] = settings->sort;
   choices[CHOICE_FILTER] = settings->filter;
   choices[CHOICE_BEEP] = settings->beep;
+  choices[CHOICE_MULTIDISC] = settings->multidisc;
+}
 
-  /* So we can modify the state back to normal */
-  state_ptr = state;
-  text_color = _text_color;
-  highlight_color = _highlight_color;
+void popup_setup(enum draw_state* state, uint32_t _text_color, uint32_t _highlight_color, int* timeout_ptr) {
+  common_setup(state, _text_color, _highlight_color, timeout_ptr);
 
-  navigate_timeout = INPUT_TIMEOUT;
+  current_choice = CHOICE_START;
 }
 
 static void menu_leave(void) {
-  if (navigate_timeout > 0) {
+  if (*input_timeout_ptr > 0) {
     return;
   }
   *state_ptr = DRAW_UI;
-  navigate_timeout = INPUT_TIMEOUT;
+  *input_timeout_ptr = (30 * 1) /* half a second */;
 }
 
 static void credits_leave(void) {
-  if (navigate_timeout > 0) {
+  if (*input_timeout_ptr > 0) {
     return;
   }
   *state_ptr = DRAW_MENU;
-  navigate_timeout = INPUT_TIMEOUT;
+  *input_timeout_ptr = INPUT_TIMEOUT;
 }
 
 static void menu_accept(void) {
-  if (navigate_timeout > 0) {
+  if (*input_timeout_ptr > 0) {
     return;
   }
   if (current_choice == CHOICE_SAVE) {
@@ -140,6 +157,7 @@ static void menu_accept(void) {
     settings->sort = choices[CHOICE_SORT];
     settings->filter = choices[CHOICE_FILTER];
     settings->beep = choices[CHOICE_BEEP];
+    settings->multidisc = choices[CHOICE_MULTIDISC];
 
     /* If not filtering, then plain sort */
     if (!choices[CHOICE_FILTER]) {
@@ -164,55 +182,98 @@ static void menu_accept(void) {
       settings_save();
     extern void reload_ui(void);
     reload_ui();
-    //navigate_timeout = (60 * 1) /* 1 second */;
   }
   if (current_choice == CHOICE_CREDITS) {
     *state_ptr = DRAW_CREDITS;
-    navigate_timeout = (60 * 1) /* 1 seconds */;
+    *input_timeout_ptr = (60 * 1) /* 1 seconds */;
   }
 }
 
 static void menu_choice_prev(void) {
-  if (navigate_timeout > 0) {
+  if (*input_timeout_ptr > 0) {
     return;
   }
   current_choice--;
   if (current_choice < CHOICE_START) {
     current_choice = CHOICE_START;
   }
-  navigate_timeout = INPUT_TIMEOUT;
+  *input_timeout_ptr = INPUT_TIMEOUT;
 }
 
 static void menu_choice_next(void) {
-  if (navigate_timeout > 0) {
+  if (*input_timeout_ptr > 0) {
     return;
   }
   current_choice++;
   if (current_choice > CHOICE_END) {
     current_choice = CHOICE_END;
   }
-  navigate_timeout = INPUT_TIMEOUT;
+  *input_timeout_ptr = INPUT_TIMEOUT;
 }
 
 static void menu_choice_left(void) {
-  if ((navigate_timeout > 0) || (current_choice >= CHOICE_CREDITS)) {
+  if ((*input_timeout_ptr > 0) || (current_choice >= CHOICE_CREDITS)) {
     return;
   }
   choices[current_choice]--;
   if (choices[current_choice] < 0) {
     choices[current_choice] = 0;
   }
-  navigate_timeout = INPUT_TIMEOUT;
+  *input_timeout_ptr = INPUT_TIMEOUT;
 }
 static void menu_choice_right(void) {
-  if ((navigate_timeout > 0) || (current_choice >= CHOICE_CREDITS)) {
+  if ((*input_timeout_ptr > 0) || (current_choice >= CHOICE_CREDITS)) {
     return;
   }
   choices[current_choice]++;
   if (choices[current_choice] >= choices_max[current_choice]) {
     choices[current_choice]--;
   }
-  navigate_timeout = INPUT_TIMEOUT;
+  *input_timeout_ptr = INPUT_TIMEOUT;
+}
+
+static void menu_multidisc_prev(void) {
+  if (*input_timeout_ptr > 0) {
+    return;
+  }
+  current_choice--;
+  if (current_choice < 0) {
+    current_choice = 0;
+  }
+  *input_timeout_ptr = INPUT_TIMEOUT;
+}
+
+static void menu_multidisc_next(void) {
+  if (*input_timeout_ptr > 0) {
+    return;
+  }
+  current_choice++;
+  int multidisc_len = list_multidisc_length();
+  if (current_choice >= multidisc_len) {
+    current_choice--;
+  }
+  *input_timeout_ptr = INPUT_TIMEOUT;
+}
+
+static void menu_accept_multidisc(void) {
+  if (*input_timeout_ptr > 0) {
+    return;
+  }
+  const gd_item** list_multidisc = list_get_multidisc();
+  dreamcast_rungd(list_multidisc[current_choice]->slot_num);
+}
+
+static void menu_exit_left(void) {
+}
+static void menu_exit_right(void) {
+}
+static void menu_exit(void) {
+  if (*input_timeout_ptr > 0) {
+    return;
+  }
+  /* Probably should change this */
+  extern void arch_menu(void);
+  arch_menu();
 }
 
 void handle_input_menu(enum control input) {
@@ -229,6 +290,7 @@ void handle_input_menu(enum control input) {
     case DOWN:
       menu_choice_next();
       break;
+    case START:
     case B:
       menu_leave();
       break;
@@ -238,7 +300,6 @@ void handle_input_menu(enum control input) {
     default:
       break;
   }
-  navigate_timeout--;
 }
 
 void handle_input_credits(enum control input) {
@@ -251,7 +312,44 @@ void handle_input_credits(enum control input) {
     default:
       break;
   }
-  navigate_timeout--;
+}
+
+void handle_input_multidisc(enum control input) {
+  switch (input) {
+    case UP:
+      menu_multidisc_prev();
+      break;
+    case DOWN:
+      menu_multidisc_next();
+      break;
+    case B:
+      menu_leave();
+      break;
+    case A:
+      menu_accept_multidisc();
+      break;
+    default:
+      break;
+  }
+}
+
+void handle_input_exit(enum control input) {
+  switch (input) {
+    case LEFT:
+      menu_exit_left();
+      break;
+    case RIGHT:
+      menu_exit_right();
+      break;
+    case B:
+      menu_leave();
+      break;
+    case A:
+      menu_exit();
+      break;
+    default:
+      break;
+  }
 }
 
 void draw_menu_op(void) {
@@ -266,6 +364,20 @@ static void string_outer_concat(char* out, const char* left, const char* right, 
   strcat(out, right);
 }
 
+static void draw_popup_menu(int x, int y, int width, int height) {
+  const int border_width = 2;
+
+  uint32_t menu_bkg_color = COLOR_BLACK;
+  uint32_t menu_bkg_border_color = COLOR_WHITE;
+  if (text_color == COLOR_BLACK) {
+    menu_bkg_color = COLOR_WHITE;
+    menu_bkg_border_color = COLOR_BLACK;
+  }
+
+  draw_draw_quad(x - border_width, y - border_width, width + (2 * border_width), height + (2 * border_width), menu_bkg_border_color);
+  draw_draw_quad(x, y, width, height, menu_bkg_color);
+}
+
 void draw_menu_tr(void) {
   z_set(205.0f);
   if (settings->ui == UI_GDMENU) {
@@ -276,20 +388,11 @@ void draw_menu_tr(void) {
     const int x = (640 / 2) - (width / 2);
     const int y = (480 / 2) - (height / 2);
     const int x_item = x + 4;
-    const int border_width = 2;
 
     char line_buf[65];
-    /* Draw a rectangle in the middle of the screen */
 
-    uint32_t menu_bkg_color = COLOR_BLACK;
-    uint32_t menu_bkg_border_color = COLOR_WHITE;
-    if (text_color == COLOR_BLACK) {
-      menu_bkg_color = COLOR_WHITE;
-      menu_bkg_border_color = COLOR_BLACK;
-    }
-
-    draw_draw_quad(x - border_width, y - border_width, width + (2 * border_width), height + (2 * border_width), menu_bkg_border_color);
-    draw_draw_quad(x, y, width, height, menu_bkg_color);
+    /* Draw a popup in the middle of the screen */
+    draw_popup_menu(x, y, width, height);
 
     /* overlay our text on top with options */
     int cur_y = y + 2;
@@ -336,20 +439,9 @@ void draw_menu_tr(void) {
     const int y = (480 / 2) - (height / 2);
     const int x_item = x + 4;
     const int x_choice = 344 + 24 + 20; /* magic :( */
-    const int border_width = 2;
 
-    font_bmf_set_height(24.0f);
-
-    /* Draw a rectangle in the middle of the screen */
-    uint32_t menu_bkg_color = COLOR_BLACK;
-    uint32_t menu_bkg_border_color = COLOR_WHITE;
-    if (text_color == COLOR_BLACK) {
-      menu_bkg_color = COLOR_WHITE;
-      menu_bkg_border_color = COLOR_BLACK;
-    }
-
-    draw_draw_quad(x - border_width, y - border_width, width + (2 * border_width), height + (2 * border_width), menu_bkg_border_color);
-    draw_draw_quad(x, y, width, height, menu_bkg_color);
+    /* Draw a popup in the middle of the screen */
+    draw_popup_menu(x, y, width, height);
 
     /* overlay our text on top with options */
     int cur_y = y + 2;
@@ -397,20 +489,12 @@ void draw_credits_tr(void) {
     const int x = (640 / 2) - (width / 2);
     const int y = (480 / 2) - (height / 2);
     const int x_item = x + 4;
-    const int border_width = 2;
 
     char line_buf[65];
     /* Draw a rectangle in the middle of the screen */
 
-    uint32_t menu_bkg_color = COLOR_BLACK;
-    uint32_t menu_bkg_border_color = COLOR_WHITE;
-    if (text_color == COLOR_BLACK) {
-      menu_bkg_color = COLOR_WHITE;
-      menu_bkg_border_color = COLOR_BLACK;
-    }
-
-    draw_draw_quad(x - border_width, y - border_width, width + (2 * border_width), height + (2 * border_width), menu_bkg_border_color);
-    draw_draw_quad(x, y, width, height, menu_bkg_color);
+    /* Draw a popup in the middle of the screen */
+    draw_popup_menu(x, y, width, height);
 
     /* overlay our text on top with options */
     int cur_y = y + 4;
@@ -436,18 +520,9 @@ void draw_credits_tr(void) {
     const int y = (480 / 2) - (height / 2);
     const int x_choice = 344 + 24 + 60; /* magic :( */
     const int x_item = x + 4;
-    const int border_width = 2;
 
-    /* Draw a rectangle in the middle of the screen */
-    uint32_t menu_bkg_color = COLOR_BLACK;
-    uint32_t menu_bkg_border_color = COLOR_WHITE;
-    if (text_color == COLOR_BLACK) {
-      menu_bkg_color = COLOR_WHITE;
-      menu_bkg_border_color = COLOR_BLACK;
-    }
-
-    draw_draw_quad(x - border_width, y - border_width, width + (2 * border_width), height + (2 * border_width), menu_bkg_border_color);
-    draw_draw_quad(x, y, width, height, menu_bkg_color);
+    /* Draw a popup in the middle of the screen */
+    draw_popup_menu(x, y, width, height);
 
     /* overlay our text on top with options */
     int cur_y = y + 2;
@@ -463,4 +538,95 @@ void draw_credits_tr(void) {
       font_bmf_draw_centered(x_choice, cur_y, highlight_color, credits[i].role);
     }
   }
+}
+
+void draw_multidisc_op(void) {
+  /* Again nothing...Still... */
+}
+
+void draw_multidisc_tr(void) {
+  const gd_item** list_multidisc = list_get_multidisc();
+  int multidisc_len = list_multidisc_length();
+
+  z_set(205.0f);
+  if (settings->ui == UI_GDMENU) {
+    /* Menu size and placement */
+    const int line_height = 24;
+    const int width = 320;
+    const int height = (multidisc_len + 1) * line_height + (line_height / 2);
+    const int x = (640 / 2) - (width / 2);
+    const int y = (480 / 2) - (height / 2);
+    const int x_item = x + 4;
+    char line_buf[65];
+    char temp_game_name[36];
+    char temp_game_num[4];
+
+    /* Draw a popup in the middle of the screen */
+    draw_popup_menu(x, y, width, height);
+
+    /* overlay our text on top with options */
+    int cur_y = y + 2;
+    font_bmp_begin_draw();
+    font_bmp_set_color(text_color);
+
+    font_bmp_draw_main(x_item, cur_y, "Multidisc");
+
+    cur_y += line_height / 2;
+    for (int i = 0; i < multidisc_len; i++) {
+      cur_y += line_height;
+      if (i == current_choice) {
+        font_bmp_set_color(highlight_color);
+      } else {
+        font_bmp_set_color(text_color);
+      }
+      const int disc_num = list_multidisc[i]->disc[0] - '0';
+      strncpy(temp_game_name, list_multidisc[i]->name, sizeof(temp_game_name) - 1);
+      temp_game_name[sizeof(temp_game_name) - 1] = '\0';
+      snprintf(temp_game_num, sizeof(temp_game_name), "%d", disc_num);
+      string_outer_concat(line_buf, temp_game_name, temp_game_num, 39);
+      font_bmp_draw_main(x_item, cur_y, line_buf);
+    }
+  } else {
+    /* Menu size and placement */
+    const int line_height = 32;
+    const int width = 300;
+    const int height = (multidisc_len + 1) * line_height + (line_height / 2);
+    const int x = (640 / 2) - (width / 2);
+    const int y = (480 / 2) - (height / 2);
+    const int x_item = x + 4;
+    char line_buf[65];
+    char temp_game_name[62];
+
+    /* Draw a popup in the middle of the screen */
+    draw_popup_menu(x, y, width, height);
+
+    /* overlay our text on top with options */
+    int cur_y = y + 2;
+    font_bmf_begin_draw();
+    font_bmf_set_height_default();
+
+    font_bmf_draw(x_item, cur_y, text_color, "Multidisc");
+
+    cur_y += line_height / 4;
+
+    for (int i = 0; i < multidisc_len; i++) {
+      cur_y += line_height;
+      uint32_t temp_color = text_color;
+      if (i == current_choice) {
+        temp_color = highlight_color;
+      }
+      const int disc_num = list_multidisc[i]->disc[0] - '0';
+      strncpy(temp_game_name, list_multidisc[i]->name, sizeof(temp_game_name) - 1);
+      temp_game_name[sizeof(temp_game_name) - 1] = '\0';
+      snprintf(line_buf, 65, "%s #%d", temp_game_name, disc_num);
+      font_bmf_draw_auto_size(x_item, cur_y, temp_color, line_buf, width - 4);
+    }
+  }
+}
+
+void draw_exit_op(void) {
+  /* Again nothing...Still...Ugh... */
+}
+
+void draw_exit_tr(void) {
 }
