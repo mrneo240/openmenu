@@ -93,6 +93,13 @@ static int read_openmenu_ini(void *user, const char *section, const char *name, 
 #define CFG(s, n, default) else if (strcasecmp(section, #s) == 0 && \
                                     strcasecmp(plain_name, #n) == 0) strcpy(item->n, value);
 #include "gd_item.def"
+
+      /* fixing Sega serial issues... */
+      /* Fix Nightmare Creatures II overlapping Dancing Blade 2 */
+      if (!strcasecmp(plain_name, "product") && !strcmp(item->product, "T9504M") && !strcmp(item->date, "20000407")) {
+        strcpy(item->product, "T9504N");
+      }
+
     } else {
       /* error */
       printf("INI:Error unknown [%s] %s: %s\n", section, name, value);
