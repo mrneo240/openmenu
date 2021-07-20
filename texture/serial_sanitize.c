@@ -155,6 +155,23 @@ static serial_remap serial_remap_members[] = {
     REMAP_ADD_META("T7016D", "T22904N"),
     REMAP_ADD_META("T8103N50", "T8103N"),
     REMAP_ADD_META("T10003D", "T10005N"),
+
+    /* JAP Missing Meta */
+    REMAP_ADD_META("HDR0053", "MK51035"),
+    REMAP_ADD_META("HDR0159", "MK51136"),
+    REMAP_ADD_META("T3601M", "T3602M"),
+    REMAP_ADD_META("T3602M", "T3601N"),
+    REMAP_ADD_META("T40903M", "T40901M"),
+    REMAP_ADD_META("HDR0129", "MK51100"),
+    REMAP_ADD_META("HDR0163", "MK51193"),
+    REMAP_ADD_META("HDR0178", "MK5119250"),
+    REMAP_ADD_META("HDR0010", "MK51019"),
+    REMAP_ADD_META("HDR0063", "MK51092"),
+    REMAP_ADD_META("HDR0016", "MK5105950"),
+    REMAP_ADD_META("HDR0164", "MK5118450"),
+    REMAP_ADD_META("T30801M", "T40202N"),
+    REMAP_ADD_META("T30803M", "T40211N"),
+    REMAP_ADD_META("HDR0029", "MK51051"),
 };
 
 static const int serials_added = sizeof(serial_remap_members) / sizeof(serial_remap);
