@@ -333,7 +333,7 @@ static int BMF_load(const char *file, bm_font *font) {
   bool parsing = true;
   fd = fopen(file, "rb");
 
-  if (fd <= 0) {
+  if (!FD_IS_OK(fd)) {
     printf("BMF:Error file %s not found!\n", file);
     return 1;
   }

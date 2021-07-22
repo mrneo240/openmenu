@@ -14,9 +14,21 @@
 #include <external/libcrayonvmu/setup.h>
 
 /* Images and such */
+#if __has_include("openmenu_lcd.h") && __has_include("openmenu_pal.h") && __has_include("openmenu_vmu.h")
 #include "openmenu_lcd.h"
 #include "openmenu_pal.h"
 #include "openmenu_vmu.h"
+
+#define OPENMENU_ICON (openmenu_icon)
+#define OPENMENU_LCD (openmenu_lcd)
+#define OPENMENU_PAL (openmenu_pal)
+#define OPENMENU_ICONS (1)
+#else
+#define OPENMENU_ICON (NULL)
+#define OPENMENU_LCD (NULL)
+#define OPENMENU_PAL (NULL)
+#define OPENMENU_ICONS (0)
+#endif
 
 static crayon_savefile_details_t savefile_details;
 static openmenu_settings savedata;
@@ -54,13 +66,13 @@ Exit_loop_2:;
 void settings_init(void) {
   /* Mostly from CrayonVMU example */
   crayon_savefile_init_savefile_details(&savefile_details,
-                                        (uint8_t *)&savedata, sizeof(openmenu_settings), 1, 1,
+                                        (uint8_t *)&savedata, sizeof(openmenu_settings), OPENMENU_ICONS, 1,
                                         "openMenu Preferences\0", "openMenu Config\0", "openMenuPref\0", "OPENMENU.CFG\0");
 
-  savefile_details.icon = openmenu_icon;
-  savefile_details.icon_palette = (unsigned short *)openmenu_pal;
+  savefile_details.icon = OPENMENU_ICON;
+  savefile_details.icon_palette = (unsigned short *)OPENMENU_PAL;
 
-  crayon_vmu_display_icon(savefile_details.valid_vmu_screens, openmenu_lcd);
+  crayon_vmu_display_icon(savefile_details.valid_vmu_screens, OPENMENU_LCD);
 
   //Find the first savefile (if it exists)
   for (int iter = 0; iter <= 3; iter++) {

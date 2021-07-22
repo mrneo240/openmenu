@@ -57,12 +57,12 @@ int DAT_load_parse(dat_file *bin, const char *path) {
   bin_fd = fopen(filename_safe, "rb");
 #endif
 
-  printf("DAT:Open %s (%s)\n", filename_safe, path);
-
   if (!bin_fd) {
     printf("DAT:Error Cant read input %s!\n", filename_safe);
     return 1;
   }
+
+  printf("DAT:Open %s (%s)\n", filename_safe, path);
 
   fread(&file_header, sizeof(bin_header), 1, bin_fd);
   if (file_header.magic.rich.version != 1) {

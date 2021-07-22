@@ -7,6 +7,10 @@
 #include "gdmenu_loader.h"
 #include "rungd.h"
 
+#ifndef GDROM_FS
+void gd_reset_handles(void){}
+#endif
+
 void dreamcast_rungd(unsigned int slot_num) {
   uint16_t image = (uint16_t)(slot_num & 0xFFFF);
   gdemu_set_img_num(image);

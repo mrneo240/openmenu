@@ -26,6 +26,7 @@ typedef struct gd_dirent* DIRENT_TYPE;
 #define opendir(path) gd_opendir(path)
 #define readdir(fd) gd_readdir(fd)
 #define closedir(fd) gd_closedir(fd)
+#define FD_IS_OK(fd) (((fd) > 0))
 #else
 #ifdef COSMO
 #include "../tools/cosmo/cosmopolitan.h"
@@ -40,4 +41,5 @@ typedef struct dirent* DIRENT_TYPE;
 #ifdef _arch_dreamcast
 #define DISC_PREFIX "/cd/"
 #endif
+#define FD_IS_OK(fd) ((fd) != NULL)
 #endif
