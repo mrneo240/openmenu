@@ -3,54 +3,26 @@
 #include <kos.h>
 #include <kos/thread.h>
 
+#include "backend/gd_item.h"
 #include "gdemu_sdk.h"
 #include "gdmenu_loader.h"
-#include "rungd.h"
 
 #ifndef GDROM_FS
-void gd_reset_handles(void){}
+void gd_reset_handles(void) {
+}
+
+void run_game(const char *region, const char *product) {
+  (void)region;
+  (void)product;
+  void arch_menu(void) __attribute__((noreturn));
+  arch_menu();
+  __builtin_unreachable();
+}
 #endif
 
-void dreamcast_rungd(unsigned int slot_num) {
-  uint16_t image = (uint16_t)(slot_num & 0xFFFF);
-  gdemu_set_img_num(image);
+void dreamcast_launch_disc(gd_item *disc) {
+  gdemu_set_img_num((uint16_t)disc->slot_num);
   thd_sleep(200);
 
-#if __GNUC__ < 4
-  arch_dtors();
-#else
-//  fini();
-#endif
-
-#ifdef USE_GDMENU_LOADER
-  arch_exec(gdmenu_loader, gdmenu_loader_length);
-#else
-  ubc_disable_all();
-  fs_dclsocket_shutdown();
-  net_shutdown();
-  irq_disable();
-  snd_shutdown();
-  timer_shutdown();
-  la_shutdown();
-  bba_shutdown();
-  maple_shutdown();
-  cdrom_shutdown();
-  spu_dma_shutdown();
-  spu_shutdown();
-  pvr_shutdown();
-  library_shutdown();
-  fs_dcload_shutdown();
-  fs_vmu_shutdown();
-  vmufs_shutdown();
-  fs_iso9660_shutdown();
-  fs_ramdisk_shutdown();
-  fs_romdisk_shutdown();
-  fs_pty_shutdown();
-  fs_shutdown();
-  thd_shutdown();
-  rtc_shutdown();
-  irq_shutdown();
-
-  gdplay_run_game((void*)rungd);
-#endif
+  run_game(disc->region, disc->product);
 }
