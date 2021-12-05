@@ -17,18 +17,18 @@
 #include <strings.h>
 #endif
 
+#include "../external/ini.h"
 #include "db_item.h"
 #include "db_list.h"
 #include "gd_item.h"
 #include "gd_list.h"
-#include "ini.h"
 
 #ifdef _arch_dreamcast
-#define PATH_PREFIX DISC_PREFIX
 #include "../gdrom/gdrom_fs.h"
+#define PATH_PREFIX DISC_PREFIX
 #else
 #define PATH_PREFIX ""
-#define FD_TYPE FILE *
+typedef FILE *FD_TYPE;
 #endif
 
 #ifndef STANDALONE_BINARY
@@ -37,6 +37,7 @@
 
 /* Base internal original */
 static int num_items_BASE = -1;
+static int num_items_read = 0;
 static gd_item *gd_slots_BASE = NULL;
 
 /* Current client facing pointer copy, may be sorted/filtered */
@@ -62,13 +63,13 @@ static int read_openmenu_ini(void *user, const char *section, const char *name, 
   (void)user;
 
   if ((strcmp(section, "OPENMENU") == 0) && (strcmp(name, "num_items") == 0)) {
-    num_items_BASE = atoi(value);
+    num_items_BASE = atoi(value) /* It can occur that GDMenuCardManager under reports by 1 */;
     num_items_temp = num_items_BASE - 1;
-    gd_slots_BASE = malloc(num_items_BASE * sizeof(struct gd_item));
-    list_temp = malloc(num_items_BASE * sizeof(struct gd_item *));
+    gd_slots_BASE = malloc((num_items_BASE + 1) * sizeof(struct gd_item));
+    list_temp = malloc((num_items_BASE + 1) * sizeof(struct gd_item *));
 
-    memset(gd_slots_BASE, '\0', num_items_BASE * sizeof(struct gd_item));
-    memset(list_temp, '\0', num_items_BASE * sizeof(struct gd_item *));
+    memset(gd_slots_BASE, '\0', (num_items_BASE + 1) * sizeof(struct gd_item));
+    memset(list_temp, '\0', (num_items_BASE + 1) * sizeof(struct gd_item *));
     memset(list_multidisc, '\0', MULTIDISC_MAX_GAMES_PER_SET * sizeof(struct gd_item *));
   } else {
     /* Parsing games */
@@ -78,6 +79,7 @@ static int read_openmenu_ini(void *user, const char *section, const char *name, 
       size_t temp_len = (size_t)(seperator - (uintptr_t)name);
       memcpy(slot_string, name, temp_len);
       int slot = atoi(slot_string);
+      num_items_read = slot;
 
       gd_item *item = &gd_slots_BASE[slot - 1];
       if (!item->slot_num) {
@@ -86,7 +88,7 @@ static int read_openmenu_ini(void *user, const char *section, const char *name, 
 
       const char *plain_name = name + temp_len + 1;
 
-      //printf("[%s] %s: %s\n", section, plain_name, value);
+      // printf("[%s] %s: %s\n", section, plain_name, value);
 
       if (0)
         ;
@@ -94,18 +96,11 @@ static int read_openmenu_ini(void *user, const char *section, const char *name, 
                                     strcasecmp(plain_name, #n) == 0) strcpy(item->n, value);
 #include "gd_item.def"
 
-      /* fixing Sega serial issues... */
-      /* Fix Nightmare Creatures II overlapping Dancing Blade 2 */
-      if (!strcasecmp(plain_name, "product") && !strcmp(item->product, "T9504M") && !strcmp(item->date, "20000407")) {
-        strcpy(item->product, "T9504N");
-      }
-
     } else {
       /* error */
       printf("INI:Error unknown [%s] %s: %s\n", section, name, value);
     }
   }
-  //fflush(stdout);
   return 1;
 }
 
@@ -132,7 +127,7 @@ void list_print_temp(void) {
 /* Might need a rework */
 void list_print(const gd_item **list) {
   for (int i = 0; i < num_items_temp; i++) {
-    //printf("slot %d\n", i);
+    // printf("slot %d\n", i);
     const gd_item *item = list[i];
 #define CFG(s, n, default) printf("%s = %s\n", #n, item->n);
 #include "gd_item.def"
@@ -144,7 +139,11 @@ void list_print(const gd_item **list) {
 static void list_temp_reset(void) {
   int base_idx, temp_idx = 0;
 
+#ifdef _arch_dreamcast
   int hide_multidisc = settings_get()->multidisc;
+#else
+  int hide_multidisc = 0;
+#endif
 
   /* Skip openMenu itself */
   for (base_idx = 1; base_idx < num_items_BASE; base_idx++) {
@@ -287,6 +286,74 @@ int list_multidisc_length(void) {
   return num_items_multidisc;
 }
 
+static void fix_sega_serials(void) {
+  /* fixing Sega serial issues... */
+
+  /* Skip openMenu itself */
+  for (int base_idx = 1; base_idx < num_items_BASE; base_idx++) {
+    gd_item *item = &gd_slots_BASE[base_idx];
+
+    /* Fix Alone in the Dark (PAL) overlapping Alone in the Dark (USA) */
+    if (!strcmp(item->product, "T15117N") && !strcmp(item->date, "20010423")) {
+      strcpy(item->product, "T15112D05");
+    }
+    /* Fix Crazy Taxi (PAL) overlapping Crazy Taxi (USA) */
+    if (!strcmp(item->product, "MK51035") && !strcmp(item->date, "20000120")) {
+      strcpy(item->product, "MK5103550");
+    }
+    /* Fix Disney's Donald Duck: Goin' Quackers (USA) overlapping Disney's Donald Duck: Quack Attack (PAL) */
+    if (!strcmp(item->product, "T17714D50") && !strcmp(item->date, "20001116")) {
+      strcpy(item->product, "T17719N");
+    }
+    /* Fix Floigan Bros (PAL) overlapping Floigan Bros (USA) */
+    if (!strcmp(item->product, "MK51114") && !strcmp(item->date, "20010920")) {
+      strcpy(item->product, "MK5111450");
+    }
+    /* Fix Legacy of Kain: Soul Reaver (PAL) overlapping Legacy of Kain: Soul Reaver (USA) */
+    if (!strcmp(item->product, "T36802N") && !strcmp(item->date, "19991220")) {
+      strcpy(item->product, "T36803D05");
+    }
+    /* Fix NBA2K2 (PAL) overlapping NBA2K2 (USA) */
+    if (!strcmp(item->product, "MK51178") && !strcmp(item->date, "20011129")) {
+      strcpy(item->product, "MK5117850");
+    }
+    /* Fix NBA Showtime (PAL) overlapping 4 Wheel Thunder (PAL) */
+    if (!strcmp(item->product, "T9706D50") && !strcmp(item->date, "19991201")) {
+      strcpy(item->product, "T9705D50");
+    }
+    /* Fix Nightmare Creatures II (USA) overlapping Dancing Blade 2 (JAP) */
+    if (!strcmp(item->product, "T9504M") && !strcmp(item->date, "20000407")) {
+      strcpy(item->product, "T9504N");
+    }
+    /* Fix Plasma Sword (PAL) overlapping Street Fighter Alpha 3 (PAL) */
+    if (!strcmp(item->product, "T7005D") && !strcmp(item->date, "20000711")) {
+      strcpy(item->product, "T7003D");
+    }
+    /* Fix Skies of Arcadia (PAL) overlapping Skies of Arcadia (USA) */
+    if (!strcmp(item->product, "MK51052") && !strcmp(item->date, "20010306")) {
+      strcpy(item->product, "MK5105250");
+    }
+    /* Fix Spider-Man (PAL) overlapping Spider-Man (USA) */
+    if (!strcmp(item->product, "T13008N") && !strcmp(item->date, "20010402")) {
+      strcpy(item->product, "T13011D50");
+    }
+    /* Fix TNN Motorsports (USA) overlapping Metal Slug 6 (AW) */
+    if (!strcmp(item->product, "T0000M") && !strcmp(item->date, "19990813")) {
+      strcpy(item->product, "T13701N");
+    }
+
+    /* Fix Maximum Speed (AW) overlapping Dolphin Blue (AW) */
+    if (!strcmp(item->product, "T0006M") && !strcmp(item->date, "20030609")) {
+      strcpy(item->product, "T0010M");
+    }
+
+    /* Fix Fist of North Star (AW) overlapping Rumble Fish (AW) */
+    if (!strcmp(item->product, "T0009M") && strstr(item->name, "orth")) {
+      strcpy(item->product, "T0026M");
+    }
+  }
+}
+
 int list_read(const char *filename) {
   /* Always LD/cdrom */
   FD_TYPE ini = fopen(filename, "rb");
@@ -300,9 +367,12 @@ int list_read(const char *filename) {
   printf("INI:Open %s\n", filename);
 
   size_t ini_size = filelength(ini);
-  char *ini_buffer = malloc(ini_size);
+  char *ini_buffer = malloc(ini_size + 2) /* adjust for adding newline at end always */;
   fread(ini_buffer, ini_size, 1, ini);
   fclose(ini);
+  /* Add newline */
+  ini_buffer[ini_size + 0] = '\n';
+  ini_buffer[ini_size + 1] = '\0';
 
   if (ini_parse_string(ini_buffer, read_openmenu_ini, NULL) < 0) {
     printf("INI:Error Parsing %s!\n", filename);
@@ -311,6 +381,15 @@ int list_read(const char *filename) {
     return -1;
   }
   free(ini_buffer);
+
+  printf("Info: Loaded %d items from %d\n", num_items_read, num_items_BASE);
+  /* Trim list if over reported */
+  if (num_items_read != num_items_BASE) {
+    num_items_BASE = num_items_read;
+    num_items_temp = num_items_read - 1;
+  }
+
+  fix_sega_serials();
 
   printf("INI:Parse success (%d items)!\n", num_items_BASE);
   list_temp_reset();
