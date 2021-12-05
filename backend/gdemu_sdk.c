@@ -131,11 +131,11 @@ static int send_packet_data_command(uint16_t *cmd_buff, uint16_t *buffer, uint32
 */
 
 int gdemu_get_version(void *buffer, uint32_t *size) {
-  uint8_t cmd_buff[12];
-
+  uint8_t cmd_buff[12] __attribute__((aligned(4)));
   ((uint32_t *)cmd_buff)[0] = 0;
   ((uint32_t *)cmd_buff)[1] = 0;
   ((uint32_t *)cmd_buff)[2] = 0;
+
   cmd_buff[0] = 0x52;
 
   return send_packet_data_command((uint16_t *)cmd_buff, (uint16_t *)buffer, size);
@@ -144,11 +144,11 @@ int gdemu_get_version(void *buffer, uint32_t *size) {
 /* param = 0x55 next img */
 /* param = 0x44 prev img */
 int gdemu_img_cmd(uint8_t cmd) {
-  uint8_t cmd_buff[12];
-
+  uint8_t cmd_buff[12] __attribute__((aligned(4)));
   ((uint32_t *)cmd_buff)[0] = 0;
   ((uint32_t *)cmd_buff)[1] = 0;
   ((uint32_t *)cmd_buff)[2] = 0;
+
   cmd_buff[0] = 0x52;
   cmd_buff[1] = 0x81;
   cmd_buff[2] = cmd;
@@ -159,13 +159,15 @@ int gdemu_img_cmd(uint8_t cmd) {
 /* 0 = reset to default img */
 /* 1 to 999 = set image index */
 int gdemu_set_img_num(uint16_t img_num) {
-  uint8_t cmd_buff[12];
-  memset(cmd_buff, 0, 12);
+  uint8_t cmd_buff[12] __attribute__((aligned(4)));
+  ((uint32_t *)cmd_buff)[0] = 0;
+  ((uint32_t *)cmd_buff)[1] = 0;
+  ((uint32_t *)cmd_buff)[2] = 0;
 
   cmd_buff[0] = 0x52;
   cmd_buff[1] = 0x82;
-  cmd_buff[2] = (uint8_t)img_num;
-  cmd_buff[3] = (uint8_t)img_num >> 8;
+  cmd_buff[2] = (uint8_t)(img_num);
+  cmd_buff[3] = (uint8_t)(img_num >> 8);
 
   return send_packet_command((uint16_t *)cmd_buff);
 }

@@ -7,7 +7,7 @@ UI_MENUS := ui/ui_gdmenu.c ui/ui_line_large.c ui/ui_line_desc.c ui/ui_grid.c ui/
 UI_SRCS := ui/dc/font_bmf.c ui/dc/font_bitmap.c ui/dc/pvr_texture.c ui/dc/input.c ui/draw_kos.c ui/animation.c
 
 SRCS := $(BACKEND_SRCS) $(UI_SRCS) $(UI_MENUS) $(TXR_SRCS) $(EXT_SRCS) main.c
-OBJS = $(subst .c,.o,$(SRCS)) backend/exec.o
+OBJS = $(subst .c,.o,$(SRCS))
 
 CC := kos-cc
 AS := kos-as
