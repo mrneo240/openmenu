@@ -36,6 +36,13 @@ float z_set(float z) {
   z_depth = z;
   return z_depth;
 }
+float z_set_cond(float z) {
+  if (z > z_depth)
+    z_depth = z;
+  else
+    z_inc();
+  return z_depth;
+}
 void z_reset(void) {
   z_depth = 1.0f;
 }

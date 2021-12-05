@@ -47,6 +47,7 @@ static const uint32_t UNUSED color_image_name_default = PVR_PACK_ARGB(255, 152, 
 static const uint32_t UNUSED color_image_name_highlight = PVR_PACK_ARGB(255, 103, 193, 245);
 static const uint32_t UNUSED color_cursor_default = PVR_PACK_ARGB(255, 33, 56, 82); /* unsure */
 static const uint32_t UNUSED color_cursor_actual = PVR_PACK_ARGB(255, 29, 44, 66);
+static const uint32_t UNUSED color_menu_background = PVR_PACK_ARGB(255, 13, 44, 70);
 static const uint32_t UNUSED color_gdmenu_green = PVR_PACK_ARGB(255, 100, 255, 225);
 
 /* GDMENU Default positions */
@@ -88,6 +89,16 @@ static const int pos_gametxr_y = 213;
 /* Our actual gdemu items */
 static const gd_item **list_current;
 static int list_len;
+
+static theme_color gdemu_colors = {
+    .text_color = color_main_default,
+    .highlight_color = color_main_highlight,
+    .menu_text_color = color_options_default,
+    .menu_highlight_color = color_options_highlight,
+    .menu_bkg_color = COLOR_BLACK,
+    .menu_bkg_border_color = color_menu_background,
+    .icon_color = COLOR_WHITE,
+};
 
 static image txr_focus;
 extern image img_empty_boxart;
@@ -275,12 +286,12 @@ static void menu_accept(void) {
   /* prepare to show multidisc chooser menu */
   if (hide_multidisc && (disc_set > 1)) {
     draw_current = DRAW_MULTIDISC;
-    popup_setup(&draw_current, color_main_default, color_main_highlight, &navigate_timeout);
+    popup_setup(&draw_current, &gdemu_colors, &navigate_timeout);
     list_set_multidisc(list_current[current_selected_item]->product);
     return;
   }
 
-  dreamcast_rungd(list_current[current_selected_item]->slot_num);
+  dreamcast_launch_disc(list_current[current_selected_item]);
 }
 
 static void menu_settings(void) {
@@ -289,14 +300,14 @@ static void menu_settings(void) {
   }
 
   draw_current = DRAW_MENU;
-  menu_setup(&draw_current, color_main_default, color_main_highlight, &navigate_timeout);
+  menu_setup(&draw_current, &gdemu_colors, &navigate_timeout);
 }
 
 FUNCTION(UI_NAME, init) {
   texman_clear();
   /* @Note: these exist but do we really care? Naturally this will happen without forcing it and old data doesn't matter */
-  //txr_empty_small_pool();
-  //txr_empty_large_pool();
+  // txr_empty_small_pool();
+  // txr_empty_large_pool();
 
   unsigned int temp = texman_create();
   draw_load_texture_buffer("THEME/GDMENU/BG_L.PVR", &txr_bg_left, texman_get_tex_data(temp));

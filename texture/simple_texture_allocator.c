@@ -20,8 +20,8 @@ static void *tex_buffer_start = NULL;
 static void *tex_buffer_max = NULL;
 static uint32_t tex_number = 0;
 
-static inline uint32_t getMemorySize(int width, int height, int bpp) {
-  return bpp * width * height;
+static inline size_t getMemorySize(int width, int height, int bpp) {
+  return (size_t)(bpp * width * height);
 }
 
 int texman_inited(void) {
@@ -72,9 +72,9 @@ unsigned char *texman_get_tex_data(uint32_t num) {
 
 struct Simple_Texture *texman_reserve_memory(uint32_t width, uint32_t height, int bpp) {
   if(texman_is_space_available()){
-  int tex_size = getMemorySize(width, height, bpp);
+  size_t tex_size = getMemorySize(width, height, bpp);
   tex_buffer =
-      (void *)((((uint32_t)tex_buffer + tex_size + TEX_ALIGNMENT - 1) / TEX_ALIGNMENT) * TEX_ALIGNMENT);
+      (void *)((((size_t)tex_buffer + tex_size + TEX_ALIGNMENT - 1) / TEX_ALIGNMENT) * TEX_ALIGNMENT);
 #ifdef DEBUG
   printf("TEX_MAN: tex [%d] reserved %d bytes @ %x left: %d kb\n", tex_number, tex_size,
          (uint32_t)textures[tex_number].location,

@@ -72,10 +72,8 @@ typedef struct __attribute__((packed)) inputs {
   uint8_t axes_1; /* Main Analog X */
   uint8_t axes_2; /* Main Analog Y */
 /* Note the below may not exist on some platforms */
-#if 0
-    uint8_t axes_3; /* Secondary Analog X */
-    uint8_t axes_4; /* Secondary Analog Y */
-#endif
+  uint8_t axes_3; /* Secondary Analog X */
+  uint8_t axes_4; /* Secondary Analog Y */
 } inputs;
 
 void INPT_ReceiveFromHost(inputs _in);

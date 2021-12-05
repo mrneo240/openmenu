@@ -16,6 +16,7 @@
 
 #include "../texture/simple_texture_allocator.h"
 #include "dc/pvr_texture.h"
+#include "theme_manager.h"
 
 #ifndef PVR_PACK_ARGB
 #define PVR_PACK_ARGB(a, r, g, b) ( \

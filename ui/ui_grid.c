@@ -86,7 +86,6 @@ static image txr_icon_list[/*ROWS * COLUMNS*/ 4 * 3 /* Assume the worst */]; /* 
 static image txr_focus;
 static image txr_highlight; /* Highlight square */
 static image txr_bg_left, txr_bg_right;
-static image txr_icons_white, txr_icons_black;
 
 extern image img_empty_boxart;
 
@@ -94,53 +93,11 @@ extern image img_empty_boxart;
 static const gd_item **list_current;
 static int list_len;
 
-typedef struct theme_region {
-  const char *bg_left;
-  const char *bg_right;
-  image *icon_set;
-  uint32_t text_color;
-  uint32_t highlight_color;
-} theme_region;
-
-static theme_region region_themes[] = {
-    {.bg_left = "THEME/NTSC_U/BG_U_L.PVR",
-     .bg_right = "THEME/NTSC_U/BG_U_R.PVR",
-     .icon_set = &txr_icons_white,
-     .text_color = COLOR_WHITE,
-     .highlight_color = COLOR_ORANGE_U},
-    {.bg_left = "THEME/NTSC_J/BG_J_L.PVR",
-     .bg_right = "THEME/NTSC_J/BG_J_R.PVR",
-     .icon_set = &txr_icons_black,
-     .text_color = COLOR_BLACK,
-     .highlight_color = COLOR_ORANGE_J},
-    {.bg_left = "THEME/PAL/BG_E_L.PVR",
-     .bg_right = "THEME/PAL/BG_E_R.PVR",
-     .icon_set = &txr_icons_black,
-     .text_color = COLOR_BLACK,
-     .highlight_color = COLOR_BLUE},
-};
-
-static void select_art_by_aspect(CFG_ASPECT aspect) {
-  if (aspect == ASPECT_NORMAL) {
-    region_themes[REGION_NTSC_U].bg_left = "THEME/NTSC_U/BG_U_L.PVR";
-    region_themes[REGION_NTSC_U].bg_right = "THEME/NTSC_U/BG_U_R.PVR";
-
-    region_themes[REGION_NTSC_J].bg_left = "THEME/NTSC_J/BG_J_L.PVR";
-    region_themes[REGION_NTSC_J].bg_right = "THEME/NTSC_J/BG_J_R.PVR";
-
-    region_themes[REGION_PAL].bg_left = "THEME/PAL/BG_E_L.PVR";
-    region_themes[REGION_PAL].bg_right = "THEME/PAL/BG_E_R.PVR";
-  } else {
-    region_themes[REGION_NTSC_U].bg_left = "THEME/NTSC_U/BG_U_L.PVR";
-    region_themes[REGION_NTSC_U].bg_right = "THEME/NTSC_U/BG_U_R.PVR";
-
-    region_themes[REGION_NTSC_J].bg_left = "THEME/NTSC_J/BG_J_L_WIDE.PVR";
-    region_themes[REGION_NTSC_J].bg_right = "THEME/NTSC_J/BG_J_R_WIDE.PVR";
-
-    region_themes[REGION_PAL].bg_left = "THEME/PAL/BG_E_L_WIDE.PVR";
-    region_themes[REGION_PAL].bg_right = "THEME/PAL/BG_E_R_WIDE.PVR";
-  }
-}
+static theme_region *region_themes;
+static theme_custom *custom_themes;
+static int num_default_themes;
+static int num_custom_themes;
+static theme_color *current_theme_colors;
 
 static region region_current = REGION_NTSC_U;
 static enum draw_state draw_current = DRAW_UI;
@@ -218,14 +175,14 @@ static void setup_highlight_animation(void) {
 }
 
 static void draw_static_highlight(int width, int height) {
-  draw_draw_image(pos_highlight.x, pos_highlight.y, width, height, region_themes[region_current].highlight_color, &txr_highlight);
+  draw_draw_image(pos_highlight.x, pos_highlight.y, width, height, current_theme_colors->highlight_color, &txr_highlight);
 }
 
 static void draw_animated_highlight(int width, int height) {
   /* Always draw on top */
   float z = z_get();
   z_set(200.0f);
-  draw_draw_image(anim_highlight.cur.x, anim_highlight.cur.y, width, height, region_themes[region_current].highlight_color, &txr_highlight);
+  draw_draw_image(anim_highlight.cur.x, anim_highlight.cur.y, width, height, current_theme_colors->highlight_color, &txr_highlight);
   z_set(z);
 }
 
@@ -286,17 +243,13 @@ static void draw_grid_boxes(void) {
 
         x_pos *= X_SCALE;
 
-        uint32_t menu_bkg_color = COLOR_BLACK;
-        if (region_themes[region_current].text_color == COLOR_BLACK) {
-          menu_bkg_color = COLOR_WHITE;
-        }
         /* Draw multiple discs and how many */
-        draw_draw_quad(x_pos, y_pos, TILE_SIZE_X * X_SCALE * 0.5f, 28, menu_bkg_color);
+        draw_draw_quad(x_pos, y_pos, TILE_SIZE_X * X_SCALE * 0.5f, 28, current_theme_colors->menu_bkg_color);
         char disc_str[8];
         snprintf(disc_str, 8, "%d Discs", disc_set);
         font_bmf_begin_draw();
         font_bmf_set_height(24);
-        font_bmf_draw_sub(x_pos + 8, y_pos + 2, region_themes[region_current].text_color, disc_str);
+        font_bmf_draw_sub(x_pos + 8, y_pos + 2, current_theme_colors->text_color, disc_str);
       }
     }
   }
@@ -308,10 +261,10 @@ static void draw_grid_boxes(void) {
 static void draw_game_title(void) {
   font_bmf_begin_draw();
   if (list_len <= 0) {
-    font_bmf_draw_centered_auto_size((SCR_WIDTH / 2) * X_SCALE, 434, region_themes[region_current].text_color, "Empty Game List!", (SCR_WIDTH - (10 * 2)) * X_SCALE);
+    font_bmf_draw_centered_auto_size((SCR_WIDTH / 2) * X_SCALE, 434, current_theme_colors->text_color, "Empty Game List!", (SCR_WIDTH - (10 * 2)) * X_SCALE);
     return;
   }
-  font_bmf_draw_centered_auto_size((SCR_WIDTH / 2) * X_SCALE, 434, region_themes[region_current].text_color, list_current[current_selected()]->name, (SCR_WIDTH - (10 * 2)) * X_SCALE);
+  font_bmf_draw_centered_auto_size((SCR_WIDTH / 2) * X_SCALE, 434, current_theme_colors->text_color, list_current[current_selected()]->name, (SCR_WIDTH - (10 * 2)) * X_SCALE);
 }
 
 static void update_time(void) {
@@ -457,12 +410,12 @@ static void menu_accept(void) {
   /* prepare to show multidisc chooser menu */
   if (hide_multidisc && (disc_set > 1)) {
     draw_current = DRAW_MULTIDISC;
-    popup_setup(&draw_current, region_themes[region_current].text_color, region_themes[region_current].highlight_color, &navigate_timeout);
+    popup_setup(&draw_current, current_theme_colors, &navigate_timeout);
     list_set_multidisc(list_current[current_selected()]->product);
     return;
   }
 
-  dreamcast_rungd(list_current[current_selected()]->slot_num);
+  dreamcast_launch_disc(list_current[current_selected()]);
 }
 
 static void menu_settings(void) {
@@ -471,26 +424,26 @@ static void menu_settings(void) {
   }
 
   draw_current = DRAW_MENU;
-  menu_setup(&draw_current, region_themes[region_current].text_color, region_themes[region_current].highlight_color, &navigate_timeout);
+  menu_setup(&draw_current, current_theme_colors, &navigate_timeout);
 }
 
 static void menu_show_large_art(void) {
   if (!boxart_button_held && !anim_active(&anim_large_art_scale.time)) {
     /* Setup positioning */
     {
-      anim_large_art_pos.start.x = TILE_X_POS(screen_column) + (TILE_SIZE_X / 2);
+      anim_large_art_pos.start.x = TILE_X_POS(screen_column) + (TILE_SIZE_X / 2 * X_SCALE);
       anim_large_art_pos.start.y = TILE_Y_POS(screen_row) + (TILE_SIZE_Y / 2);
-      anim_large_art_pos.end.x = TILE_X_POS(1) + (TILE_SIZE_X / 2);
-      anim_large_art_pos.end.y = TILE_Y_POS(1) + (TILE_SIZE_Y / 2);
+      anim_large_art_pos.end.x = (SCR_WIDTH / 2 * X_SCALE);
+      anim_large_art_pos.end.y = (TILE_Y_POS(0) + ((TILE_Y_POS(ROWS - 1) - TILE_Y_POS(0)) / 2)) + (TILE_SIZE_Y / 2);
       anim_large_art_pos.time.frame_now = 0;
       anim_large_art_pos.time.frame_len = 30;
       anim_large_art_pos.time.active = true;
     }
     /* Setup Scaling */
     {
-      anim_large_art_scale.start.x = TILE_SIZE_X;
+      anim_large_art_scale.start.x = TILE_SIZE_X * X_SCALE;
       anim_large_art_scale.start.y = TILE_SIZE_X;
-      anim_large_art_scale.end.x = (TILE_AREA_WIDTH + HIGHLIGHT_OVERHANG * 2) * X_SCALE;
+      anim_large_art_scale.end.x = (TILE_AREA_HEIGHT + HIGHLIGHT_OVERHANG * 2) * X_SCALE;
       anim_large_art_scale.end.y = TILE_AREA_HEIGHT + HIGHLIGHT_OVERHANG * 2;
       anim_large_art_scale.time.frame_now = 0;
       anim_large_art_scale.time.frame_len = 30;
@@ -508,7 +461,10 @@ FUNCTION(UI_NAME, init) {
   openmenu_settings *settings = settings_get();
   region_current = settings->region;
   recalculate_aspect(settings->aspect);
-  select_art_by_aspect(settings->aspect);
+
+  /* Get the current themes, original + custom */
+  region_themes = theme_get_default(settings->aspect, &num_default_themes);
+  custom_themes = theme_get_custom(&num_custom_themes);
 
   /* on user for now, may change */
   unsigned int temp = texman_create();
@@ -519,24 +475,28 @@ FUNCTION(UI_NAME, init) {
   draw_load_texture_buffer("THEME/SHARED/HIGHLIGHT.PVR", &txr_highlight, texman_get_tex_data(temp));
   texman_reserve_memory(txr_highlight.width, txr_highlight.height, 2 /* 16Bit */);
 
-  temp = texman_create();
-  draw_load_texture_buffer(region_themes[region_current].bg_left, &txr_bg_left, texman_get_tex_data(temp));
-  texman_reserve_memory(txr_bg_left.width, txr_bg_left.height, 2 /* 16Bit */);
+  if ((int)region_current >= num_default_themes) {
+    region_current -= num_default_themes;
+    current_theme_colors = &custom_themes[region_current].colors;
 
-  temp = texman_create();
-  draw_load_texture_buffer(region_themes[region_current].bg_right, &txr_bg_right, texman_get_tex_data(temp));
-  texman_reserve_memory(txr_bg_right.width, txr_bg_right.height, 2 /* 16Bit */);
+    temp = texman_create();
+    draw_load_texture_buffer(custom_themes[region_current].bg_left, &txr_bg_left, texman_get_tex_data(temp));
+    texman_reserve_memory(txr_bg_left.width, txr_bg_left.height, 2 /* 16Bit */);
 
-#if 0
-  temp = texman_create();
-  draw_load_texture_buffer("THEME/SHARED/ICON_BLACK.PVR", &txr_icons_black, texman_get_tex_data(temp));
-  texman_reserve_memory(txr_icons_black.width, txr_icons_black.height, 2 /* 16Bit */);
+    temp = texman_create();
+    draw_load_texture_buffer(custom_themes[region_current].bg_right, &txr_bg_right, texman_get_tex_data(temp));
+    texman_reserve_memory(txr_bg_right.width, txr_bg_right.height, 2 /* 16Bit */);
+  } else {
+    current_theme_colors = &region_themes[region_current].colors;
 
-  draw_load_texture_buffer("THEME/SHARED/ICON_WHITE.PVR", &txr_icons_white, texman_get_tex_data(temp));
-  texman_reserve_memory(txr_icons_white.width, txr_icons_white.height, 2 /* 16Bit */);
-  //txr_icons_current = &txr_icons_white;
-  txr_icons_current = themes[region_current].icon_set;
-#endif
+    temp = texman_create();
+    draw_load_texture_buffer(region_themes[region_current].bg_left, &txr_bg_left, texman_get_tex_data(temp));
+    texman_reserve_memory(txr_bg_left.width, txr_bg_left.height, 2 /* 16Bit */);
+
+    temp = texman_create();
+    draw_load_texture_buffer(region_themes[region_current].bg_right, &txr_bg_right, texman_get_tex_data(temp));
+    texman_reserve_memory(txr_bg_right.width, txr_bg_right.height, 2 /* 16Bit */);
+  }
 
   font_bmf_init("FONT/BASILEA.FNT", "FONT/BASILEA_W.PVR", settings->aspect);
 

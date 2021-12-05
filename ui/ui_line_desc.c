@@ -38,7 +38,7 @@ static image txr_icon_list[16]; /* Lower list of 9 icons */
 static image txr_focus;         /* current selected item, either lowres or hires */
 static image txr_highlight;     /* Highlight square*/
 static image txr_bg_left, txr_bg_right;
-static image txr_icons_white, txr_icons_black;
+static image txr_icons_white /*, txr_icons_black*/;
 static image *txr_icons_current;
 
 extern image img_empty_boxart;
@@ -47,53 +47,11 @@ extern image img_empty_boxart;
 static const gd_item **list_current;
 static int list_len;
 
-typedef struct theme_region {
-  const char *bg_left;
-  const char *bg_right;
-  image *icon_set;
-  uint32_t text_color;
-  uint32_t highlight_color;
-} theme_region;
-
-static theme_region region_themes[] = {
-    {.bg_left = "THEME/NTSC_U/BG_U_L.PVR",
-     .bg_right = "THEME/NTSC_U/BG_U_R.PVR",
-     .icon_set = &txr_icons_white,
-     .text_color = COLOR_WHITE,
-     .highlight_color = COLOR_ORANGE_U},
-    {.bg_left = "THEME/NTSC_J/BG_J_L.PVR",
-     .bg_right = "THEME/NTSC_J/BG_J_R.PVR",
-     .icon_set = &txr_icons_black,
-     .text_color = COLOR_BLACK,
-     .highlight_color = COLOR_ORANGE_J},
-    {.bg_left = "THEME/PAL/BG_E_L.PVR",
-     .bg_right = "THEME/PAL/BG_E_R.PVR",
-     .icon_set = &txr_icons_black,
-     .text_color = COLOR_BLACK,
-     .highlight_color = COLOR_BLUE},
-};
-
-static void select_art_by_aspect(CFG_ASPECT aspect) {
-  if (aspect == ASPECT_NORMAL) {
-    region_themes[REGION_NTSC_U].bg_left = "THEME/NTSC_U/BG_U_L.PVR";
-    region_themes[REGION_NTSC_U].bg_right = "THEME/NTSC_U/BG_U_R.PVR";
-
-    region_themes[REGION_NTSC_J].bg_left = "THEME/NTSC_J/BG_J_L.PVR";
-    region_themes[REGION_NTSC_J].bg_right = "THEME/NTSC_J/BG_J_R.PVR";
-
-    region_themes[REGION_PAL].bg_left = "THEME/PAL/BG_E_L.PVR";
-    region_themes[REGION_PAL].bg_right = "THEME/PAL/BG_E_R.PVR";
-  } else {
-    region_themes[REGION_NTSC_U].bg_left = "THEME/NTSC_U/BG_U_L.PVR";
-    region_themes[REGION_NTSC_U].bg_right = "THEME/NTSC_U/BG_U_R.PVR";
-
-    region_themes[REGION_NTSC_J].bg_left = "THEME/NTSC_J/BG_J_L_WIDE.PVR";
-    region_themes[REGION_NTSC_J].bg_right = "THEME/NTSC_J/BG_J_R_WIDE.PVR";
-
-    region_themes[REGION_PAL].bg_left = "THEME/PAL/BG_E_L_WIDE.PVR";
-    region_themes[REGION_PAL].bg_right = "THEME/PAL/BG_E_R_WIDE.PVR";
-  }
-}
+static theme_region *region_themes;
+static theme_custom *custom_themes;
+static int num_default_themes;
+static int num_custom_themes;
+static theme_color *current_theme_colors;
 
 static region region_current = REGION_NTSC_U;
 static enum draw_state draw_current = DRAW_UI;
@@ -156,7 +114,7 @@ static void draw_small_box_highlight(void) {
     num_icons++;
   }
 
-  draw_draw_square(x_start + (icon_size + icon_spacing) * highlighted_icon - 4.0f, y_pos - 4.0f, icon_size + 8, region_themes[region_current].highlight_color, &txr_highlight);
+  draw_draw_square(x_start + (icon_size + icon_spacing) * highlighted_icon - 4.0f, y_pos - 4.0f, icon_size + 8, current_theme_colors->highlight_color, &txr_highlight);
 
 #undef LIST_ADJUST
 }
@@ -174,10 +132,10 @@ static void draw_game_meta(void) {
   font_bmf_begin_draw();
   font_bmf_set_height_default();
   if (list_len <= 0) {
-    font_bmf_draw_auto_size(316, 92 - 20, region_themes[region_current].text_color, "Empty Game List!", 640 - 316 - 10);
+    font_bmf_draw_auto_size(316, 92 - 20, current_theme_colors->text_color, "Empty Game List!", 640 - 316 - 10);
     return;
   }
-  font_bmf_draw_auto_size(316, 92 - 20, region_themes[region_current].text_color, list_current[current_selected_item]->name, 640 - 316 - 10);
+  font_bmf_draw_auto_size(316, 92 - 20, current_theme_colors->text_color, list_current[current_selected_item]->name, 640 - 316 - 10);
 
   /* Disc # above name, position 316x33 */
   {
@@ -185,12 +143,12 @@ static void draw_game_meta(void) {
       if (!hide_multidisc) {
         char disc_str[8];
         snprintf(disc_str, 8, "Disc %d", disc_num);
-        font_bmf_draw_sub(316 + 22 + 4, 36, region_themes[region_current].text_color, disc_str);
+        font_bmf_draw_sub(316 + 22 + 4, 36, current_theme_colors->text_color, disc_str);
       } else {
         /* Draw multiple discs and how many */
         char disc_str[8];
         snprintf(disc_str, 8, "%d Discs", disc_set);
-        font_bmf_draw_sub(316 + 22 + 4, 36, region_themes[region_current].text_color, disc_str);
+        font_bmf_draw_sub(316 + 22 + 4, 36, current_theme_colors->text_color, disc_str);
       }
     }
   }
@@ -199,41 +157,41 @@ static void draw_game_meta(void) {
   if (current_meta) {
     /* success! */
     synopsis = current_meta->description;
-    font_bmf_draw_sub_wrap(316, 136 - 20 - 8, region_themes[region_current].text_color, synopsis, 640 - 316 - 10); /* was 316,128 */
+    font_bmf_draw_sub_wrap(316, 136 - 20 - 8, current_theme_colors->text_color, synopsis, 640 - 316 - 10); /* was 316,128 */
 
     font_bmf_set_height(12.0f);
-    font_bmf_draw_centered(326 + (20 / 2), 282 + 12, region_themes[region_current].text_color, db_format_nplayers_str(current_meta->num_players));
-    //font_bmf_draw_centered(396 + (16 / 2), 282 + 12, region_themes[region_current].text_color, "VMU");
-    font_bmf_draw_centered(396 + (16 / 2), 282 + 12, region_themes[region_current].text_color, db_format_vmu_blocks_str(current_meta->vmu_blocks));
-    font_bmf_draw_centered(460 + (34 / 2), 282 + 12, region_themes[region_current].text_color, "Jump Pack");
-    font_bmf_draw_centered(534 + (22 / 2), 282 + 12, region_themes[region_current].text_color, "Modem");
+    font_bmf_draw_centered(326 + (20 / 2), 282 + 12, current_theme_colors->text_color, db_format_nplayers_str(current_meta->num_players));
+    // font_bmf_draw_centered(396 + (16 / 2), 282 + 12, region_themes[region_current].text_color, "VMU");
+    font_bmf_draw_centered(396 + (16 / 2), 282 + 12, current_theme_colors->text_color, db_format_vmu_blocks_str(current_meta->vmu_blocks));
+    font_bmf_draw_centered(460 + (34 / 2), 282 + 12, current_theme_colors->text_color, "Jump Pack");
+    font_bmf_draw_centered(534 + (22 / 2), 282 + 12, current_theme_colors->text_color, "Modem");
 
     /* Draw Icons */
     {
-      //318x282
+      // 318x282
       const dimen_RECT uv_controller = {.x = 0, .y = 0, .w = 42, .h = 42};
-      draw_draw_sub_image(326, 254 + 12, 20, 20, COLOR_WHITE, txr_icons_current, &uv_controller);  // 20x20
+      draw_draw_sub_image(326, 254 + 12, 20, 20, current_theme_colors->icon_color, txr_icons_current, &uv_controller);  // 20x20
     }
     {
-      //388x282
+      // 388x282
       const dimen_RECT uv_vmu = {.x = 42, .y = 0, .w = 26, .h = 42};
-      draw_draw_sub_image(396, 254 + 12, 16, 22, COLOR_WHITE, txr_icons_current, &uv_vmu);  //16x22
+      draw_draw_sub_image(396, 254 + 12, 16, 22, current_theme_colors->icon_color, txr_icons_current, &uv_vmu);  // 16x22
     }
     {
-      //448x282
+      // 448x282
       const dimen_RECT uv_rumble = {.x = 0, .y = 42, .w = 64, .h = 44};
-      draw_draw_sub_image(458, 254 + 12, 34, 24, COLOR_WHITE, txr_icons_current, &uv_rumble);  //34x24
+      draw_draw_sub_image(458, 254 + 12, 34, 24, current_theme_colors->icon_color, txr_icons_current, &uv_rumble);  // 34x24
     }
     {
-      //524x282
+      // 524x282
       const dimen_RECT uv_modem = {.x = 0, .y = 86, .w = 42, .h = 42};
-      draw_draw_sub_image(534, 254 + 12, 22, 22, COLOR_WHITE, txr_icons_current, &uv_modem);  //22x22
+      draw_draw_sub_image(534, 254 + 12, 22, 22, current_theme_colors->icon_color, txr_icons_current, &uv_modem);  // 22x22
     }
   }
 
   if (disc_set > 1) {
     const dimen_RECT uv_disc = {.x = 42, .y = 86, .w = 42, .h = 42};
-    draw_draw_sub_image(314, 33, 22, 22, region_themes[region_current].text_color, txr_icons_current, &uv_disc);  //22x22
+    draw_draw_sub_image(314, 33, 22, 22, current_theme_colors->text_color, txr_icons_current, &uv_disc);  // 22x22
   }
 }
 
@@ -281,12 +239,12 @@ static void menu_accept(void) {
   /* prepare to show multidisc chooser menu */
   if (hide_multidisc && (disc_set > 1)) {
     draw_current = DRAW_MULTIDISC;
-    popup_setup(&draw_current, region_themes[region_current].text_color, region_themes[region_current].highlight_color, &navigate_timeout);
+    popup_setup(&draw_current, &region_themes[region_current].colors, &navigate_timeout);
     list_set_multidisc(list_current[current_selected_item]->product);
     return;
   }
 
-  dreamcast_rungd(list_current[current_selected_item]->slot_num);
+  dreamcast_launch_disc(list_current[current_selected_item]);
 }
 
 static void menu_settings(void) {
@@ -295,7 +253,7 @@ static void menu_settings(void) {
   }
 
   draw_current = DRAW_MENU;
-  menu_setup(&draw_current, region_themes[region_current].text_color, region_themes[region_current].highlight_color, &navigate_timeout);
+  menu_setup(&draw_current, &region_themes[region_current].colors, &navigate_timeout);
 }
 
 static void update_data(void) {
@@ -320,7 +278,9 @@ FUNCTION(UI_NAME, init) {
   openmenu_settings *settings = settings_get();
   region_current = settings->region;
 
-  select_art_by_aspect(settings->aspect);
+  /* Get the current themes, original + custom */
+  region_themes = theme_get_default(settings->aspect, &num_default_themes);
+  custom_themes = theme_get_custom(&num_custom_themes);
 
   /* on user for now, may change */
   unsigned int temp = texman_create();
@@ -332,22 +292,39 @@ FUNCTION(UI_NAME, init) {
   texman_reserve_memory(txr_highlight.width, txr_highlight.height, 2 /* 16Bit */);
 
   temp = texman_create();
-  draw_load_texture_buffer(region_themes[region_current].bg_left, &txr_bg_left, texman_get_tex_data(temp));
-  texman_reserve_memory(txr_bg_left.width, txr_bg_left.height, 2 /* 16Bit */);
-
-  temp = texman_create();
-  draw_load_texture_buffer(region_themes[region_current].bg_right, &txr_bg_right, texman_get_tex_data(temp));
-  texman_reserve_memory(txr_bg_right.width, txr_bg_right.height, 2 /* 16Bit */);
-
-  temp = texman_create();
-  draw_load_texture_buffer("THEME/SHARED/ICON_BLACK.PVR", &txr_icons_black, texman_get_tex_data(temp));
-  texman_reserve_memory(txr_icons_black.width, txr_icons_black.height, 2 /* 16Bit */);
-
-  temp = texman_create();
   draw_load_texture_buffer("THEME/SHARED/ICON_WHITE.PVR", &txr_icons_white, texman_get_tex_data(temp));
   texman_reserve_memory(txr_icons_white.width, txr_icons_white.height, 2 /* 16Bit */);
 
-  txr_icons_current = region_themes[region_current].icon_set;
+  if ((int)region_current >= num_default_themes) {
+    region_current -= num_default_themes;
+    current_theme_colors = &custom_themes[region_current].colors;
+
+    temp = texman_create();
+    draw_load_texture_buffer(custom_themes[region_current].bg_left, &txr_bg_left, texman_get_tex_data(temp));
+    texman_reserve_memory(txr_bg_left.width, txr_bg_left.height, 2 /* 16Bit */);
+
+    temp = texman_create();
+    draw_load_texture_buffer(custom_themes[region_current].bg_right, &txr_bg_right, texman_get_tex_data(temp));
+    texman_reserve_memory(txr_bg_right.width, txr_bg_right.height, 2 /* 16Bit */);
+  } else {
+    current_theme_colors = &region_themes[region_current].colors;
+
+    temp = texman_create();
+    draw_load_texture_buffer(region_themes[region_current].bg_left, &txr_bg_left, texman_get_tex_data(temp));
+    texman_reserve_memory(txr_bg_left.width, txr_bg_left.height, 2 /* 16Bit */);
+
+    temp = texman_create();
+    draw_load_texture_buffer(region_themes[region_current].bg_right, &txr_bg_right, texman_get_tex_data(temp));
+    texman_reserve_memory(txr_bg_right.width, txr_bg_right.height, 2 /* 16Bit */);
+  }
+
+  txr_icons_current = &txr_icons_white;
+
+#if 0
+  temp = texman_create();
+  draw_load_texture_buffer("THEME/SHARED/ICON_BLACK.PVR", &txr_icons_black, texman_get_tex_data(temp));
+  texman_reserve_memory(txr_icons_black.width, txr_icons_black.height, 2 /* 16Bit */);
+#endif
 
   font_bmf_init("FONT/BASILEA.FNT", "FONT/BASILEA_W.PVR", settings->aspect);
 

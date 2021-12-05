@@ -13,8 +13,10 @@
 #include "common.h"
 #include "global_settings.h"
 
-void menu_setup(enum draw_state* state, uint32_t _text_color, uint32_t _highlight_color, int* timeout_ptr);
-void popup_setup(enum draw_state* state, uint32_t _text_color, uint32_t _highlight_color, int* timeout_ptr);
+struct theme_color;
+
+void menu_setup(enum draw_state* state, struct theme_color* _colors, int* timeout_ptr);
+void popup_setup(enum draw_state* state, struct theme_color* _colors, int* timeout_ptr);
 
 void handle_input_menu(enum control input);
 void handle_input_credits(enum control input);

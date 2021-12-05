@@ -6,9 +6,9 @@
  * -----
  * Copyright (c) 2019 Hayden Kowalchuk
  */
+
 #include <dc/pvr.h>
 
-#include "../../gdrom/gdrom_fs.h"
 #include "../../inc/dbgprint.h"
 #include "../draw_prototypes.h"
 
@@ -44,7 +44,7 @@ int font_bmp_init(const char *filename, int char_width, int char_height) {
   font.char_height = char_height;
   font.char_width = char_width;
 
-  font_color = 0xFFFFFFFF;  //White
+  font_color = 0xFFFFFFFF;  // White
 
   return 0;
 }
@@ -62,10 +62,11 @@ void font_bmp_begin_draw() {
 #endif
 
   /* Start a textured polygon set (with the font texture) */
-  //pvr_prim(&font_header, sizeof(font_header));
+  // pvr_prim(&font_header, sizeof(font_header));
 }
 
 void font_bmp_set_color(uint32_t color) {
+  /*@Note: Either lxdream-nitro weirdness or something is wrong in how we draw, set both to 0xFFFFFFFF */
   font_color = color;
 #ifdef KOS_SPRITE
   font_header.argb = color;

@@ -44,11 +44,11 @@ static void settings_defaults(void) {
 }
 
 static void settings_create(void) {
-  //If we don't already have a savefile, choose a VMU
+  // If we don't already have a savefile, choose a VMU
   if (savefile_details.valid_memcards) {
     for (int iter = 0; iter <= 3; iter++) {
       for (int jiter = 1; jiter <= 2; jiter++) {
-        if (crayon_savefile_get_vmu_bit(savefile_details.valid_memcards, iter, jiter)) {  //Use the left most VMU
+        if (crayon_savefile_get_vmu_bit(savefile_details.valid_memcards, iter, jiter)) {  // Use the left most VMU
           savefile_details.savefile_port = iter;
           savefile_details.savefile_slot = jiter;
           goto Exit_loop_2;
@@ -72,12 +72,14 @@ void settings_init(void) {
   savefile_details.icon = OPENMENU_ICON;
   savefile_details.icon_palette = (unsigned short *)OPENMENU_PAL;
 
+#if OPENMENU_ICONS
   crayon_vmu_display_icon(savefile_details.valid_vmu_screens, OPENMENU_LCD);
+#endif
 
-  //Find the first savefile (if it exists)
+  // Find the first savefile (if it exists)
   for (int iter = 0; iter <= 3; iter++) {
     for (int jiter = 1; jiter <= 2; jiter++) {
-      if (crayon_savefile_get_vmu_bit(savefile_details.valid_saves, iter, jiter)) {  //Use the left most VMU
+      if (crayon_savefile_get_vmu_bit(savefile_details.valid_saves, iter, jiter)) {  // Use the left most VMU
         savefile_details.savefile_port = iter;
         savefile_details.savefile_slot = jiter;
         goto Exit_loop_1;
@@ -120,10 +122,10 @@ void settings_validate(void) {
 }
 
 void settings_load(void) {
-  //Try and load savefile
+  // Try and load savefile
   crayon_savefile_load(&savefile_details);
 
-  //No savefile yet
+  // No savefile yet
   if (savefile_details.valid_memcards && savefile_details.savefile_port == -1 && savefile_details.savefile_slot == -1) {
     settings_create();
   }

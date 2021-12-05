@@ -60,6 +60,7 @@ void dreamcast_rungd(unsigned int slot_num);
 
 /* z depth */
 float z_get(void);
+float z_set_cond(float z);
 float z_set(float z);
 float z_inc(void);
 void z_reset(void);

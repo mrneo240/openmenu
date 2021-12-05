@@ -11,13 +11,13 @@
 #pragma once
 
 /* Used to control reading from GD-ROM or CD-ROM */
-
 #ifdef GDROM_FS
 #include "gdfs.h"
 typedef int FD_TYPE;
 typedef DIR* DIR_TYPE;
 typedef struct gd_dirent* DIRENT_TYPE;
 #define DISC_PREFIX ""
+
 #define fopen(path, b) gd_open(path, O_RDONLY)
 #define fread(buf, size, num, fd) gd_read(fd, buf, (size) * (num))
 #define fseek(fd, offset, origin) gd_seek(fd, offset, origin)
@@ -31,8 +31,8 @@ typedef struct gd_dirent* DIRENT_TYPE;
 #ifdef COSMO
 #include "../tools/cosmo/cosmopolitan.h"
 #else
-#include <stdio.h>
 #include <dirent.h>
+#include <stdio.h>
 #include <sys/types.h>
 #endif
 typedef FILE* FD_TYPE;

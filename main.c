@@ -103,6 +103,7 @@ static int init(void) {
   ret += txr_load_DATs();
   ret += list_read_default();
   ret += db_load_DAT();
+  ret += theme_manager_load();
 
   /* setup internal memory zones */
   draw_init();
