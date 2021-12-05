@@ -80,7 +80,7 @@ static void ui_set_choice(int choice) {
   (*current_ui_setup)();
 }
 
-int round(float x) {
+int round( float x) {
   if (x < 0.0f)
     return (int)(x - 0.5f);
   else
@@ -229,7 +229,7 @@ static int translate_input(void) {
   return NONE;
 }
 
-static void reset_gdrom_drive(void) {
+void reset_gdrom_drive(void) {
   int status;
   int disc_type;
 
@@ -242,7 +242,7 @@ static void reset_gdrom_drive(void) {
   } while (1);
 
   cdrom_init();
-  extern void gd_reset_handles(void);
+  void gd_reset_handles(void);
   gd_reset_handles();
 
   do {
