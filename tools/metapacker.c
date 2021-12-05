@@ -25,7 +25,7 @@
 #define strcasecmp strcasecmp
 
 #include "../backend/db_item.h"
-#include "../backend/ini.h"
+#include "../external/ini.h"
 #include "dat_packer_interface.h"
 
 /* Called:

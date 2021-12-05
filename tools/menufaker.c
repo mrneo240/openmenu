@@ -7,13 +7,16 @@
  * Copyright (c) 2021 Hayden Kowalchuk, Hayden Kowalchuk
  * License: BSD 3-clause "New" or "Revised" License, http://www.opensource.org/licenses/BSD-3-Clause
  */
-
+#ifdef COSMO
+#include "cosmo/cosmopolitan.h"
+#else
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#endif
 
 /* Called:
 ./menufaker filelist.csv
@@ -140,7 +143,6 @@ int main(int argc, char **argv) {
     char *game_name = line;
     char *product_id = comma + 1;
 
-    //char *game_name_end = strrchr(game_name, '.');
     char *game_name_end = strrchr(game_name, '(') - 1; /* removes (USA) */
     char *product_id_end = strrchr(product_id, '.');
     *(game_name_end) = '\0';

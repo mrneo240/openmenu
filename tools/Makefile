@@ -6,7 +6,7 @@ CFLAGS_COSMO := -g -Os -static -nostdlib -nostdinc -fno-pie -no-pie -mno-red-zon
 LDFLAGS_COSMO := -fuse-ld=bfd -Wl,-T,cosmo/ape.lds -include cosmo/cosmopolitan.h cosmo/crt.o cosmo/ape.o cosmo/cosmopolitan.a
 CFLAGS := -O2 -s $(INCS) $(DEFINES)
 
-all: datread datpack metapack datstrip tsv2ini renamecsv
+all: datread datpack metapack datstrip tsv2ini renamecsv menufaker
 
 .PHONY: win
 win: CC:=x86_64-w64-mingw32-gcc
@@ -30,13 +30,13 @@ datpack.com: packer.c dat_packer_internal.c
 	@$(OBJCOPY) -S -O binary $@.dbg $@
 	@echo "$(OBJCOPY) $@.dbg -> $@"
 
-metapack.com: metapacker.c dat_packer_internal.c ../backend/ini.c
+metapack.com: metapacker.c dat_packer_internal.c ../external/ini.c
 	@echo "$(CC) $<"
 	@$(CC) $(CFLAGS_COSMO) -o $@.dbg $^ $(LDFLAGS_COSMO)
 	@$(OBJCOPY) -S -O binary $@.dbg $@
 	@echo "$(OBJCOPY) $@.dbg -> $@"
 
-datstrip.com: stripper.c ../backend/gd_list.c ../backend/ini.c
+datstrip.com: stripper.c ../backend/gd_list.c ../external/ini.c
 	@echo "$(CC) $<"
 	@$(CC) $(CFLAGS_COSMO) -o $@.dbg $^ $(LDFLAGS_COSMO)
 	@$(OBJCOPY) -S -O binary $@.dbg $@
@@ -70,7 +70,7 @@ datpack$(EXT): packer.c dat_packer_internal.c
 	@$(CC) $(CFLAGS) -o $@ $^
 	@echo "> $@"
 
-metapack$(EXT): metapacker.c dat_packer_internal.c ../backend/ini.c
+metapack$(EXT): metapacker.c dat_packer_internal.c ../external/ini.c
 	@echo "$(CC) $<"
 	@$(CC) $(CFLAGS) -o $@ $^
 	@echo "> $@"
@@ -85,7 +85,7 @@ renamecsv$(EXT): renamecsv.c
 	@$(CC) $(CFLAGS) -o $@ $^
 	@echo "> $@"
 
-datstrip$(EXT): stripper.c ../backend/gd_list.c ../backend/ini.c
+datstrip$(EXT): stripper.c ../backend/gd_list.c ../external/ini.c
 	@echo "$(CC) $<"
 	@$(CC) $(CFLAGS) -o $@ $^
 	@echo "> $@"
@@ -97,7 +97,7 @@ menufaker$(EXT): menufaker.c
 
 .PHONY: clean
 clean:
-	-rm -f datread.com.dbg datpack.com.dbg metapack.com.dbg datstrip.com.dbg
+	-rm -f datread.com.dbg datpack.com.dbg metapack.com.dbg datstrip.com.dbg menufaker.com.dbg tsv2ini.com.dbg renamecsv.com.dbg
 
 .PHONY: win-distclean
 win-distclean: EXT = .exe
@@ -105,5 +105,5 @@ win-distclean: distclean
 
 .PHONY: distclean
 distclean: clean
-	-rm -f datread.com datpack.com metapack.com datstrip.com datread$(EXT) datpack$(EXT) metapack$(EXT) datstrip$(EXT)
+	-rm -f datread.com datpack.com metapack.com datstrip.com menufaker.com tsv2ini.com renamecsv.com datread$(EXT) datpack$(EXT) metapack$(EXT) datstrip$(EXT) menufaker$(EXT) tsv2ini$(EXT) renamecsv$(EXT)
 
