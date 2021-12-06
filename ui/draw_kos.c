@@ -113,7 +113,7 @@ void* draw_load_texture_buffer(const char* filename, void* user, void* buffer) {
   return user;
 }
 
-void* draw_load_texture_from_DAT_to_buffer(struct dat_file* bin, const char* ID, void* user, void* buffer) {
+void* draw_load_texture_from_DAT_to_buffer(const struct dat_file* bin, const char* ID, void* user, void* buffer) {
   image* img = (image*)user;
   pvr_ptr_t txr;
   int ret = DAT_read_file_by_ID(bin, ID, pvr_get_internal_buffer());

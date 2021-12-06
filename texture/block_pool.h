@@ -34,11 +34,11 @@ void pool_dealloc_all(block_pool *pool);
 void pool_dealloc_slot(block_pool *pool, unsigned int slot_num);
 
 /* inline funcs */
-static inline void *pool_get_slot_addr(block_pool *pool, unsigned int slot_num) {
+static inline void *pool_get_slot_addr(const block_pool *pool, unsigned int slot_num) {
   return (void *)((uintptr_t)pool->base + slot_num * pool->slot_size);
 }
 
-static inline const slot_format *pool_get_slot_format(block_pool *pool, unsigned int slot_num) {
+static inline const slot_format *pool_get_slot_format(const block_pool *pool, unsigned int slot_num) {
   return &pool->format[slot_num];
 }
 
