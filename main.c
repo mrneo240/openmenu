@@ -252,11 +252,6 @@ void reset_gdrom_drive(void) {
       break;
     }
   } while (1);
-
-  printf("Disc checking: ");
-  if (disc_type == CD_GDROM) {
-    printf("Found GDROM!\n");
-  }
 }
 
 static void init_gfx_pvr(void) {
