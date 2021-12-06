@@ -157,6 +157,7 @@ static serial_remap serial_remap_members[] = {
     REMAP_ADD_META("T10003D", "T10005N"),
 
     /* JAP Missing Meta */
+    REMAP_ADD_META("HDR0054", "MK51053"), /* Sega GT */
     REMAP_ADD_META("HDR0053", "MK51035"),
     REMAP_ADD_META("HDR0159", "MK51136"),
     REMAP_ADD_META("T3601M", "T3602M"),
