@@ -34,6 +34,10 @@ static crayon_savefile_details_t savefile_details;
 static openmenu_settings savedata;
 
 static void settings_defaults(void) {
+  savedata.identifier[0] = 'O';
+  savedata.identifier[1] = 'M';
+  savedata.version = 1;
+  savedata.padding = 0;
   savedata.ui = UI_LINE_DESC;
   savedata.region = REGION_NTSC_U;
   savedata.aspect = ASPECT_NORMAL;
@@ -41,6 +45,8 @@ static void settings_defaults(void) {
   savedata.filter = FILTER_ALL;
   savedata.beep = BEEP_ON;
   savedata.multidisc = MULTIDISC_SHOW;
+  savedata.custom_theme = THEME_OFF;
+  savedata.custom_theme_num = THEME_0;
 }
 
 static void settings_create(void) {
@@ -93,6 +99,12 @@ Exit_loop_1:
 }
 
 void settings_validate(void) {
+  if (savedata.version != 1) {
+    settings_defaults();
+    settings_save();
+    return;
+  }
+
   if ((savedata.ui < UI_START) || (savedata.ui > UI_END)) {
     savedata.ui = UI_LINE_DESC;
   }
@@ -118,6 +130,14 @@ void settings_validate(void) {
   }
   if ((savedata.multidisc < MULTIDISC_START) || (savedata.multidisc > MULTIDISC_END)) {
     savedata.multidisc = MULTIDISC_SHOW;
+  }
+
+  if ((savedata.custom_theme < THEME_START) || (savedata.custom_theme > THEME_END)) {
+    savedata.custom_theme_num = THEME_OFF;
+  }
+
+  if ((savedata.custom_theme_num < THEME_NUM_START) || (savedata.custom_theme_num > THEME_NUM_END)) {
+    savedata.custom_theme_num = THEME_NUM_START;
   }
 }
 

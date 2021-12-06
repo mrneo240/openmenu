@@ -81,7 +81,32 @@ typedef enum CFG_MULTIDISC {
   MULTIDISC_END = MULTIDISC_HIDE
 } CFG_MULTIDISC;
 
+typedef enum CFG_CUSTOM_THEME {
+  THEME_START = 0,
+  THEME_OFF = THEME_START,
+  THEME_ON,
+  THEME_END = THEME_ON
+} CFG_CUSTOM_THEME;
+
+typedef enum CFG_CUSTOM_THEME_NUM {
+  THEME_NUM_START = 0,
+  THEME_0 = THEME_NUM_START,
+  THEME_1,
+  THEME_2,
+  THEME_3,
+  THEME_4,
+  THEME_5,
+  THEME_6,
+  THEME_7,
+  THEME_8,
+  THEME_9,
+  THEME_NUM_END = THEME_9
+} CFG_CUSTOM_THEME_NUM;
+
 typedef struct openmenu_settings {
+  char identifier[2]; /* OM */
+  uint8_t version;    /* 0x01 */
+  uint8_t padding;    /* 0x00 */
   CFG_REGION region;
   CFG_ASPECT aspect;
   CFG_UI ui;
@@ -89,6 +114,8 @@ typedef struct openmenu_settings {
   CFG_FILTER filter;
   CFG_BEEP beep;
   CFG_MULTIDISC multidisc;
+  CFG_CUSTOM_THEME custom_theme;
+  CFG_CUSTOM_THEME_NUM custom_theme_num;
 } openmenu_settings;
 
 typedef CFG_REGION region;

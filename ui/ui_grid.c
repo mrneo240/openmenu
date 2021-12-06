@@ -466,6 +466,13 @@ FUNCTION(UI_NAME, init) {
   region_themes = theme_get_default(settings->aspect, &num_default_themes);
   custom_themes = theme_get_custom(&num_custom_themes);
 
+  /* Enable custom theme if needed */
+  int use_custom_theme = settings->custom_theme;
+  if (use_custom_theme) {
+    int custom_theme_num = settings->custom_theme_num;
+    region_current = num_default_themes + custom_theme_num;
+  }
+
   /* on user for now, may change */
   unsigned int temp = texman_create();
   draw_load_texture_buffer("EMPTY.PVR", &img_empty_boxart, texman_get_tex_data(temp));

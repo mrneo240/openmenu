@@ -176,6 +176,14 @@ static void menu_accept(void) {
     settings->filter = choices[CHOICE_FILTER];
     settings->beep = choices[CHOICE_BEEP];
     settings->multidisc = choices[CHOICE_MULTIDISC];
+    if (settings->region >= REGION_END) {
+      settings->custom_theme = THEME_ON;
+      int num_default_themes = 0;
+      theme_get_default(settings->aspect, &num_default_themes);
+      settings->custom_theme_num = settings->region - num_default_themes;
+    } else {
+      settings->custom_theme = THEME_OFF;
+    }
 
     /* If not filtering, then plain sort */
     if (!choices[CHOICE_FILTER]) {
