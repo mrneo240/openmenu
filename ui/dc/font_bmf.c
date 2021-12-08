@@ -23,9 +23,7 @@
     DBG_PRINT("%s: %d\n", #member, (int)((struct).member)); \
   } while (0)
 
-//extern int round(float x);
 #define round(x) (x)
-extern float ceil(float x);
 
 /* BMFont implementation */
 #define BMF_MAGIC (54938946) /* BMF(0x3) */
@@ -74,7 +72,7 @@ typedef struct __attribute__((__packed__)) bm_common {
   uint16_t scaleW;
   uint16_t scaleH;
   uint16_t pages;
-  uint8_t bitField;  //bits 0-6: reserved, bit 7: packed
+  uint8_t bitField;  // bits 0-6: reserved, bit 7: packed
   uint8_t alphaChnl;
   uint8_t redChnl;
   uint8_t greenChnl;
@@ -398,14 +396,6 @@ static int BMF_load(const char *file, bm_font *font) {
 }
 
 int BMF_adjust_kerning(unsigned char first, unsigned char second, bm_font *font) {
-#if 0
-  const int32_t num_kerns = font->num_kerns;
-  for (int i = 0; i < num_kerns; i++) {
-    if (font->kerns[i].first == first && font->kerns[i].second == second) {
-      return font->kerns[i].amount;
-    }
-  }
-#endif
   const bm_kern_pair *kern_pairs = font->chars[first].kerns;
   if (kern_pairs) {
     do {
@@ -618,17 +608,17 @@ static void _font_bmf_draw_string(int x1, int y1, uint32_t color, const char *st
 static float _font_bmf_calculate_length_full(const char *str, int length) {
   /* Not sure if its worth calculating kerning for this */
   float width = 0;
-  //unsigned char prev = 0;
+  char prev = 0;
   bm_font *font = &font_basilea;
   int cursor = 0;
 
   while (*str && cursor++ < length) {
-    unsigned char chr = *str;
+    int chr = *str;
     /* Add possible kerning adjustment */
-    //width += BMF_adjust_kerning(prev, chr, &font_basilea); /* too slow */
+    width += BMF_adjust_kerning(prev, chr, &font_basilea); /* slow */
     width += font->chars[chr].xadvance;
 
-    //prev = chr;
+    prev = chr;
     str++;
   }
 
@@ -677,10 +667,10 @@ void font_bmf_draw_sub(int x1, int y1, uint32_t color, const char *str) {
 }
 
 void font_bmf_draw_sub_wrap(int x1, int y1, uint32_t color, const char *str, int width) {
-  font_bmf_set_height(16.0f);
   z_inc();
   current_color = color;
-  unsigned char prev = 0;
+  unsigned char prev = ' ';
+  unsigned int current_char = 0;
 
   const int x_start = x1;
   const char *text_end = strrchr(str, '\0');
@@ -692,8 +682,9 @@ void font_bmf_draw_sub_wrap(int x1, int y1, uint32_t color, const char *str, int
   do {
     /* Try to find longest string broken by spaces that will fit in width */
     float current_text_width = 0.0f;
+    prev = ' ';
     do {
-      const int current_char = *(current_text_start + current_text_len);
+      current_char = *(current_text_start + current_text_len);
       if (current_char == ' ') {
         last_known_space = current_text_start + current_text_len;
       }
@@ -706,20 +697,24 @@ void font_bmf_draw_sub_wrap(int x1, int y1, uint32_t color, const char *str, int
         last_known_space = text_end;
         break;
       }
-      current_text_width += (current_scale * font_basilea.chars[current_char].xadvance);
+      current_text_width += (int)((current_scale * font_basilea.chars[current_char].xadvance) * X_SCALE);
+      current_text_width += round(current_scale * BMF_adjust_kerning(prev, current_char, &font_basilea));
+      prev = current_char;
       current_text_len++;
     } while (current_text_width < width);
 
     current_text_temp = current_text_start;
     charbuffered = 0;
+    prev = 0;
+
     do {
       unsigned char chr = (*current_text_temp++);
       if (chr != ' ') {
         /* Add possible kerning adjustment */
-        x1 += ceil(current_scale * BMF_adjust_kerning(prev, chr, &font_basilea));
+        x1 += round(current_scale * BMF_adjust_kerning(prev, chr, &font_basilea));
         x1 += font_bmf_draw_char(x1, y1, chr);
       } else {
-        x1 += ceil(current_scale * (float)font_basilea.chars[' '].width);
+        x1 += round(current_scale * (float)font_basilea.chars[' '].width);
       }
       prev = chr;
     } while (current_text_temp < last_known_space);

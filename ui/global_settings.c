@@ -139,6 +139,10 @@ void settings_validate(void) {
   if ((savedata.custom_theme_num < THEME_NUM_START) || (savedata.custom_theme_num > THEME_NUM_END)) {
     savedata.custom_theme_num = THEME_NUM_START;
   }
+
+  if (savedata.custom_theme) {
+    savedata.region = REGION_END + 1 + savedata.custom_theme_num;
+  }
 }
 
 void settings_load(void) {

@@ -470,7 +470,7 @@ FUNCTION(UI_NAME, init) {
   int use_custom_theme = settings->custom_theme;
   if (use_custom_theme) {
     int custom_theme_num = settings->custom_theme_num;
-    region_current = num_default_themes + custom_theme_num;
+    region_current = REGION_END + 1 + custom_theme_num;
   }
 
   /* on user for now, may change */

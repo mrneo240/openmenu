@@ -23,9 +23,29 @@
 #include "global_settings.h"
 #include "ui_menu_credits.h"
 
+/* Scaling */
+#define X_SCALE_4_3 ((float)1.0f)
+#define X_SCALE_16_9 ((float)0.74941452f)
+#define ICON_BASE_SIZE ((int)68)
+
 /* List managment */
 #define INPUT_TIMEOUT (10)
 #define FOCUSED_HIRES_FRAMES (60 * 1) /* 1 second load in */
+
+/* Tile parameters */
+/* Basic Info */
+static float X_SCALE;
+static float FONT_SYNOP_SIZE;
+static short SCR_WIDTH;
+static short SCR_HEIGHT;
+static short ICON_SPACING;
+static short ICON_AREA_WIDTH;
+static short ICON_AREA_UNDERHANG;
+static short NUM_ICONS;
+static short HIGHLIGHT_OVERHANG;
+/* Calculated params */
+static short ICON_SIZE_X;
+static short ICON_SIZE_Y;
 
 static int current_selected_item;
 static int navigate_timeout;
@@ -56,6 +76,30 @@ static theme_color *current_theme_colors;
 static region region_current = REGION_NTSC_U;
 static enum draw_state draw_current = DRAW_UI;
 
+static void recalculate_aspect(CFG_ASPECT aspect) {
+  if (aspect == ASPECT_NORMAL) {
+    SCR_WIDTH = (640);
+    X_SCALE = (X_SCALE_4_3);
+    ICON_SPACING = (8);
+    ICON_AREA_WIDTH = (684);  // 640+22pixel over hang on edges
+    ICON_AREA_UNDERHANG = (-24);
+    NUM_ICONS = (9);
+    FONT_SYNOP_SIZE = (16.0f);
+  } else {
+    X_SCALE = (X_SCALE_16_9);
+    SCR_WIDTH = (854);
+    ICON_SPACING = (8);
+    ICON_AREA_WIDTH = (SCR_WIDTH);  // 854 no over hang on edges
+    ICON_AREA_UNDERHANG = (10);
+    NUM_ICONS = (11);
+    FONT_SYNOP_SIZE = (18.0f);
+  }
+  SCR_HEIGHT = (480);
+  HIGHLIGHT_OVERHANG = (4);
+  ICON_SIZE_X = (ICON_BASE_SIZE);
+  ICON_SIZE_Y = (ICON_BASE_SIZE);
+}
+
 static void draw_bg_layers(void) {
   {
     const dimen_RECT left = {.x = 0, .y = 0, .w = 512, .h = 480};
@@ -68,55 +112,44 @@ static void draw_bg_layers(void) {
 }
 
 static void draw_big_box(void) {
-  draw_draw_image(92 - 24, 92 - 20, 208 + 24, 208 + 24, COLOR_WHITE, &txr_focus);
+  const int y_pos = 72;
+  const int width = (232) * X_SCALE;
+  const int height = 232;
+  const int right_edge = ((SCR_WIDTH / 2) - (SCR_WIDTH * 0.03125)) * X_SCALE;
+  // centers (640x480) = 320, (854x480) = 427, 50%
+  // 4:3  (640x480) right edge at 300, 20 pixels left of center or 3.125%
+  // 16:9 (854x480) right edge at 400, 26 pixels left of center or 3.125%
+
+  draw_draw_image(right_edge - width, y_pos, width, height, COLOR_WHITE, &txr_focus);
 }
 
 static void draw_small_boxes(void) {
-#define LIST_ADJUST (2)
   int i;
-  int num_icons = 10; /* really 9..., the math is easier for 10 */
-  int starting_icon_idx = current_selected_item - 4;
-  float x_start = -24.0f;
+  int num_icons = NUM_ICONS;
+  int starting_icon_idx = current_selected_item - (NUM_ICONS / 2);
+  float x_start = ICON_AREA_UNDERHANG;
   float y_pos = 350.0f;
-  float icon_size = 68.0f;
-  float icon_spacing = 8.0f;
 
   /* possible change how many we draw based on if we are not quite at the 5th item in the list */
-  if (current_selected_item < 5) {
-    num_icons = 5 + current_selected_item;
-    x_start += (4 - current_selected_item) * (icon_size + icon_spacing);
+  if (current_selected_item < (NUM_ICONS / 2)) {
+    num_icons = (NUM_ICONS / 2) + current_selected_item;
+    x_start += (((NUM_ICONS / 2)) - current_selected_item) * (ICON_SIZE_X + ICON_SPACING);
     starting_icon_idx = 0;
     num_icons++;
   }
 
-  for (i = 0; (i < num_icons - 1) && (i + starting_icon_idx < list_len); i++) {
+  for (i = 0; (i < num_icons) && (i + starting_icon_idx < list_len); i++) {
     txr_get_small(list_current[starting_icon_idx + i]->product, &txr_icon_list[i]);
-    draw_draw_square(x_start + (icon_size + icon_spacing) * i, y_pos, icon_size, COLOR_WHITE, &txr_icon_list[i]);
+    draw_draw_image((x_start + (ICON_SIZE_X + ICON_SPACING) * i) * X_SCALE, y_pos, ICON_SIZE_X * X_SCALE, ICON_SIZE_Y, COLOR_WHITE, &txr_icon_list[i]);
   }
-
-#undef LIST_ADJUST
 }
 
 static void draw_small_box_highlight(void) {
-#define LIST_ADJUST (2)
-  int num_icons = 10; /* really 9..., the math is easier for 10 */
-  float x_start = -24.0f;
+  float x_start = ICON_AREA_UNDERHANG;
   float y_pos = 350.0f;
-  float icon_size = 68.0f;
-  float icon_spacing = 8.0f;
-  int highlighted_icon = (num_icons / 2 - 1);
+  int highlighted_icon = (NUM_ICONS) / 2;  // Middle
 
-  /* possible change how many we draw based on if we are not quite at the 5th item in the list */
-  if (current_selected_item < 5) {
-    num_icons = 5 + current_selected_item;
-    x_start += (4 - current_selected_item) * (icon_size + icon_spacing);
-    highlighted_icon = current_selected_item;
-    num_icons++;
-  }
-
-  draw_draw_square(x_start + (icon_size + icon_spacing) * highlighted_icon - 4.0f, y_pos - 4.0f, icon_size + 8, current_theme_colors->highlight_color, &txr_highlight);
-
-#undef LIST_ADJUST
+  draw_draw_image((x_start + (ICON_SIZE_X + ICON_SPACING) * highlighted_icon - 4.0f) * X_SCALE, y_pos - 4.0f, (ICON_SIZE_X + 8) * X_SCALE, ICON_SIZE_Y + 8, current_theme_colors->highlight_color, &txr_highlight);
 }
 
 static void draw_game_meta(void) {
@@ -132,10 +165,10 @@ static void draw_game_meta(void) {
   font_bmf_begin_draw();
   font_bmf_set_height_default();
   if (list_len <= 0) {
-    font_bmf_draw_auto_size(316, 92 - 20, current_theme_colors->text_color, "Empty Game List!", 640 - 316 - 10);
+    font_bmf_draw_auto_size((SCR_WIDTH / 2 - 4) * X_SCALE, 92 - 20, current_theme_colors->text_color, "Empty Game List!", (SCR_WIDTH / 2 - 10) * X_SCALE);
     return;
   }
-  font_bmf_draw_auto_size(316, 92 - 20, current_theme_colors->text_color, list_current[current_selected_item]->name, 640 - 316 - 10);
+  font_bmf_draw_auto_size((SCR_WIDTH / 2 - 4) * X_SCALE, 92 - 20, current_theme_colors->text_color, list_current[current_selected_item]->name, (SCR_WIDTH / 2 - 10) * X_SCALE);
 
   /* Disc # above name, position 316x33 */
   {
@@ -157,7 +190,8 @@ static void draw_game_meta(void) {
   if (current_meta) {
     /* success! */
     synopsis = current_meta->description;
-    font_bmf_draw_sub_wrap(316, 136 - 20 - 8, current_theme_colors->text_color, synopsis, 640 - 316 - 10); /* was 316,128 */
+    font_bmf_set_height(FONT_SYNOP_SIZE);
+    font_bmf_draw_sub_wrap(316, 136 - 20 - 8, current_theme_colors->text_color, synopsis, 640 - 316 - 10);
 
     font_bmf_set_height(12.0f);
     font_bmf_draw_centered(326 + (20 / 2), 282 + 12, current_theme_colors->text_color, db_format_nplayers_str(current_meta->num_players));
@@ -170,22 +204,22 @@ static void draw_game_meta(void) {
     {
       // 318x282
       const dimen_RECT uv_controller = {.x = 0, .y = 0, .w = 42, .h = 42};
-      draw_draw_sub_image(326, 254 + 12, 20, 20, current_theme_colors->icon_color, txr_icons_current, &uv_controller);  // 20x20
+      draw_draw_sub_image(326, 254 + 12, 20 * X_SCALE, 20, current_theme_colors->icon_color, txr_icons_current, &uv_controller);  // 20x20
     }
     {
       // 388x282
       const dimen_RECT uv_vmu = {.x = 42, .y = 0, .w = 26, .h = 42};
-      draw_draw_sub_image(396, 254 + 12, 16, 22, current_theme_colors->icon_color, txr_icons_current, &uv_vmu);  // 16x22
+      draw_draw_sub_image(396, 254 + 12, 16 * X_SCALE, 22, current_theme_colors->icon_color, txr_icons_current, &uv_vmu);  // 16x22
     }
     {
       // 448x282
       const dimen_RECT uv_rumble = {.x = 0, .y = 42, .w = 64, .h = 44};
-      draw_draw_sub_image(458, 254 + 12, 34, 24, current_theme_colors->icon_color, txr_icons_current, &uv_rumble);  // 34x24
+      draw_draw_sub_image(458, 254 + 12, 34 * X_SCALE, 24, current_theme_colors->icon_color, txr_icons_current, &uv_rumble);  // 34x24
     }
     {
       // 524x282
       const dimen_RECT uv_modem = {.x = 0, .y = 86, .w = 42, .h = 42};
-      draw_draw_sub_image(534, 254 + 12, 22, 22, current_theme_colors->icon_color, txr_icons_current, &uv_modem);  // 22x22
+      draw_draw_sub_image(534, 254 + 12, 22 * X_SCALE, 22, current_theme_colors->icon_color, txr_icons_current, &uv_modem);  // 22x22
     }
   }
 
@@ -277,6 +311,7 @@ FUNCTION(UI_NAME, init) {
   /* Set region from preferences */
   openmenu_settings *settings = settings_get();
   region_current = settings->region;
+  recalculate_aspect(settings->aspect);
 
   /* Get the current themes, original + custom */
   region_themes = theme_get_default(settings->aspect, &num_default_themes);
@@ -286,7 +321,7 @@ FUNCTION(UI_NAME, init) {
   int use_custom_theme = settings->custom_theme;
   if (use_custom_theme) {
     int custom_theme_num = settings->custom_theme_num;
-    region_current = num_default_themes + custom_theme_num;
+    region_current = REGION_END + 1 + custom_theme_num;
   }
 
   /* on user for now, may change */
