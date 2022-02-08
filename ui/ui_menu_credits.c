@@ -185,24 +185,7 @@ static void menu_accept(void) {
       settings->custom_theme = THEME_OFF;
     }
 
-    /* If not filtering, then plain sort */
-    if (!choices[CHOICE_FILTER]) {
-      switch ((CFG_SORT)choices[CHOICE_SORT]) {
-        case SORT_NAME:
-          list_get_sort_name();
-          break;
-        case SORT_DATE:
-          list_get_sort_date();
-          break;
-        default:
-        case SORT_DEFAULT:
-          list_get_sort_default();
-          break;
-      }
-    } else {
-      /* If filtering, filter down to only genre then sort */
-      list_get_genre_sort((FLAGS_GENRE)choices[CHOICE_FILTER] - 1, choices[CHOICE_SORT]);
-    }
+    list_get();
 
     if (choices[CHOICE_SAVE] == 0 /* Save */)
       settings_save();
