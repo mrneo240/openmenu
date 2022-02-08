@@ -91,12 +91,12 @@ static const gd_item **list_current;
 static int list_len;
 
 static theme_color gdemu_colors = {
-    .text_color = color_main_default,
-    .highlight_color = color_main_highlight,
-    .menu_text_color = color_options_default,
-    .menu_highlight_color = color_options_highlight,
-    .menu_bkg_color = COLOR_BLACK,
-    .menu_bkg_border_color = color_menu_background,
+    .text_color = COLOR_BLACK,
+    .highlight_color = COLOR_WHITE,
+    .menu_text_color = COLOR_BLACK,
+    .menu_highlight_color = COLOR_WHITE,
+    .menu_bkg_color = COLOR_WHITE,
+    .menu_bkg_border_color = COLOR_BLACK,
     .icon_color = COLOR_WHITE,
 };
 
@@ -109,6 +109,16 @@ static int current_selected_item = 0;
 static int current_starting_index = 0;
 static int navigate_timeout = INPUT_TIMEOUT;
 static enum draw_state draw_current = DRAW_UI;
+
+static void init_gdemu_colors(void) {
+    gdemu_colors.text_color = color_main_default;
+    gdemu_colors.highlight_color = color_main_highlight;
+    gdemu_colors.menu_text_color = color_options_default;
+    gdemu_colors.menu_highlight_color = color_options_highlight;
+    gdemu_colors.menu_bkg_color = COLOR_BLACK;
+    gdemu_colors.menu_bkg_border_color = color_menu_background;
+    gdemu_colors.icon_color = COLOR_WHITE;
+}
 
 static void draw_bg_layers(void) {
   {
@@ -318,6 +328,8 @@ FUNCTION(UI_NAME, init) {
   texman_reserve_memory(txr_bg_right.width, txr_bg_right.height, 2 /* 16Bit */);
 
   font_bmp_init("FONT/GDMNUFNT.PVR", 8, 16);
+
+  init_gdemu_colors();
 
   printf("Texture scratch free: %d/%d KB (%d/%d bytes)\n", texman_get_space_available() / 1024, (1024 * 1024) / 1024, texman_get_space_available(), (1024 * 1024));
 }
