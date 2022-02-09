@@ -14,7 +14,6 @@
 #include <external/libcrayonvmu/setup.h>
 
 /* Images and such */
-#if __has_include("openmenu_lcd.h") && __has_include("openmenu_pal.h") && __has_include("openmenu_vmu.h")
 #include "openmenu_lcd.h"
 #include "openmenu_pal.h"
 #include "openmenu_vmu.h"
@@ -23,12 +22,6 @@
 #define OPENMENU_LCD (openmenu_lcd)
 #define OPENMENU_PAL (openmenu_pal)
 #define OPENMENU_ICONS (1)
-#else
-#define OPENMENU_ICON (NULL)
-#define OPENMENU_LCD (NULL)
-#define OPENMENU_PAL (NULL)
-#define OPENMENU_ICONS (0)
-#endif
 
 static crayon_savefile_details_t savefile_details;
 static openmenu_settings savedata;
