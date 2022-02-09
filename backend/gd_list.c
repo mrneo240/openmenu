@@ -206,7 +206,22 @@ const gd_item **list_get_sort_default(void) {
 }
 
 const struct gd_item **list_get(void) {
-  return (const gd_item **)list_temp;
+  /* If not filtering, then plain sort */
+  openmenu_settings *settings = settings_get();
+  if (!settings->filter) {
+    switch ((CFG_SORT)settings->sort) {
+      case SORT_NAME:
+        return list_get_sort_name();
+      case SORT_DATE:
+        return list_get_sort_date();
+      default:
+        case SORT_DEFAULT:
+        return list_get_sort_default();
+    }
+  } else {
+    /* If filtering, filter down to only genre then sort */
+    return list_get_genre_sort((FLAGS_GENRE)settings->filter - 1, settings->sort);
+  }
 }
 
 const struct gd_item **list_get_multidisc(void) {

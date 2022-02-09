@@ -184,8 +184,7 @@ static void menu_accept(void) {
     } else {
       settings->custom_theme = THEME_OFF;
     }
-
-    /* If not filtering, then plain sort */
+    list_get();
     if (!choices[CHOICE_FILTER]) {
       switch ((CFG_SORT)choices[CHOICE_SORT]) {
         case SORT_NAME:
