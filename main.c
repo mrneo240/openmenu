@@ -57,12 +57,10 @@ typedef struct ui_template {
   }
 
 static ui_template ui_choices[] = {
-    UI_TEMPLATE(BIOS),
-  /*
     UI_TEMPLATE(LIST_DESC),
     UI_TEMPLATE(GRID_3),
     UI_TEMPLATE(GDMENU_EMU),
-  */
+    UI_TEMPLATE(BIOS),
 };
 
 static const int num_ui_choices = sizeof(ui_choices) / sizeof(ui_template);
