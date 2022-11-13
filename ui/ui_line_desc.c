@@ -166,6 +166,7 @@ static void draw_game_meta(void) {
   font_bmf_set_height_default();
   if (list_len <= 0) {
     font_bmf_draw_auto_size((SCR_WIDTH / 2 - 4) * X_SCALE, 92 - 20, current_theme_colors->text_color, "Empty Game List!", (SCR_WIDTH / 2 - 10) * X_SCALE);
+    printf("press Y\n");
     return;
   }
   font_bmf_draw_auto_size((SCR_WIDTH / 2 - 4) * X_SCALE, 92 - 20, current_theme_colors->text_color, list_current[current_selected_item]->name, (SCR_WIDTH / 2 - 10) * X_SCALE);
@@ -400,8 +401,12 @@ static void handle_input_ui(enum control input) {
       menu_settings();
       break;
     case Y: {
-      extern void arch_menu(void);
-      arch_menu();
+      // extern void arch_menu(void);
+      // arch_menu();
+      extern void gdemu_set_img_num(uint16_t);
+      gdemu_set_img_num((uint16_t)0);
+      arch_set_exit_path(1);
+      arch_exit();
     } break;
 
       /* These dont do anything */

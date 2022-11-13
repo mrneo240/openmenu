@@ -32,6 +32,8 @@
 #undef UI_NAME
 #include "ui/ui_gdmenu.h"
 #undef UI_NAME
+#include "ui/ui_bios.h"
+#undef UI_NAME
 
 #include "texture/txr_manager.h"
 
@@ -55,9 +57,12 @@ typedef struct ui_template {
   }
 
 static ui_template ui_choices[] = {
+    UI_TEMPLATE(BIOS),
+  /*
     UI_TEMPLATE(LIST_DESC),
     UI_TEMPLATE(GRID_3),
     UI_TEMPLATE(GDMENU_EMU),
+  */
 };
 
 static const int num_ui_choices = sizeof(ui_choices) / sizeof(ui_template);
@@ -80,7 +85,7 @@ static void ui_set_choice(int choice) {
   (*current_ui_setup)();
 }
 
-int round( float x) {
+int round(float x) {
   if (x < 0.0f)
     return (int)(x - 0.5f);
   else
@@ -153,7 +158,7 @@ static void processInput(void) {
   memset(&_input, 0, sizeof(inputs));
 
   /* DPAD */
-  _input.dpad = (state->buttons >> 4) & ~240;  //mrneo240 ;)
+  _input.dpad = (state->buttons >> 4) & ~240;  // mrneo240 ;)
 
   /* BUTTONS */
   _input.btn_a = (uint8_t) !!(buttons & CONT_A);
@@ -229,31 +234,6 @@ static int translate_input(void) {
   return NONE;
 }
 
-void reset_gdrom_drive(void) {
-  int status;
-  int disc_type;
-
-  do {
-    cdrom_get_status(&status, &disc_type);
-
-    if (status == CD_STATUS_PAUSED || status == CD_STATUS_STANDBY || status == CD_STATUS_PLAYING) {
-      break;
-    }
-  } while (1);
-
-  cdrom_init();
-  void gd_reset_handles(void);
-  gd_reset_handles();
-
-  do {
-    cdrom_get_status(&status, &disc_type);
-
-    if (status == CD_STATUS_PAUSED || status == CD_STATUS_STANDBY || status == CD_STATUS_PLAYING) {
-      break;
-    }
-  } while (1);
-}
-
 static void init_gfx_pvr(void) {
   /* BlueCrab (c) 2014,
     This assumes that the video mode is initialized as KOS
@@ -289,12 +269,12 @@ int main(int argc, char *argv[]) {
   /* unused */
   (void)argc;
   (void)argv;
+  //extern void gdb_init();
+  //gdb_init();
 
   fflush(stdout);
   setbuf(stdout, NULL);
   init_gfx_pvr();
-
-  reset_gdrom_drive();
 
   if (init()) {
     puts("Init error.");

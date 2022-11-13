@@ -53,10 +53,9 @@ typedef enum FLAGS_ACCESORIES {
 typedef struct db_item {
   unsigned char num_players;
   unsigned char vmu_blocks;
-  unsigned char accessories; /* Accessories Described above */
+  unsigned char padding0;    /*Currently Unused, for expansion */
   unsigned char network;     /* 0, none. 1, modem. 2, bba. 3, both */
   unsigned short genre;      /* Genres Described above */
-  char padding1;             /*Currently Unused, for expansion */
-  char padding2;             /*Currently Unused, for expansion */
+  unsigned short accessories;/* Accessories Described above */
   char description[376];
 } db_item;
