@@ -87,7 +87,7 @@ static const credit_pair credits[] = {
     (credit_pair){"Roareye", "Metadata DB"},
     (credit_pair){"sonik-br", "GDMENUCardManager"},
     (credit_pair){"protofall", "Crayon_VMU"},
-    (credit_pair){"TheLegendOfXela", "Boxart (Customs)"},
+    (credit_pair){"ReveriePass", "Boxart (Customs)"},
     (credit_pair){"marky-b-1986", "Theming Ideas"},
     (credit_pair){"Various Testers", "Breaking Things"},
     (credit_pair){"Kofi Supporters", "Coffee+Hardware"},
