@@ -120,6 +120,9 @@ int main(int argc, char **argv) {
   while ((read = getline(&line, &len, csv_fd)) != -1) {
     line[read - 1] = '\0';
     char *comma = strrchr(line, ',');
+    if(!comma){
+      continue;
+    }
     *comma = '\0';
 
     char *filename_cur = line;
