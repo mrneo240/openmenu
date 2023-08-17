@@ -32,8 +32,7 @@ $(TARGET): $(OBJS)
 	@echo \> $(CC) -o $(TARGET)
 	@$(CC) -o $(TARGET) $(LDFLAGS) $(CFLAGS) $(OBJS) $(LIBS) $(MAP)
 	@echo $(notdir $(OBJCOPY)) -R .stack -O binary $@ $(basename $@).bin
-	@$(OBJCOPY) -R .stack -O binary  $@ $(basename $@).bin
-	@$(KOS_BASE)/utils/scramble/scramble $(basename $@).bin 1ST_READ.BIN
+	@$(OBJCOPY) -R .stack -O binary  $@ 1ST_READ.BIN
 
 .PHONY: clean
 .PHONY: clean-elf

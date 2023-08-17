@@ -339,12 +339,11 @@ static void handle_input_ui(enum control input) {
     case A:
       menu_accept();
       break;
-    case START:
+    case X:
       menu_settings();
       break;
     case Y: {
-      extern void arch_menu(void);
-      arch_menu();
+      exit_to_bios();
     } break;
 
       /* These dont do anything */

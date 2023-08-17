@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <arch/exec.h>
 
 #include "backend/db_list.h"
 #include "backend/gd_list.h"
@@ -34,6 +35,8 @@
 #undef UI_NAME
 
 #include "texture/txr_manager.h"
+
+#include "inc/bloader.h"
 
 void (*current_ui_init)(void);
 void (*current_ui_setup)(void);
@@ -294,7 +297,7 @@ int main(int argc, char *argv[]) {
   setbuf(stdout, NULL);
   init_gfx_pvr();
 
-  reset_gdrom_drive();
+  //reset_gdrom_drive();
 
   if (init()) {
     puts("Init error.");
@@ -310,3 +313,14 @@ int main(int argc, char *argv[]) {
 
   return 0;
 }
+
+void exit_to_bios(void)
+{
+	openmenu_settings* cur = settings_get();
+	
+	bloader_config->enable_wide  = cur->aspect;
+	bloader_config->enable_3d = 1;
+	
+	arch_exec_at(bloader_data, bloader_size, 0xacf00000);
+}
+

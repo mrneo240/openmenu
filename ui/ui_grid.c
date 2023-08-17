@@ -546,8 +546,7 @@ static void handle_input_ui(enum control input) {
       menu_settings();
       break;
     case Y: {
-      extern void arch_menu(void);
-      arch_menu();
+      exit_to_bios();
     } break;
     case X:
       menu_show_large_art();

@@ -399,10 +399,9 @@ static void handle_input_ui(enum control input) {
     case START:
       menu_settings();
       break;
-    case Y: {
-      extern void arch_menu(void);
-      arch_menu();
-    } break;
+    case Y:
+      exit_to_bios();
+      break;
 
       /* These dont do anything */
     case B:

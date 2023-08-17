@@ -13,6 +13,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
+extern void exit_to_bios(void);
+
 typedef enum CFG_REGION {
   REGION_START = 0,
   REGION_NTSC_U = REGION_START,
