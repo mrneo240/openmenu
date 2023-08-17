@@ -170,8 +170,16 @@ static void processInput(void) {
   _input.axes_2 = ((uint8_t)(state->joyy) + 128);
 
   /* TRIGGERS */
-  _input.trg_left = (uint8_t)state->ltrig & 255;
-  _input.trg_right = (uint8_t)state->rtrig & 255;
+  if (!strncmp("Dreamcast Fishing Controller", cont->info.product_name, 28))
+  {
+	 _input.trg_left = 0;
+	 _input.trg_right = 0;
+  }
+  else
+  {
+	 _input.trg_left = (uint8_t)state->ltrig & 255;
+	 _input.trg_right = (uint8_t)state->rtrig & 255;
+  }
 
   INPT_ReceiveFromHost(_input);
 }
