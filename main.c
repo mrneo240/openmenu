@@ -107,6 +107,27 @@ static int init(void) {
   ret += list_read_default();
   ret += db_load_DAT();
   ret += theme_manager_load();
+  
+  openmenu_settings* cur = settings_get();
+  
+  switch (cur->sort)
+  {
+	  case SORT_NAME:
+		  list_get_sort_name();
+		  break;
+		  
+	  case SORT_DATE:
+		  list_get_sort_date();
+		  break;
+		  
+	  case SORT_PRODUCT:
+		  list_get_sort_product();
+		  break;
+		  
+	  default:
+		  break;
+  }
+  
 
   /* setup internal memory zones */
   draw_init();
