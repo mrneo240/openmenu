@@ -80,7 +80,7 @@ typedef struct credit_pair {
 } credit_pair;
 
 static const credit_pair credits[] = {
-    (credit_pair){"megavolt85", "gdemu sdk"},
+    (credit_pair){"megavolt85", "gdemu sdk, coder"},
     (credit_pair){"u/westhinksdifferent/", "UI Mockups"},
     (credit_pair){"FlorreW", "Metadata DB"},
     (credit_pair){"hasnopants", "Metadata DB"},
@@ -204,8 +204,9 @@ static void menu_accept(void) {
       list_get_genre_sort((FLAGS_GENRE)choices[CHOICE_FILTER] - 1, choices[CHOICE_SORT]);
     }
 
-    if (choices[CHOICE_SAVE] == 0 /* Save */)
+    if (choices[CHOICE_SAVE] == 0 /* Save */){
       settings_save();
+    }
     extern void reload_ui(void);
     reload_ui();
   }

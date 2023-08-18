@@ -65,8 +65,10 @@ static ui_template ui_choices[] = {
 
 static const int num_ui_choices = sizeof(ui_choices) / sizeof(ui_template);
 static int ui_choice_current = 0;
+static int need_reload_ui = 0;
 
 static void ui_set_choice(int choice) {
+  need_reload_ui = 0;
   if (choice < UI_START || choice >= num_ui_choices) {
     choice = UI_START;
   }
@@ -91,8 +93,7 @@ int round( float x) {
 }
 
 void reload_ui(void) {
-  openmenu_settings *settings = settings_get();
-  ui_set_choice(settings->ui);
+  need_reload_ui = 1;
 }
 
 static int init(void) {
@@ -133,7 +134,7 @@ static int init(void) {
   draw_init();
 
   /* Load UI */
-  reload_ui();
+  ui_set_choice(cur->ui);
 
   return ret;
 }
@@ -338,6 +339,11 @@ int main(int argc, char *argv[]) {
     enum control input = translate_input();
     (*current_ui_handle_input)(input);
     vid_waitvbl();
+    if (need_reload_ui){
+		openmenu_settings* cur = settings_get();
+		ui_set_choice(cur->ui);
+		vid_waitvbl();
+	}
     draw();
   }
 
