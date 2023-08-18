@@ -245,7 +245,10 @@ static void menu_decrement(int amount) {
   if (navigate_timeout > 0) {
     return;
   }
-  if (current_selected_item > 0) {
+  if (current_selected_item < amount) {
+    current_selected_item = 0;
+  }
+  else {
     current_selected_item -= amount;
   }
   if (current_selected_item < current_starting_index) {
