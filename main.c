@@ -273,7 +273,7 @@ void reset_gdrom_drive(void) {
     }
   } while (1);
 
-  cdrom_init();
+  cdrom_reinit();
   void gd_reset_handles(void);
   gd_reset_handles();
 
@@ -337,6 +337,7 @@ int main(int argc, char *argv[]) {
     z_reset();
     enum control input = translate_input();
     (*current_ui_handle_input)(input);
+    vid_waitvbl();
     draw();
   }
 
