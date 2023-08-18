@@ -39,8 +39,6 @@ void dreamcast_launch_disc(gd_item *disc)
 	  }
   }
   
-  
-  
   gdemu_set_img_num((uint16_t)disc->slot_num);
   thd_sleep(200);
   
@@ -62,6 +60,15 @@ void dreamcast_launch_disc(gd_item *disc)
   else
   {
 	  param. need_game_fix = 0;
+  }
+  
+  if (!strncmp((char*)0x8c0007CC, "1.004", 5))
+  {
+	  ((uint32_t *) 0xAC000E20)[0] = 0;
+  }
+  else if (!strncmp((char*)0x8c0007CC, "1.01d", 5))
+  {
+	  ((uint32_t *) 0xAC000E1C)[0] = 0;
   }
   
   memcpy((void*)0xACCFFF00, &param, 32);
