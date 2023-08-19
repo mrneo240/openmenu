@@ -274,6 +274,29 @@ static void menu_increment(int amount) {
   navigate_timeout = INPUT_TIMEOUT;
 }
 
+static void menu_cb(void) {
+  if ((navigate_timeout > 0) || (list_len <= 0)) {
+    return;
+  }
+  
+  /* grab the disc number and if there is more than one */
+  int disc_set = list_current[current_selected_item]->disc[2] - '0';
+  
+  /* Get multidisc settings */
+  openmenu_settings *settings = settings_get();
+  int hide_multidisc = settings->multidisc;
+
+  /* prepare to show multidisc chooser menu */
+  if (hide_multidisc && (disc_set > 1)) {
+    draw_current = DRAW_MULTIDISC;
+    popup_setup(&draw_current, &gdemu_colors, &navigate_timeout);
+    list_set_multidisc(list_current[current_selected_item]->product);
+    return;
+  }
+
+  dreamcast_launch_cb(list_current[current_selected_item]);
+}
+
 static void menu_accept(void) {
   if ((navigate_timeout > 0) || (list_len <= 0)) {
     return;
@@ -351,6 +374,7 @@ static void handle_input_ui(enum control input) {
 
       /* These dont do anything */
     case B:
+	  menu_cb();
       break;
 
     /* Always nothing */

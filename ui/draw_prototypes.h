@@ -58,6 +58,7 @@ void draw_draw_quad(int x, int y, float width, float height, uint32_t color);
 /* exec proto */
 struct gd_item;
 void dreamcast_launch_disc(const struct gd_item *disc);
+void dreamcast_launch_cb(const struct gd_item *disc);
 
 /* z depth */
 float z_get(void);
