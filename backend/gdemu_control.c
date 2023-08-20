@@ -8,6 +8,16 @@
 #include "gdmenu_binary.h"
 #include "cb_loader.h"
 
+int wait_cd_ready(void){
+  for (int i = 0; i < 100; i++) {
+	  if (cdrom_reinit() == ERR_OK) {
+	     return 1;
+	  }
+	  thd_sleep(20);
+  }
+  return 0;
+}
+
 void dreamcast_launch_disc(gd_item *disc) {
   ldr_params_t param;
   param.region_free = 1;
@@ -37,9 +47,9 @@ void dreamcast_launch_disc(gd_item *disc) {
   }
   
   gdemu_set_img_num((uint16_t)disc->slot_num);
-  thd_sleep(200);
+  //thd_sleep(500);
   
-  if (cdrom_reinit() != ERR_OK) {
+  if (!wait_cd_ready()) {
 	  return;
   }
   
@@ -87,10 +97,11 @@ void dreamcast_launch_cb(gd_item *disc) {
   fclose(fd);
   
   gdemu_set_img_num((uint16_t)disc->slot_num);
-  thd_sleep(500);
+  //thd_sleep(500);
   
-  if (cdrom_reinit() != ERR_OK) {
+  if (!wait_cd_ready()) {
 	  gdemu_set_img_num(1);
+	  wait_cd_ready();
 	  return;
   }
   
