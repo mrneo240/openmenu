@@ -22,7 +22,7 @@
 #pragma region Settings_Menu
 
 static const char* menu_choice_text[] = {"Style", "Theme", "Aspect", "Beep", "Sort", "Filter", "Multidisc"};
-static const char* theme_choice_text[] = {"LineDesc", "Grid3", "GDMENU"};
+static const char* theme_choice_text[] = {"LineDesc", "Grid3", "Scroll"};
 static const char* region_choice_text[] = {"NTSC-U", "NTSC-J", "PAL"};
 static const char* aspect_choice_text[] = {"4:3", "16:9"};
 static const char* beep_choice_text[] = {"Off", "On"};
@@ -396,7 +396,7 @@ static void draw_popup_menu(int x, int y, int width, int height) {
   draw_draw_quad(x - border_width, y - border_width, width + (2 * border_width), height + (2 * border_width), menu_bkg_border_color);
   draw_draw_quad(x, y, width, height, menu_bkg_color);
 
-  if (settings->ui == UI_GDMENU) {
+  if (settings->ui == UI_SCROLL) {
     /* Top header */
     draw_draw_quad(x, y, width, 20, menu_bkg_border_color);
   }
@@ -404,7 +404,7 @@ static void draw_popup_menu(int x, int y, int width, int height) {
 
 void draw_menu_tr(void) {
   z_set_cond(205.0f);
-  if (settings->ui == UI_GDMENU) {
+  if (settings->ui == UI_SCROLL) {
     /* Menu size and placement */
     const int line_height = 24;
     const int width = 320;
@@ -514,7 +514,7 @@ void draw_credits_op(void) {
 void draw_credits_tr(void) {
   z_set_cond(205.0f);
 
-  if (settings->ui == UI_GDMENU) {
+  if (settings->ui == UI_SCROLL) {
     /* Menu size and placement */
     const int line_height = 24;
     const int width = 320;
@@ -582,7 +582,7 @@ void draw_multidisc_tr(void) {
   int multidisc_len = list_multidisc_length();
 
   z_set_cond(205.0f);
-  if (settings->ui == UI_GDMENU) {
+  if (settings->ui == UI_SCROLL) {
     /* Menu size and placement */
     const int line_height = 24;
     const int width = 320;

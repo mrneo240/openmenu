@@ -31,7 +31,7 @@
 #undef UI_NAME
 #include "ui/ui_line_desc.h"
 #undef UI_NAME
-#include "ui/ui_gdmenu.h"
+#include "ui/ui_scroll.h"
 #undef UI_NAME
 
 #include "texture/txr_manager.h"
@@ -60,7 +60,7 @@ typedef struct ui_template {
 static ui_template ui_choices[] = {
     UI_TEMPLATE(LIST_DESC),
     UI_TEMPLATE(GRID_3),
-    UI_TEMPLATE(GDMENU_EMU),
+    UI_TEMPLATE(SCROLL),
 };
 
 static const int num_ui_choices = sizeof(ui_choices) / sizeof(ui_template);

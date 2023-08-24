@@ -1,5 +1,5 @@
 /*
- * File: ui_gdmenu.c
+ * File: ui_scroll.c
  * Project: ui
  * File Created: Sunday, 13th June 2021 12:32:47 pm
  * Author: Hayden Kowalchuk
@@ -8,7 +8,7 @@
  * License: BSD 3-clause "New" or "Revised" License, http://www.opensource.org/licenses/BSD-3-Clause
  */
 
-#include "ui_gdmenu.h"
+#include "ui_scroll.h"
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -336,11 +336,11 @@ FUNCTION(UI_NAME, init) {
   // txr_empty_large_pool();
 
   unsigned int temp = texman_create();
-  draw_load_texture_buffer("THEME/GDMENU/BG_L.PVR", &txr_bg_left, texman_get_tex_data(temp));
+  draw_load_texture_buffer("THEME/SCROLL/BG_L.PVR", &txr_bg_left, texman_get_tex_data(temp));
   texman_reserve_memory(txr_bg_left.width, txr_bg_left.height, 2 /* 16Bit */);
 
   temp = texman_create();
-  draw_load_texture_buffer("THEME/GDMENU/BG_R.PVR", &txr_bg_right, texman_get_tex_data(temp));
+  draw_load_texture_buffer("THEME/SCROLL/BG_R.PVR", &txr_bg_right, texman_get_tex_data(temp));
   texman_reserve_memory(txr_bg_right.width, txr_bg_right.height, 2 /* 16Bit */);
 
   font_bmp_init("FONT/GDMNUFNT.PVR", 8, 16);

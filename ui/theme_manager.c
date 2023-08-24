@@ -119,6 +119,8 @@ static int read_theme_ini(void *user, const char *section, const char *name, con
       new_color->menu_bkg_color = str2argb(value);
     } else if (strcasecmp(name, "MENU_BKG_BORDER_COLOR") == 0) {
       new_color->menu_bkg_border_color = str2argb(value);
+    } else if (strcasecmp(name, "STYLE") == 0) {
+      new_theme->style = atol(value);
     } else {
       printf("Unknown theme value: %s\n", name);
     }
@@ -164,8 +166,9 @@ static void load_themes(char *basePath) {
   }
 
   while ((dp = readdir(dir)) != NULL) {
+	  //printf("load_themes: %s\n", dp->d_name);
     if (strcmp(dp->d_name, ".") != 0 && strcmp(dp->d_name, "..") != 0) {
-      if (strncmp(dp->d_name, "CUST_", 5) == 0) {
+      if (strncasecmp(dp->d_name, "CUST_", 5) == 0 || strncasecmp(dp->d_name, "GDMENU_", 6) == 0) {
         int theme_num = dp->d_name[5] - '0';
 
         strcpy(path, basePath);
@@ -176,9 +179,9 @@ static void load_themes(char *basePath) {
         printf("theme #%d: %s @ %s\n", theme_num, dp->d_name, path);
 
         /* Add the theme */
-        strcpy(custom_themes[num_custom_themes].bg_left, path);
+        strcpy(custom_themes[num_custom_themes].bg_left, path+4);
         strcat(custom_themes[num_custom_themes].bg_left, "BG_L.PVR");
-        strcpy(custom_themes[num_custom_themes].bg_right, path);
+        strcpy(custom_themes[num_custom_themes].bg_right, path+4);
         strcat(custom_themes[num_custom_themes].bg_right, "BG_R.PVR");
 
         /* dummy colors */
@@ -188,6 +191,7 @@ static void load_themes(char *basePath) {
                                                                 .menu_bkg_color = COLOR_BLACK,
                                                                 .menu_bkg_border_color = COLOR_WHITE};
 
+        custom_themes[num_custom_themes].style = 0;
         /* dummy name */
         sprintf(custom_themes[num_custom_themes].name, "CUSTOM #%d", theme_num);
 
@@ -207,7 +211,7 @@ int theme_manager_load(void) {
   /* Original themes are statically loaded */
 
   /* Load custom themes if they exist */
-  load_themes("THEME");
+  load_themes("/cd/THEME");
   return 0;
 }
 
@@ -216,6 +220,7 @@ theme_region *theme_get_default(CFG_ASPECT aspect, int *num_themes) {
   *num_themes = 3;
   return region_themes;
 }
+
 theme_custom *theme_get_custom(int *num_themes) {
   *num_themes = num_custom_themes;
   return custom_themes;

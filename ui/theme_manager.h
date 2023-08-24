@@ -38,6 +38,7 @@ typedef struct theme_custom {
   char bg_right[32];
   char name[20];
   theme_color colors;
+  uint32_t style; // 0 - gird, line 1 - gdmenu
 } theme_custom;
 
 int theme_manager_load(void);
