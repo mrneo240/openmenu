@@ -1,6 +1,7 @@
 *.ini
 *.o
 *.bin
+*.BIN
 *.elf
 *.map
 *loader*

@@ -321,7 +321,7 @@ static void menu_accept(void) {
 }
 
 static void menu_settings(void) {
-  if ((navigate_timeout > 0) || (list_len <= 0)) {
+  if (navigate_timeout > 0) {
     return;
   }
 

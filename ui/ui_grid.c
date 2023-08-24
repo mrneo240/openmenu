@@ -442,7 +442,7 @@ static void menu_accept(void) {
 }
 
 static void menu_settings(void) {
-  if ((navigate_timeout > 0) || (list_len <= 0)) {
+  if (navigate_timeout > 0) {
     return;
   }
 
@@ -451,6 +451,9 @@ static void menu_settings(void) {
 }
 
 static void menu_show_large_art(void) {
+  if (list_len <= 0) {
+    return;
+  }
   if (!boxart_button_held && !anim_active(&anim_large_art_scale.time)) {
     /* Setup positioning */
     {
