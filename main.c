@@ -111,22 +111,29 @@ static int init(void) {
   
   openmenu_settings* cur = settings_get();
   
-  switch (cur->sort)
+  if(!cur->filter)
   {
-	  case SORT_NAME:
+	 switch (cur->sort)
+	 {
+	    case SORT_NAME:
 		  list_get_sort_name();
 		  break;
 		  
-	  case SORT_DATE:
+	    case SORT_DATE:
 		  list_get_sort_date();
 		  break;
 		  
-	  case SORT_PRODUCT:
+	    case SORT_PRODUCT:
 		  list_get_sort_product();
 		  break;
 		  
-	  default:
+	    default:
 		  break;
+	 }
+  }
+  else
+  {
+	 list_get_genre_sort((FLAGS_GENRE)cur->filter - 1, cur->sort);
   }
   
 
