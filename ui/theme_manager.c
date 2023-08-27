@@ -55,6 +55,9 @@ static theme_region region_themes[] = {
 static theme_custom custom_themes[10];
 static int num_custom_themes = 0;
 
+static theme_scroll scroll_themes[10];
+static int num_scroll_themes = 0;
+
 static void select_art_by_aspect(CFG_ASPECT aspect) {
   if (aspect == ASPECT_NORMAL) {
     region_themes[REGION_NTSC_U].bg_left = "THEME/NTSC_U/BG_U_L.PVR";
@@ -119,8 +122,6 @@ static int read_theme_ini(void *user, const char *section, const char *name, con
       new_color->menu_bkg_color = str2argb(value);
     } else if (strcasecmp(name, "MENU_BKG_BORDER_COLOR") == 0) {
       new_color->menu_bkg_border_color = str2argb(value);
-    } else if (strcasecmp(name, "STYLE") == 0) {
-      new_theme->style = atol(value);
     } else {
       printf("Unknown theme value: %s\n", name);
     }
@@ -131,7 +132,72 @@ static int read_theme_ini(void *user, const char *section, const char *name, con
   return 1;
 }
 
-static int theme_read(const char *filename, theme_custom *theme) {
+static int read_scroll_theme_ini(void *user, const char *section, const char *name, const char *value) {
+  /* unused */
+  (void)user;
+  if (strcmp(section, "THEME") == 0) {
+    theme_scroll *new_theme = (theme_scroll *)user;
+    theme_color *new_color = &new_theme->colors;
+    
+    if (strcasecmp(name, "FONT") == 0) {
+      strncpy(new_theme->font, value, sizeof(new_theme->font) - 1);
+    } else if (strcasecmp(name, "NAME") == 0) {
+      strncpy(new_theme->name, value, sizeof(new_theme->name) - 1);
+    } else if (strcasecmp(name, "ICON_COLOR") == 0) {
+      new_color->icon_color = str2argb(value);
+    } else if (strcasecmp(name, "TEXT_COLOR") == 0) {
+      new_color->text_color = str2argb(value);
+    } else if (strcasecmp(name, "HIGHLIGHT_COLOR") == 0) {
+      new_color->highlight_color = str2argb(value);
+    } else if (strcasecmp(name, "MENU_TEXT_COLOR") == 0) {
+      new_color->menu_text_color = str2argb(value);
+    } else if (strcasecmp(name, "MENU_HIGHLIGHT_COLOR") == 0) {
+      new_color->menu_highlight_color = str2argb(value);
+    } else if (strcasecmp(name, "MENU_BKG_COLOR") == 0) {
+      new_color->menu_bkg_color = str2argb(value);
+    } else if (strcasecmp(name, "MENU_BKG_BORDER_COLOR") == 0) {
+      new_color->menu_bkg_border_color = str2argb(value);
+    } else if (strcasecmp(name, "CURSOR_COLOR") == 0) {
+      new_theme->cursor_color = str2argb(value);
+    } else if (strcasecmp(name, "MULTIDISC_COLOR") == 0) {
+      new_theme->multidisc_color = str2argb(value);
+    } else if (strcasecmp(name, "CURSOR_WIDTH") == 0) {
+      new_theme->cursor_width = atoi(value);
+    } else if (strcasecmp(name, "CURSOR_HEIGHT") == 0) {
+      new_theme->cursor_height = atoi(value);
+    } else if (strcasecmp(name, "ITEMS_PER_PAGE") == 0) {
+      new_theme->items_per_page = atoi(value);
+    } else if (strcasecmp(name, "POS_GAMESLIST_X") == 0) {
+      new_theme->pos_gameslist_x = atoi(value);
+    } else if (strcasecmp(name, "POS_GAMESLIST_Y") == 0) {
+      new_theme->pos_gameslist_y = atoi(value);
+    } else if (strcasecmp(name, "POS_GAMEINFO_X") == 0) {
+      new_theme->pos_gameinfo_x = atoi(value);
+    } else if (strcasecmp(name, "POS_GAMEINFO_REGION_Y") == 0) {
+      new_theme->pos_gameinfo_region_y = atoi(value);
+    } else if (strcasecmp(name, "POS_GAMEINFO_VGA_Y") == 0) {
+      new_theme->pos_gameinfo_vga_y = atoi(value);
+    } else if (strcasecmp(name, "POS_GAMEINFO_DISC_Y") == 0) {
+      new_theme->pos_gameinfo_disc_y = atoi(value);
+    } else if (strcasecmp(name, "POS_GAMEINFO_DATE_Y") == 0) {
+      new_theme->pos_gameinfo_date_y = atoi(value);
+    } else if (strcasecmp(name, "POS_GAMEINFO_VERSION_Y") == 0) {
+      new_theme->pos_gameinfo_version_y = atoi(value);
+    } else if (strcasecmp(name, "POS_GAMETXR_X") == 0) {
+      new_theme->pos_gametxr_x = atoi(value);
+    } else if (strcasecmp(name, "POS_GAMETXR_Y") == 0) {
+      new_theme->pos_gametxr_y = atoi(value);
+    } else {
+      printf("Unknown theme value: %s\n", name);
+    }
+  } else {
+    /* error */
+    printf("INI:Error unknown [%s] %s: %s\n", section, name, value);
+  }
+  return 1;
+}
+
+static int theme_read(const char *filename, void *theme, int type) {
   FD_TYPE ini = fopen(filename, "rb");
   if (!FD_IS_OK(ini)) {
     printf("INI:Error opening %s!\n", filename);
@@ -145,7 +211,7 @@ static int theme_read(const char *filename, theme_custom *theme) {
   fread(ini_buffer, ini_size, 1, ini);
   fclose(ini);
 
-  if (ini_parse_string(ini_buffer, read_theme_ini, (void *)theme) < 0) {
+  if (ini_parse_string(ini_buffer, type == 0 ? read_theme_ini : read_scroll_theme_ini, theme) < 0) {
     printf("INI:Error Parsing %s!\n", filename);
     fflush(stdout);
     /*exit or something */
@@ -168,7 +234,7 @@ static void load_themes(char *basePath) {
   while ((dp = readdir(dir)) != NULL) {
 	  //printf("load_themes: %s\n", dp->d_name);
     if (strcmp(dp->d_name, ".") != 0 && strcmp(dp->d_name, "..") != 0) {
-      if (strncasecmp(dp->d_name, "CUST_", 5) == 0 || strncasecmp(dp->d_name, "GDMENU_", 6) == 0) {
+      if (strncasecmp(dp->d_name, "CUST_", 5) == 0) {
         int theme_num = dp->d_name[5] - '0';
 
         strcpy(path, basePath);
@@ -190,17 +256,42 @@ static void load_themes(char *basePath) {
                                                                 .menu_text_color = COLOR_WHITE,
                                                                 .menu_bkg_color = COLOR_BLACK,
                                                                 .menu_bkg_border_color = COLOR_WHITE};
-
-        custom_themes[num_custom_themes].style = 0;
         /* dummy name */
         sprintf(custom_themes[num_custom_themes].name, "CUSTOM #%d", theme_num);
 
         /* load INI if available, for name & colors */
         strcat(path, "THEME.INI");
-        theme_read(path, &custom_themes[num_custom_themes]);
+        theme_read(path, &custom_themes[num_custom_themes], 0);
 
         num_custom_themes++;
       }
+      else if (strncasecmp(dp->d_name, "SCROLL_", 7) == 0) {
+		extern theme_scroll *get_def_scr_thm();
+		memcpy(&scroll_themes[num_scroll_themes], get_def_scr_thm(), sizeof(struct theme_scroll));
+		int theme_num = dp->d_name[7] - '0';
+		
+		strcpy(path, basePath);
+		strcat(path, "/");
+        strcat(path, dp->d_name);
+        strcat(path, "/");
+
+        printf("scroll theme #%d: %s @ %s\n", theme_num, dp->d_name, path);
+        
+        /* Add the theme */
+        strcpy(scroll_themes[num_scroll_themes].bg_left, path+4);
+        strcat(scroll_themes[num_scroll_themes].bg_left, "BG_L.PVR");
+        strcpy(scroll_themes[num_scroll_themes].bg_right, path+4);
+        strcat(scroll_themes[num_scroll_themes].bg_right, "BG_R.PVR");
+        
+        /* dummy name */
+        sprintf(scroll_themes[num_scroll_themes].name, "CUSTOM #%d", theme_num);
+
+        /* load INI if available, for name & colors */
+        strcat(path, "THEME.INI");
+        theme_read(path, &scroll_themes[num_scroll_themes], 1);
+
+        num_scroll_themes++;
+	  }
     }
   }
 
@@ -224,4 +315,9 @@ theme_region *theme_get_default(CFG_ASPECT aspect, int *num_themes) {
 theme_custom *theme_get_custom(int *num_themes) {
   *num_themes = num_custom_themes;
   return custom_themes;
+}
+
+theme_scroll *theme_get_scroll(int *num_themes) {
+  *num_themes = num_scroll_themes;
+  return scroll_themes;
 }

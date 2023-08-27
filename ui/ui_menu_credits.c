@@ -24,6 +24,7 @@
 static const char* menu_choice_text[] = {"Style", "Theme", "Aspect", "Beep", "Sort", "Filter", "Multidisc"};
 static const char* theme_choice_text[] = {"LineDesc", "Grid3", "Scroll"};
 static const char* region_choice_text[] = {"NTSC-U", "NTSC-J", "PAL"};
+static const char* region_choice_text1[] = {"GDMENU"};
 static const char* aspect_choice_text[] = {"4:3", "16:9"};
 static const char* beep_choice_text[] = {"Off", "On"};
 static const char* sort_choice_text[] = {"Default", "Name", "Date", "Product"};
@@ -42,7 +43,7 @@ static int num_custom_themes;
 #define MENU_OPTIONS ((int)(sizeof(menu_choice_text) / sizeof(menu_choice_text)[0]))
 #define MENU_CHOICES (MENU_OPTIONS) /* Only those with selectable options */
 #define THEME_CHOICES (sizeof(theme_choice_text) / sizeof(theme_choice_text)[0])
-#define REGION_CHOICES (sizeof(region_choice_text) / sizeof(region_choice_text)[0])
+static int REGION_CHOICES = (sizeof(region_choice_text) / sizeof(region_choice_text)[0]);
 #define ASPECT_CHOICES (sizeof(aspect_choice_text) / sizeof(aspect_choice_text)[0])
 #define BEEP_CHOICES (sizeof(beep_choice_text) / sizeof(beep_choice_text)[0])
 #define SORT_CHOICES (sizeof(sort_choice_text) / sizeof(sort_choice_text)[0])
@@ -66,7 +67,7 @@ typedef enum MENU_CHOICE {
 #define INPUT_TIMEOUT (10)
 
 static int choices[MENU_CHOICES + 1];
-static int choices_max[MENU_CHOICES + 1] = {THEME_CHOICES, REGION_CHOICES, ASPECT_CHOICES, BEEP_CHOICES, SORT_CHOICES, FILTER_CHOICES, MULTIDISC_CHOICES, 2 /* Apply/Save */};
+static int choices_max[MENU_CHOICES + 1] = {THEME_CHOICES, 3, ASPECT_CHOICES, BEEP_CHOICES, SORT_CHOICES, FILTER_CHOICES, MULTIDISC_CHOICES, 2 /* Apply/Save */};
 static const char** menu_choice_array[MENU_CHOICES] = {theme_choice_text, region_choice_text, aspect_choice_text, beep_choice_text, sort_choice_text, filter_choice_text, multidisc_choice_text};
 static int current_choice = CHOICE_START;
 static int* input_timeout_ptr = NULL;
@@ -130,14 +131,36 @@ void menu_setup(enum draw_state* state, theme_color* _colors, int* timeout_ptr) 
   choices[CHOICE_FILTER] = settings->filter;
   choices[CHOICE_BEEP] = settings->beep;
   choices[CHOICE_MULTIDISC] = settings->multidisc;
-
-  /* Grab custom themes if we have them */
-  custom_themes = theme_get_custom(&num_custom_themes);
-  if (num_custom_themes > 0) {
-    choices_max[CHOICE_REGION] = REGION_CHOICES + num_custom_themes;
-    for (int i = 0; i < num_custom_themes; i++) {
-      custom_theme_text[i] = custom_themes[i].name;
+  
+  if (choices[CHOICE_THEME] != UI_SCROLL) {
+    menu_choice_array[CHOICE_REGION] = region_choice_text;
+    REGION_CHOICES = (sizeof(region_choice_text) / sizeof(region_choice_text)[0]);
+    choices_max[CHOICE_REGION] = REGION_CHOICES;
+    /* Grab custom themes if we have them */
+    custom_themes = theme_get_custom(&num_custom_themes);
+    if (num_custom_themes > 0) {
+      for (int i = 0; i < num_custom_themes; i++) {
+	    choices_max[CHOICE_REGION]++;
+        custom_theme_text[i] = custom_themes[i].name;
+      }
     }
+  }
+  else
+  {
+    menu_choice_array[CHOICE_REGION] = region_choice_text1;
+    REGION_CHOICES = (sizeof(region_choice_text1) / sizeof(region_choice_text1)[0]);
+    choices_max[CHOICE_REGION] = REGION_CHOICES;
+    custom_themes = (theme_custom *) theme_get_scroll(&num_custom_themes);
+    if (num_custom_themes > 0) {
+      for (int i = 0; i < num_custom_themes; i++) {
+	    choices_max[CHOICE_REGION]++;
+        custom_theme_text[i] = custom_themes[i].name;
+      }
+    }
+  }
+  
+  if (choices[CHOICE_REGION] >= choices_max[CHOICE_REGION]) {
+	choices[CHOICE_REGION] = choices_max[CHOICE_REGION] - 1;
   }
 }
 
@@ -176,11 +199,14 @@ static void menu_accept(void) {
     settings->filter = choices[CHOICE_FILTER];
     settings->beep = choices[CHOICE_BEEP];
     settings->multidisc = choices[CHOICE_MULTIDISC];
-    if (settings->region > REGION_END) {
+    if (choices[CHOICE_THEME] != UI_SCROLL && settings->region > REGION_END) {
       settings->custom_theme = THEME_ON;
       int num_default_themes = 0;
       theme_get_default(settings->aspect, &num_default_themes);
       settings->custom_theme_num = settings->region - num_default_themes;
+    } else if (choices[CHOICE_THEME] == UI_SCROLL && settings->region > 0) {
+      settings->custom_theme = THEME_ON;
+      settings->custom_theme_num = settings->region - 1;
     } else {
       settings->custom_theme = THEME_OFF;
     }
@@ -238,6 +264,38 @@ static void menu_choice_next(void) {
   *input_timeout_ptr = INPUT_TIMEOUT;
 }
 
+static void menu_region_adj(void) {
+  if (choices[CHOICE_THEME] != UI_SCROLL) {
+    menu_choice_array[CHOICE_REGION] = region_choice_text;
+    REGION_CHOICES = (sizeof(region_choice_text) / sizeof(region_choice_text)[0]);
+    choices_max[CHOICE_REGION] = REGION_CHOICES;
+    /* Grab custom themes if we have them */
+    custom_themes = theme_get_custom(&num_custom_themes);
+    if (num_custom_themes > 0) {
+      for (int i = 0; i < num_custom_themes; i++) {
+	    choices_max[CHOICE_REGION]++;
+        custom_theme_text[i] = custom_themes[i].name;
+      }
+    }
+  }
+  else {
+    menu_choice_array[CHOICE_REGION] = region_choice_text1;
+    REGION_CHOICES = (sizeof(region_choice_text1) / sizeof(region_choice_text1)[0]);
+    choices_max[CHOICE_REGION] = REGION_CHOICES;
+    custom_themes = (theme_custom *) theme_get_scroll(&num_custom_themes);
+    if (num_custom_themes > 0) {
+      for (int i = 0; i < num_custom_themes; i++) {
+	    choices_max[CHOICE_REGION]++;
+        custom_theme_text[i] = custom_themes[i].name;
+      }
+    }
+  }
+  
+  if (choices[CHOICE_REGION] >= choices_max[CHOICE_REGION]) {
+	choices[CHOICE_REGION] = choices_max[CHOICE_REGION] - 1;
+  }
+}
+
 static void menu_choice_left(void) {
   if ((*input_timeout_ptr > 0) || (current_choice >= CHOICE_CREDITS)) {
     return;
@@ -246,8 +304,12 @@ static void menu_choice_left(void) {
   if (choices[current_choice] < 0) {
     choices[current_choice] = 0;
   }
+  if (current_choice == CHOICE_THEME) {
+	  menu_region_adj();
+  }
   *input_timeout_ptr = INPUT_TIMEOUT;
 }
+
 static void menu_choice_right(void) {
   if ((*input_timeout_ptr > 0) || (current_choice >= CHOICE_CREDITS)) {
     return;
@@ -255,6 +317,9 @@ static void menu_choice_right(void) {
   choices[current_choice]++;
   if (choices[current_choice] >= choices_max[current_choice]) {
     choices[current_choice]--;
+  }
+  if (current_choice == CHOICE_THEME) {
+	  menu_region_adj();
   }
   *input_timeout_ptr = INPUT_TIMEOUT;
 }
@@ -433,7 +498,7 @@ void draw_menu_tr(void) {
       } else {
         font_bmp_set_color(text_color);
       }
-      if (i == CHOICE_REGION && ((unsigned int)choices[i] >= REGION_CHOICES)) {
+      if (i == CHOICE_REGION && (choices[i] >= REGION_CHOICES)) {
         string_outer_concat(line_buf, menu_choice_text[i], custom_theme_text[(int)choices[i] - REGION_CHOICES], 39);
       } else {
         string_outer_concat(line_buf, menu_choice_text[i], menu_choice_array[i][(int)choices[i]], 39);
@@ -487,7 +552,7 @@ void draw_menu_tr(void) {
       }
       font_bmf_draw(x_item, cur_y, temp_color, menu_choice_text[i]);
 
-      if (i == CHOICE_REGION && ((unsigned int)choices[i] >= REGION_CHOICES)) {
+      if (i == CHOICE_REGION && (choices[i] >= REGION_CHOICES)) {
         font_bmf_draw_centered(x_choice, cur_y, temp_color, custom_theme_text[(int)choices[i] - REGION_CHOICES]);
       } else {
         font_bmf_draw_centered(x_choice, cur_y, temp_color, menu_choice_array[i][(int)choices[i]]);
