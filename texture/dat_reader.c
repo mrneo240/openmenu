@@ -43,28 +43,28 @@ int DAT_init(dat_file *bin) {
 }
 
 int DAT_load_parse(dat_file *bin, const char *path) {
-  FD_TYPE bin_fd;
+  file_t bin_fd;
   bin_header file_header;
 
 #ifdef STANDALONE_BINARY
-  bin_fd = fopen(path, "rb");
+  bin_fd = fs_open(path, O_RDONLY);
   const char *filename_safe = path;
 #else
   char filename_safe[128];
   memcpy(filename_safe, DISC_PREFIX, strlen(DISC_PREFIX) + 1);
   strcat(filename_safe, path);
 
-  bin_fd = fopen(filename_safe, "rb");
+  bin_fd = fs_open(filename_safe, O_RDONLY);
 #endif
 
-  if (!bin_fd) {
+  if (bin_fd == -1) {
     printf("DAT:Error Cant read input %s!\n", filename_safe);
     return 1;
   }
 
   printf("DAT:Open %s (%s)\n", filename_safe, path);
 
-  fread(&file_header, sizeof(bin_header), 1, bin_fd);
+  fs_read(bin_fd, &file_header, sizeof(bin_header));
   if (file_header.magic.rich.version != 1) {
     printf("DAT:Error Incorrect input file format!\n");
     return 1;
@@ -73,18 +73,22 @@ int DAT_load_parse(dat_file *bin, const char *path) {
   /* setup basic bin file info */
   bin->chunk_size = file_header.chunk_size;
   bin->num_chunks = file_header.num_chunks;
-  bin->handle = (void *)bin_fd;
+  bin->handle = bin_fd;
   bin->items = malloc(bin->num_chunks * sizeof(bin_item));
+  if (!bin->items) {
+	  printf("%s no free memory\n", __func__);
+	  return 1;
+  }
   bin->hash = NULL;
 
   /* Parse file table to Hash table */
   for (unsigned int i = 0; i < file_header.num_chunks; i++) {
-    fread(&bin->items[i], sizeof(bin_item_raw), 1, (FD_TYPE)bin->handle);
+    fs_read(bin->handle, &bin->items[i], sizeof(bin_item_raw));
     HASH_ADD_STR(bin->hash, ID, &bin->items[i]);
   }
 
   /* Leave our handle in a handy place in case we need to read after */
-  fseek((FD_TYPE)bin->handle, bin->items[0].offset * bin->chunk_size, SEEK_SET);
+  fs_seek(bin->handle, bin->items[0].offset * bin->chunk_size, SEEK_SET);
 
   return 0;
 }
@@ -128,8 +132,8 @@ uint32_t DAT_get_index_by_ID(const dat_file *bin, const char *ID) {
 int DAT_read_file_by_ID(const dat_file *bin, const char *ID, void *buf) {
   uint32_t offset = DAT_get_offset_by_ID(bin, ID);
   if (offset) {
-    fseek((FD_TYPE)bin->handle, offset, SEEK_SET);
-    fread(buf, bin->chunk_size, 1, (FD_TYPE)bin->handle);
+    fs_seek(bin->handle, offset, SEEK_SET);
+    fs_read(bin->handle, buf, bin->chunk_size);
     return 1;
   } else {
     return 0;
@@ -139,8 +143,8 @@ int DAT_read_file_by_ID(const dat_file *bin, const char *ID, void *buf) {
 int DAT_read_file_by_num(const dat_file *bin, uint32_t chunk_num, void *buf) {
   uint32_t offset = chunk_num * bin->chunk_size;
   if (chunk_num <= bin->num_chunks) {
-    fseek((FD_TYPE)bin->handle, offset, SEEK_SET);
-    fread(buf, bin->chunk_size, 1, (FD_TYPE)bin->handle);
+    fs_seek(bin->handle, offset, SEEK_SET);
+    fs_read(bin->handle, buf, bin->chunk_size);
     return 1;
   } else {
     return 0;

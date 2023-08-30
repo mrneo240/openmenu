@@ -62,7 +62,7 @@ typedef struct __attribute__((__packed__)) bm_info {
   uint8_t spacingHoriz;
   uint8_t spacingVert;
   uint8_t outline;
-  char fontName[/*n+1*/]; /* VLA, size of block length - 14, null terminated string with length n */
+  char fontName[64]; /* VLA, size of block length - 14, null terminated string with length n */ // 64 for fix allign in stack
 } bm_info;
 
 // Block type 2: common
@@ -120,7 +120,7 @@ typedef struct __attribute__((__packed__)) bm_char_ex {
   bm_kern_pair *kerns;
 } bm_char_ex;
 
-typedef struct bm_font {
+typedef struct __attribute__((__packed__)) bm_font {
   uint16_t height;
   uint16_t width;
   uint32_t lineHeight;
@@ -134,37 +134,11 @@ typedef struct bm_font {
 static bm_font font_basilea;
 static int font_loaded = 0;
 
-static int BMF_parse_info(FD_TYPE fd, size_t block_size, bm_font *font) {
+static int BMF_parse_info(file_t fd, size_t block_size, bm_font *font) {
   DBG_PRINT("BMF found info block!\n");
   /* Unsure why youd want to have this around or on heap */
-#if 0
-  bm_info *temp_info = malloc(sizeof(bm_info) + sizeof(char) * (block_size - INFO_NAME_OFFSET));
-  fread(temp_info, block_size, 1, fd);
-
-  /* Fix fontSize, its negative ? */
-  temp_info->fontSize *= -1;
-
-  font->fontSize = temp_info->fontSize;
-
-  PRINT_MEMBER(*temp_info, fontSize);
-  PRINT_MEMBER(*temp_info, bitField);
-  PRINT_MEMBER(*temp_info, charSet);
-  PRINT_MEMBER(*temp_info, stretchH);
-  PRINT_MEMBER(*temp_info, aa);
-  PRINT_MEMBER(*temp_info, paddingUp);
-  PRINT_MEMBER(*temp_info, paddingRight);
-  PRINT_MEMBER(*temp_info, paddingDown);
-  PRINT_MEMBER(*temp_info, paddingLeft);
-  PRINT_MEMBER(*temp_info, spacingHoriz);
-  PRINT_MEMBER(*temp_info, spacingVert);
-  PRINT_MEMBER(*temp_info, outline);
-  DBG_PRINT("name: %s\n", temp_info->fontName);
-  DBG_PRINT("\n");
-
-  free(temp_info);
-#else
-  bm_info temp_info;
-  fread(&temp_info, block_size, 1, fd);
+  static bm_info temp_info;
+  fs_read(fd, &temp_info, block_size);
 
   /* Fix fontSize, its negative ? */
   temp_info.fontSize *= -1;
@@ -185,14 +159,14 @@ static int BMF_parse_info(FD_TYPE fd, size_t block_size, bm_font *font) {
   PRINT_MEMBER(temp_info, outline);
   DBG_PRINT("name: %s\n", temp_info.fontName);
   DBG_PRINT("\n");
-#endif
+  
   return 0;
 }
 
-static int BMF_parse_common(FD_TYPE fd, size_t block_size, bm_font *font) {
+static int BMF_parse_common(file_t fd, size_t block_size, bm_font *font) {
   DBG_PRINT("BMF found common block!\n");
   bm_common temp_common;
-  fread(&temp_common, block_size, 1, fd);
+  fs_read(fd, &temp_common, block_size);
 
   font->width = temp_common.scaleW;
   font->height = temp_common.scaleH;
@@ -213,26 +187,19 @@ static int BMF_parse_common(FD_TYPE fd, size_t block_size, bm_font *font) {
   return 0;
 }
 
-static int BMF_parse_pages(FD_TYPE fd, size_t block_size, bm_font *font) {
+static int BMF_parse_pages(file_t fd, size_t block_size, bm_font *font) {
   DBG_PRINT("BMF found pages block!\n");
   (void)font;
 
-  /*
-  bm_pages *temp_pages = malloc(sizeof(bm_pages) + sizeof(char) * (block_size));
-  temp_pages->name_len = block_size;
-  fread(&temp_pages->pageNames, block_size, 1, fd);
-  free(temp_pages);
-  */
-
   /* Do nothing! */
-  fseek(fd, block_size, SEEK_CUR);
+  fs_seek(fd, block_size, SEEK_CUR);
 
   DBG_PRINT("\n");
 
   return 0;
 }
 
-static int BMF_parse_chars(FD_TYPE fd, size_t block_size, bm_font *font) {
+static int BMF_parse_chars(file_t fd, size_t block_size, bm_font *font) {
   DBG_PRINT("BMF found char block!\n");
 
   int num_chars = block_size / sizeof(bm_char);
@@ -244,7 +211,7 @@ static int BMF_parse_chars(FD_TYPE fd, size_t block_size, bm_font *font) {
 
   /* Read one at a time to font charset */
   for (int i = 0; i < num_chars; i++) {
-    fread(&temp_char, sizeof(bm_char), 1, fd);
+    fs_read(fd, &temp_char, sizeof(bm_char));
     if (temp_char.id < 256) {
       /* Optionally print out info for each char parsed */
 #if defined(DBG_CHAR_INFO) && DBG_CHAR_INFO
@@ -279,7 +246,7 @@ static int _kern_pair_sort(const void *a, const void *b) {
   return ia->first - ib->first;
 }
 
-static int BMF_parse_kerning(FD_TYPE fd, size_t block_size, bm_font *font) {
+static int BMF_parse_kerning(file_t fd, size_t block_size, bm_font *font) {
   DBG_PRINT("BMF found kerning block!\n");
 
   /* Do nothing! */
@@ -294,8 +261,12 @@ static int BMF_parse_kerning(FD_TYPE fd, size_t block_size, bm_font *font) {
   DBG_PRINT("BMF %d kerning pairs present\n", num_pairs);
 
   font->kerns = malloc(sizeof(bm_kern_pair) * num_pairs);
+  if (!font->kerns) {
+	  printf("%s no free memory\n", __func__);
+	  return 0;
+  }
   font->num_kerns = num_pairs;
-  fread(font->kerns, sizeof(bm_kern_pair), num_pairs, fd);
+  fs_read(fd, font->kerns, num_pairs*sizeof(bm_kern_pair));
 
   /* Sort Kerning pairs */
   qsort(font->kerns, num_pairs, sizeof(bm_kern_pair), _kern_pair_sort);
@@ -327,46 +298,32 @@ static int BMF_load(const char *file, bm_font *font) {
   // Zero out
   memset(font, '\0', sizeof(bm_font));
 
-  FD_TYPE fd = (FD_TYPE)NULL;
+  file_t fd;
   bool parsing = true;
-  fd = fopen(file, "rb");
+  fd = fs_open(file, O_RDONLY);
 
-  if (!FD_IS_OK(fd)) {
+  if (fd == -1) {
     printf("BMF:Error file %s not found!\n", file);
     return 1;
   }
-
-  /*
-  uint32_t file_magic = 0;
-  fread(&file_magic, sizeof(file_magic), 1, fd);
-  if (file_magic != BMF_MAGIC) {
-    fclose(fd);
-    printf("ERR: font magic wrong %8x!\n", &file_magic);
-    return 1;
-  }
-  */
+  
   bm_header file_header;
-  fread(&file_header, sizeof(bm_header), 1, fd);
+  fs_read(fd, &file_header, sizeof(bm_header));
   if (file_header.version != 3) {
-    fclose(fd);
+    fs_close(fd);
     printf("BMF:Error font magic wrong %3s!\n", file_header.bmf);
     return 1;
   }
-
-  bm_block_tag next_block = {0, 0};
+  
+  static bm_block_tag next_block = {0, 0};
   size_t ele_read;
   while (parsing) {
-    ele_read = fread(&next_block, sizeof(bm_block_tag), 1, fd);
+    ele_read = fs_read(fd, &next_block, sizeof(bm_block_tag));
     DBG_PRINT("Found block type %d of size %ld\n", next_block.type, next_block.size);
-#ifdef GDROM_FS
-    if (ele_read != (sizeof(bm_block_tag) * 1)) {
+    
+    if (ele_read != sizeof(bm_block_tag)) {
       break;
     }
-#else
-    if (ele_read != 1) {
-      break;
-    }
-#endif
 
     switch (next_block.type) {
       case INFO:
@@ -385,13 +342,15 @@ static int BMF_load(const char *file, bm_font *font) {
         BMF_parse_kerning(fd, next_block.size, font);
         parsing = false; /* should be end of file */
         break;
+      default:
+		printf("BMF:Error unknown block type %d\n", next_block.type);
     }
   }
-
-  fclose(fd);
+  
+  fs_close(fd);
 
   font_loaded = 1;
-
+  
   return 0;
 }
 

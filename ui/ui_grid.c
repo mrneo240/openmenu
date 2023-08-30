@@ -530,7 +530,7 @@ FUNCTION(UI_NAME, init) {
     draw_load_texture_buffer(region_themes[region_current].bg_right, &txr_bg_right, texman_get_tex_data(temp));
     texman_reserve_memory(txr_bg_right.width, txr_bg_right.height, 2 /* 16Bit */);
   }
-
+  
   font_bmf_init("FONT/BASILEA.FNT", "FONT/BASILEA_W.PVR", settings->aspect);
 
   printf("Texture scratch free: %d/%d KB (%d/%d bytes)\n", texman_get_space_available() / 1024, (1024 * 1024) / 1024, texman_get_space_available(), (1024 * 1024));

@@ -78,23 +78,23 @@ void dreamcast_launch_disc(gd_item *disc) {
 }
 
 void dreamcast_launch_cb(gd_item *disc) {
-  FILE *fd;
+  file_t fd;
   uint32_t cb_size;
   uint8_t *cb_buf;
   
-  fd = fopen("/cd/PELICAN.BIN", "rb");
+  fd = fs_open("/cd/PELICAN.BIN", O_RDONLY);
   
-  if (!fd) {
+  if (fd == -1) {
 	  return;
   }
   
-  fseek(fd, 0, SEEK_END);
-  cb_size = ftell(fd);
-  fseek(fd, 0, SEEK_SET);
+  fs_seek(fd, 0, SEEK_END);
+  cb_size = fs_tell(fd);
+  fs_seek(fd, 0, SEEK_SET);
   cb_buf = (uint8_t*) malloc(cb_size+32);
   cb_buf = (uint8_t*) (((uint32_t) cb_buf & 0xffffffe0) + 0x20);
-  fread(cb_buf, 1, cb_size, fd);
-  fclose(fd);
+  fs_read(fd, cb_buf, cb_size);
+  fs_close(fd);
   
   gdemu_set_img_num((uint16_t)disc->slot_num);
   //thd_sleep(500);

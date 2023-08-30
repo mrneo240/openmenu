@@ -185,7 +185,9 @@ static void draw_gamelist(void) {
       if (hide_multidisc && (disc_set > 1)) {
         highlight_text_color = cur_theme->multidisc_color;
       }
-      draw_draw_quad(cur_theme->pos_gameslist_x, cur_theme->pos_gameslist_y + Y_ADJUST_TEXT + (i * 21) - Y_ADJUST_CRSR, cur_theme->cursor_width, cur_theme->cursor_height, cur_theme->cursor_color);
+      
+      draw_draw_quad(cur_theme->pos_gameslist_x, cur_theme->pos_gameslist_y + Y_ADJUST_TEXT + (i * 21) - Y_ADJUST_CRSR, 
+					 cur_theme->cursor_width, cur_theme->cursor_height, cur_theme->cursor_color);
       font_bmp_set_color(highlight_text_color);
     } else {
       font_bmp_set_color(cur_theme->colors.text_color);

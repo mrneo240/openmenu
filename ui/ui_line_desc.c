@@ -348,7 +348,7 @@ FUNCTION(UI_NAME, init) {
   }
 
   /* on user for now, may change */
-  unsigned int temp = texman_create();
+  uint32_t temp = texman_create();
   draw_load_texture_buffer("EMPTY.PVR", &img_empty_boxart, texman_get_tex_data(temp));
   texman_reserve_memory(img_empty_boxart.width, img_empty_boxart.height, 2 /* 16Bit */);
 
@@ -390,7 +390,7 @@ FUNCTION(UI_NAME, init) {
   draw_load_texture_buffer("THEME/SHARED/ICON_BLACK.PVR", &txr_icons_black, texman_get_tex_data(temp));
   texman_reserve_memory(txr_icons_black.width, txr_icons_black.height, 2 /* 16Bit */);
 #endif
-
+  
   font_bmf_init("FONT/BASILEA.FNT", "FONT/BASILEA_W.PVR", settings->aspect);
 
   printf("Texture scratch free: %d/%d KB (%d/%d bytes)\n", texman_get_space_available() / 1024, (1024 * 1024) / 1024, texman_get_space_available(), (1024 * 1024));

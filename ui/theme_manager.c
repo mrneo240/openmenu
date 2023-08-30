@@ -80,11 +80,11 @@ static void select_art_by_aspect(CFG_ASPECT aspect) {
   }
 }
 
-static inline long int filelength(FD_TYPE f) {
+static inline long int filelength(file_t f) {
   long int end;
-  fseek(f, 0, SEEK_END);
-  end = ftell(f);
-  fseek(f, 0, SEEK_SET);
+  fs_seek(f, 0, SEEK_END);
+  end = fs_tell(f);
+  fs_seek(f, 0, SEEK_SET);
 
   return end;
 }
@@ -198,8 +198,8 @@ static int read_scroll_theme_ini(void *user, const char *section, const char *na
 }
 
 static int theme_read(const char *filename, void *theme, int type) {
-  FD_TYPE ini = fopen(filename, "rb");
-  if (!FD_IS_OK(ini)) {
+  file_t ini = fs_open(filename, O_RDONLY);
+  if (ini == -1) {
     printf("INI:Error opening %s!\n", filename);
     fflush(stdout);
     /*exit or something */
@@ -208,8 +208,12 @@ static int theme_read(const char *filename, void *theme, int type) {
 
   size_t ini_size = filelength(ini);
   char *ini_buffer = malloc(ini_size);
-  fread(ini_buffer, ini_size, 1, ini);
-  fclose(ini);
+  if (!ini_buffer) {
+	  printf("%s no free memory\n", __func__);
+	  return -1;
+  }
+  fs_read(ini, ini_buffer, ini_size);
+  fs_close(ini);
 
   if (ini_parse_string(ini_buffer, type == 0 ? read_theme_ini : read_scroll_theme_ini, theme) < 0) {
     printf("INI:Error Parsing %s!\n", filename);

@@ -64,7 +64,6 @@ static ui_template ui_choices[] = {
 };
 
 static const int num_ui_choices = sizeof(ui_choices) / sizeof(ui_template);
-static int ui_choice_current = 0;
 static int need_reload_ui = 0;
 
 static void ui_set_choice(int choice) {
@@ -77,8 +76,6 @@ static void ui_set_choice(int choice) {
   current_ui_draw_OP = ui_choices[choice].drawOP;
   current_ui_draw_TR = ui_choices[choice].drawTR;
   current_ui_handle_input = ui_choices[choice].handle_input;
-
-  ui_choice_current = choice;
 
   /* Call init & setup */
   (*current_ui_init)();
@@ -269,31 +266,6 @@ static int translate_input(void) {
   return NONE;
 }
 
-void reset_gdrom_drive(void) {
-  int status;
-  int disc_type;
-
-  do {
-    cdrom_get_status(&status, &disc_type);
-
-    if (status == CD_STATUS_PAUSED || status == CD_STATUS_STANDBY || status == CD_STATUS_PLAYING) {
-      break;
-    }
-  } while (1);
-
-  cdrom_reinit();
-  void gd_reset_handles(void);
-  gd_reset_handles();
-
-  do {
-    cdrom_get_status(&status, &disc_type);
-
-    if (status == CD_STATUS_PAUSED || status == CD_STATUS_STANDBY || status == CD_STATUS_PLAYING) {
-      break;
-    }
-  } while (1);
-}
-
 static void init_gfx_pvr(void) {
   /* BlueCrab (c) 2014,
     This assumes that the video mode is initialized as KOS
@@ -329,12 +301,11 @@ int main(int argc, char *argv[]) {
   /* unused */
   (void)argc;
   (void)argv;
-
+  
+  //arch_set_exit_path(ARCH_EXIT_REBOOT);
   fflush(stdout);
   setbuf(stdout, NULL);
   init_gfx_pvr();
-
-  //reset_gdrom_drive();
 
   if (init()) {
     puts("Init error.");
@@ -343,13 +314,11 @@ int main(int argc, char *argv[]) {
 
   for (;;) {
     z_reset();
-    enum control input = translate_input();
-    (*current_ui_handle_input)(input);
+    (*current_ui_handle_input)(translate_input());
     vid_waitvbl();
-    if (need_reload_ui){
-		openmenu_settings* cur = settings_get();
-		ui_set_choice(cur->ui);
-		vid_waitvbl();
+    if(need_reload_ui) {
+	  ui_set_choice(settings_get()->ui);
+	  continue;
 	}
     draw();
   }
@@ -357,13 +326,13 @@ int main(int argc, char *argv[]) {
   return 0;
 }
 
-void exit_to_bios(void)
-{
-	openmenu_settings* cur = settings_get();
-	
-	bloader_config->enable_wide  = cur->aspect;
-	bloader_config->enable_3d = 1;
-	
-	arch_exec_at(bloader_data, bloader_size, 0xacf00000);
+void exit_to_bios(void){
+  bloader_cfg_t *bloader_config = (bloader_cfg_t *) &bloader_data[bloader_size-sizeof(bloader_cfg_t)];
+  openmenu_settings* cur = settings_get();
+  
+  bloader_config->enable_wide  = cur->aspect;
+  bloader_config->enable_3d = 1;
+  
+  arch_exec_at(bloader_data, bloader_size, 0xacf00000);
 }
 

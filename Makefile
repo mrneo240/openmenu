@@ -14,8 +14,8 @@ AS := kos-as
 OBJCOPY := $(KOS_OBJCOPY)
 RM := rm
 
-CFLAGS := -I. -ffunction-sections -fdata-sections -std=c11 -O2 -g -Wno-unknown-pragmas -Wall -Wextra $(OPTIONS)
-LDFLAGS := -Wl,--gc-sections
+CFLAGS := -I. -ffunction-sections -fdata-sections -std=c11 -O2 -g -Wno-unknown-pragmas -Wall -Wextra $(OPTIONS) 
+LDFLAGS := -Wl,--gc-sections -Xlinker -Map=output.map 
 LIBS := -lm ./lib/libcrayon_vmu.a
 
 all: clean-elf $(TARGET)

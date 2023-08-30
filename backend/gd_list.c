@@ -28,7 +28,6 @@
 #define PATH_PREFIX DISC_PREFIX
 #else
 #define PATH_PREFIX ""
-typedef FILE *FD_TYPE;
 #endif
 
 #ifndef STANDALONE_BINARY
@@ -49,11 +48,11 @@ static gd_item **list_temp = NULL;
 static int num_items_multidisc = -1;
 static gd_item *list_multidisc[MULTIDISC_MAX_GAMES_PER_SET] = {NULL};
 
-static inline long int filelength(FD_TYPE f) {
+static inline long int filelength(file_t f) {
   long int end;
-  fseek(f, 0, SEEK_END);
-  end = ftell(f);
-  fseek(f, 0, SEEK_SET);
+  fs_seek(f, 0, SEEK_END);
+  end = fs_tell(f);
+  fs_seek(f, 0, SEEK_SET);
 
   return end;
 }
@@ -66,7 +65,15 @@ static int read_openmenu_ini(void *user, const char *section, const char *name, 
     num_items_BASE = atoi(value) /* It can occur that GDMenuCardManager under reports by 1 */;
     num_items_temp = num_items_BASE - 1;
     gd_slots_BASE = malloc((num_items_BASE + 1) * sizeof(struct gd_item));
+    if (!gd_slots_BASE) {
+	  printf("%s no free memory\n", __func__);
+	  return 0;
+    }
     list_temp = malloc((num_items_BASE + 1) * sizeof(struct gd_item *));
+    if (!list_temp) {
+	  printf("%s no free memory\n", __func__);
+	  return 0;
+    }
 
     memset(gd_slots_BASE, '\0', (num_items_BASE + 1) * sizeof(struct gd_item));
     memset(list_temp, '\0', (num_items_BASE + 1) * sizeof(struct gd_item *));
@@ -356,8 +363,8 @@ static void fix_sega_serials(void) {
 
 int list_read(const char *filename) {
   /* Always LD/cdrom */
-  FD_TYPE ini = fopen(filename, "rb");
-  if (!ini) {
+  file_t ini = fs_open(filename, O_RDONLY);
+  if (ini == -1) {
     printf("INI:Error opening %s!\n", filename);
     fflush(stdout);
     /*exit or something */
@@ -368,8 +375,12 @@ int list_read(const char *filename) {
 
   size_t ini_size = filelength(ini);
   char *ini_buffer = malloc(ini_size + 2) /* adjust for adding newline at end always */;
-  fread(ini_buffer, ini_size, 1, ini);
-  fclose(ini);
+  if (!ini_buffer) {
+	  printf("%s no free memory\n", __func__);
+	  return -1;
+  }
+  fs_read(ini, ini_buffer, ini_size);
+  fs_close(ini);
   /* Add newline */
   ini_buffer[ini_size + 0] = '\n';
   ini_buffer[ini_size + 1] = '\0';

@@ -67,6 +67,7 @@ void draw_init(void) {
 
 /* called at the start of each frame */
 void draw_setup(void) {
+  texman_reset(pvr_scratch_buf, TEXMAN_BUFFER_SIZE);
 }
 
 void* draw_load_missing_icon(void* user) {
