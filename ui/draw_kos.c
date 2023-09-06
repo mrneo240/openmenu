@@ -142,7 +142,7 @@ void draw_draw_image(int x, int y, float width, float height, uint32_t color, vo
 void draw_draw_sub_image(int x, int y, float width, float height, uint32_t color, void* user, const dimen_RECT* rect) {
   image* img = (image*)user;
 
-  if (img->width == 0 || img->height == 0) {
+  if (img == NULL || img->width == 0 || img->height == 0) {
     return;
   }
 
