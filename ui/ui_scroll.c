@@ -163,7 +163,7 @@ static void draw_gamelist(void) {
   if (list_len <= 0) {
     draw_draw_quad(cur_theme->pos_gameslist_x, cur_theme->pos_gameslist_y + Y_ADJUST_TEXT + (0 * 21) - Y_ADJUST_CRSR, cur_theme->cursor_width, cur_theme->cursor_height, cur_theme->cursor_color);
     font_bmp_set_color(cur_theme->colors.highlight_color);
-    font_bmp_draw_main(cur_theme->pos_gameslist_x + X_ADJUST_TEXT, cur_theme->pos_gameslist_y + Y_ADJUST_TEXT + (0 * 21), "Empty Game List!s");
+    font_bmp_draw_main(cur_theme->pos_gameslist_x + X_ADJUST_TEXT, cur_theme->pos_gameslist_y + Y_ADJUST_TEXT + (0 * 21), "Empty Game List");
   }
 
   for (int i = 0; i < cur_theme->items_per_page; i++) {
@@ -329,6 +329,10 @@ static void menu_cb(void) {
     return;
   }
 
+  if (!strncmp(list_current[current_selected_item]->disc, "PS1", 3)) {
+    return;
+  }
+  
   dreamcast_launch_cb(list_current[current_selected_item]);
 }
 
@@ -352,7 +356,12 @@ static void menu_accept(void) {
     return;
   }
 
-  dreamcast_launch_disc(list_current[current_selected_item]);
+  if (!strncmp(list_current[current_selected_item]->disc, "PS1", 3)) {
+    bleem_launch(list_current[current_selected_item]);
+  }
+  else {
+    dreamcast_launch_disc(list_current[current_selected_item]);
+  }
 }
 
 static void menu_settings(void) {

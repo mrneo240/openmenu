@@ -7,6 +7,7 @@
 #include "gdemu_sdk.h"
 #include "gdmenu_binary.h"
 #include "cb_loader.h"
+#include "controls.p1.h"
 
 int wait_cd_ready(void){
   for (int i = 0; i < 100; i++) {
@@ -16,6 +17,47 @@ int wait_cd_ready(void){
 	  thd_sleep(20);
   }
   return 0;
+}
+
+void bleem_launch(gd_item *disc) {
+  file_t fd;
+  uint32_t bleem_size;
+  uint8_t *bleem_buf;
+  
+  fd = fs_open("/cd/BLEEM.BIN", O_RDONLY);
+  
+  if (fd == -1) {
+	  printf("Can't open %s\n", "/cd/BLEEM.BIN");
+	  return;
+  }
+  
+  fs_seek(fd, 0, SEEK_END);
+  bleem_size = fs_tell(fd);
+  fs_seek(fd, 0, SEEK_SET);
+  bleem_buf = (uint8_t*) malloc(bleem_size+32);
+  bleem_buf = (uint8_t*) (((uint32_t) bleem_buf & 0xffffffe0) + 0x20);
+  fs_read(fd, bleem_buf, bleem_size);
+  fs_close(fd);
+  
+  gdemu_set_img_num((uint16_t)disc->slot_num);
+  
+  if (!wait_cd_ready()) {
+	  printf("%s CD don't ready\n", __func__);
+	  gdemu_set_img_num(0);
+	  wait_cd_ready();
+	  return;
+  }
+  
+  /* Patch */
+  ((uint16_t *) 0xAC000198)[0] = 0xFF86;
+  
+  for (int i = 0; i < altctrl_size; i++) {
+    bleem_buf[i+0x7079C] = altctrl_data[i];
+  }
+  
+  bleem_buf[0x1CA70] = 1;
+  
+  arch_exec(bleem_buf, bleem_size);
 }
 
 void dreamcast_launch_disc(gd_item *disc) {
@@ -50,6 +92,9 @@ void dreamcast_launch_disc(gd_item *disc) {
   //thd_sleep(500);
   
   if (!wait_cd_ready()) {
+	  printf("%s CD don't ready\n", __func__);
+	  gdemu_set_img_num(0);
+	  wait_cd_ready();
 	  return;
   }
   
@@ -100,7 +145,8 @@ void dreamcast_launch_cb(gd_item *disc) {
   //thd_sleep(500);
   
   if (!wait_cd_ready()) {
-	  gdemu_set_img_num(1);
+	  printf("%s CD don't ready\n", __func__);
+	  gdemu_set_img_num(0);
 	  wait_cd_ready();
 	  return;
   }
