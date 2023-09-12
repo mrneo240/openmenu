@@ -432,6 +432,23 @@ void font_bmf_begin_draw(void) {
 #else
   pvr_poly_cxt_t tmp;
   pvr_poly_cxt_txr(&tmp, draw_get_list(), font_texture.format, font_texture.width, font_texture.height, font_texture.texture, PVR_FILTER_BILINEAR);
+  if(tmp.txr.enable != PVR_TEXTURE_DISABLE) {
+    switch(tmp.txr.width) {
+	  case 8:
+	  case 16:
+	  case 32:
+	  case 64:
+	  case 128:
+	  case 256:
+	  case 512:
+	  case 1024:
+	    break;
+	  default:
+		printf("%s error tex size %d(%ld) %d(%ld)\n", __func__, tmp.txr.width, font_texture.width, tmp.txr.height, font_texture.height);
+		return;
+		break;
+    }
+  }
   pvr_poly_compile(&font_header, &tmp);
 #endif
   font_bmf_set_height_default();

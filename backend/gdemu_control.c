@@ -9,14 +9,14 @@
 #include "cb_loader.h"
 #include "controls.p1.h"
 
-int wait_cd_ready(void){
-  for (int i = 0; i < 100; i++) {
+static void wait_cd_ready(void) {
+  for (int i = 0; i < 500; i++) {
 	  if (cdrom_reinit() == ERR_OK) {
-	     return 1;
+	     return;
 	  }
 	  thd_sleep(20);
   }
-  return 0;
+  return;
 }
 
 void bleem_launch(gd_item *disc) {
@@ -41,12 +41,7 @@ void bleem_launch(gd_item *disc) {
   
   gdemu_set_img_num((uint16_t)disc->slot_num);
   
-  if (!wait_cd_ready()) {
-	  printf("%s CD don't ready\n", __func__);
-	  gdemu_set_img_num(0);
-	  wait_cd_ready();
-	  return;
-  }
+  wait_cd_ready();
   
   /* Patch */
   ((uint16_t *) 0xAC000198)[0] = 0xFF86;
@@ -91,12 +86,7 @@ void dreamcast_launch_disc(gd_item *disc) {
   gdemu_set_img_num((uint16_t)disc->slot_num);
   //thd_sleep(500);
   
-  if (!wait_cd_ready()) {
-	  printf("%s CD don't ready\n", __func__);
-	  gdemu_set_img_num(0);
-	  wait_cd_ready();
-	  return;
-  }
+  wait_cd_ready();
   
   int status = 0, disc_type = 0;
   
@@ -118,7 +108,10 @@ void dreamcast_launch_disc(gd_item *disc) {
 	  ((uint32_t *) 0xAC000E1C)[0] = 0;
   }
   
+  ((uint32_t *) 0xAC0000E4)[0] = -3;
+  
   memcpy((void*)0xACCFFF00, &param, 32);
+  
   arch_exec(gdmenu_loader, gdmenu_loader_length);
 }
 
@@ -144,12 +137,7 @@ void dreamcast_launch_cb(gd_item *disc) {
   gdemu_set_img_num((uint16_t)disc->slot_num);
   //thd_sleep(500);
   
-  if (!wait_cd_ready()) {
-	  printf("%s CD don't ready\n", __func__);
-	  gdemu_set_img_num(0);
-	  wait_cd_ready();
-	  return;
-  }
+  wait_cd_ready();
   
   ((uint16_t *) 0xAC000198)[0] = 0xFF86;
   

@@ -197,6 +197,23 @@ void draw_draw_sub_image(int x, int y, float width, float height, uint32_t color
   pvr_poly_hdr_t header;
 
   pvr_poly_cxt_txr(&context, draw_get_list(), img->format, img->width, img->height, img->texture, PVR_FILTER_BILINEAR);
+  if(context.txr.enable != PVR_TEXTURE_DISABLE) {
+    switch(context.txr.width) {
+	  case 8:
+	  case 16:
+	  case 32:
+	  case 64:
+	  case 128:
+	  case 256:
+	  case 512:
+	  case 1024:
+	    break;
+	  default:
+		printf("%s error tex size %d(%ld) %d(%ld)\n", __func__, context.txr.width, img->width, context.txr.height, img->height);
+		return;
+		break;
+    }
+  }
   pvr_poly_compile(&header, &context);
 
   pvr_prim(&header, sizeof(header));
@@ -283,6 +300,23 @@ void draw_draw_quad(int x, int y, float width, float height, uint32_t color) {
   pvr_poly_hdr_t header;
 
   pvr_poly_cxt_col(&context, draw_get_list());
+  if(context.txr.enable != PVR_TEXTURE_DISABLE) {
+    switch(context.txr.width) {
+	  case 8:
+	  case 16:
+	  case 32:
+	  case 64:
+	  case 128:
+	  case 256:
+	  case 512:
+	  case 1024:
+	    break;
+	  default:
+		printf("%s error tex size %d(%f) %d(%f)\n", __func__, context.txr.width, width, context.txr.height, height);
+		return;
+		break;
+    }
+  }
   pvr_poly_compile(&header, &context);
 
   pvr_prim(&header, sizeof(header));

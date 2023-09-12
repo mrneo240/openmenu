@@ -318,7 +318,6 @@ int main(int argc, char *argv[]) {
     vid_waitvbl();
     if(need_reload_ui) {
 	  ui_set_choice(settings_get()->ui);
-	  continue;
 	}
     draw();
   }
@@ -326,11 +325,11 @@ int main(int argc, char *argv[]) {
   return 0;
 }
 
-void exit_to_bios(void){
+void exit_to_bios(void) {
   bloader_cfg_t *bloader_config = (bloader_cfg_t *) &bloader_data[bloader_size-sizeof(bloader_cfg_t)];
   openmenu_settings* cur = settings_get();
   
-  bloader_config->enable_wide  = cur->aspect;
+  bloader_config->enable_wide = cur->aspect;
   bloader_config->enable_3d = 1;
   
   arch_exec_at(bloader_data, bloader_size, 0xacf00000);
