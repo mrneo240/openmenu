@@ -382,7 +382,7 @@ FUNCTION(UI_NAME, init) {
   if (settings->custom_theme) {
 	int custom_theme_num = 0;
 	custom = theme_get_scroll(&custom_theme_num);
-	if ((int) settings->custom_theme_num > custom_theme_num) {
+	if ((int) settings->custom_theme_num >= custom_theme_num) {
 	  cur_theme = (theme_scroll *) &default_theme;
 	} else {
 	  cur_theme = &custom[settings->custom_theme_num];

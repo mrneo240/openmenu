@@ -38,6 +38,7 @@ static const char* credits_text[] = {"Credits"};
 
 const char* custom_theme_text[10] = {0};
 static theme_custom* custom_themes;
+static theme_scroll* custom_scroll;
 static int num_custom_themes;
 
 #define MENU_OPTIONS ((int)(sizeof(menu_choice_text) / sizeof(menu_choice_text)[0]))
@@ -148,14 +149,17 @@ void menu_setup(enum draw_state* state, theme_color* _colors, int* timeout_ptr) 
   else
   {
     menu_choice_array[CHOICE_REGION] = region_choice_text1;
-    REGION_CHOICES = (sizeof(region_choice_text1) / sizeof(region_choice_text1)[0]);
-    choices_max[CHOICE_REGION] = REGION_CHOICES;
-    custom_themes = (theme_custom *) theme_get_scroll(&num_custom_themes);
+    REGION_CHOICES = 1;
+    choices_max[CHOICE_REGION] = 1;
+    custom_scroll = theme_get_scroll(&num_custom_themes);
     if (num_custom_themes > 0) {
       for (int i = 0; i < num_custom_themes; i++) {
 	    choices_max[CHOICE_REGION]++;
-        custom_theme_text[i] = custom_themes[i].name;
+        custom_theme_text[i] = custom_scroll[i].name;
       }
+      if (settings->custom_theme == THEME_ON) {
+		  choices[CHOICE_REGION] = settings->custom_theme_num + 1;
+	  }
     }
   }
   
@@ -282,11 +286,11 @@ static void menu_region_adj(void) {
     menu_choice_array[CHOICE_REGION] = region_choice_text1;
     REGION_CHOICES = (sizeof(region_choice_text1) / sizeof(region_choice_text1)[0]);
     choices_max[CHOICE_REGION] = REGION_CHOICES;
-    custom_themes = (theme_custom *) theme_get_scroll(&num_custom_themes);
+    custom_scroll = theme_get_scroll(&num_custom_themes);
     if (num_custom_themes > 0) {
       for (int i = 0; i < num_custom_themes; i++) {
 	    choices_max[CHOICE_REGION]++;
-        custom_theme_text[i] = custom_themes[i].name;
+        custom_theme_text[i] = custom_scroll[i].name;
       }
     }
   }

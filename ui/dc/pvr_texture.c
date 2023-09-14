@@ -171,7 +171,18 @@ static void pvr_read_to_internal(const char* filename) {
   texSize = fs_tell(tex_fd);
 
   fs_seek(tex_fd, 0, SEEK_SET);
-  fs_read(tex_fd, texBuf, texSize);
+  fs_read(tex_fd, texBuf, PVR_HDR_SIZE/2);
+  
+  if (!strncmp((char *)texBuf,"GBIX", 4))
+  {
+	   fs_read(tex_fd, texBuf+(PVR_HDR_SIZE/2), texSize - (PVR_HDR_SIZE/2));
+  }
+  else
+  {
+	  fs_seek(tex_fd, 0, SEEK_SET);
+	  fs_read(tex_fd, texBuf+(PVR_HDR_SIZE/2), texSize);
+  }
+  
   fs_close(tex_fd);
 }
 
