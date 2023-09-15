@@ -104,7 +104,7 @@ static uint32_t text_color;
 static uint32_t highlight_color;
 static uint32_t menu_bkg_color;
 static uint32_t menu_bkg_border_color;
-static openmenu_settings* settings;
+static openmenu_settings* settings = NULL;
 
 static void common_setup(enum draw_state* state, theme_color* _colors, int* timeout_ptr) {
   /* Ensure color themeing is consistent */
@@ -465,6 +465,10 @@ static void draw_popup_menu(int x, int y, int width, int height) {
   draw_draw_quad(x - border_width, y - border_width, width + (2 * border_width), height + (2 * border_width), menu_bkg_border_color);
   draw_draw_quad(x, y, width, height, menu_bkg_color);
 
+  if (settings == NULL) {
+    settings = settings_get();
+  }
+  
   if (settings->ui == UI_SCROLL) {
     /* Top header */
     draw_draw_quad(x, y, width, 20, menu_bkg_border_color);
