@@ -224,6 +224,9 @@ static void menu_accept(void) {
         case SORT_DATE:
           list_get_sort_date();
           break;
+        case SORT_PRODUCT:
+		  list_get_sort_product();
+		  break;
         default:
         case SORT_DEFAULT:
           list_get_sort_default();
