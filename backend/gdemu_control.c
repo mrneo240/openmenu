@@ -50,6 +50,9 @@ void bleem_launch(gd_item *disc) {
     bleem_buf[i+0x7079C] = altctrl_data[i];
   }
   
+  bleem_buf[0x49E6] = 0x06; // patch  restart emu A+B+X+Y+dpad down
+  bleem_buf[0x49E7] = 0x0E; //       exit to menu A+B+X+Y+START
+  
   bleem_buf[0x1CA70] = 1;
   
   arch_exec(bleem_buf, bleem_size);
