@@ -240,7 +240,7 @@ static void menu_decrement(int amount) {
   }
   current_selected_item -= amount;
   if (current_selected_item < 0) {
-    current_selected_item = 0;
+    current_selected_item = list_len - 1;
   }
   navigate_timeout = INPUT_TIMEOUT;
   menu_changed_item();
@@ -252,7 +252,7 @@ static void menu_increment(int amount) {
   }
   current_selected_item += amount;
   if (current_selected_item >= list_len) {
-    current_selected_item = list_len - 1;
+    current_selected_item = 0;
   }
   navigate_timeout = INPUT_TIMEOUT;
   menu_changed_item();

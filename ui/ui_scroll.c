@@ -281,7 +281,11 @@ static void menu_decrement(int amount) {
     return;
   }
   if (current_selected_item < amount) {
-    current_selected_item = 0;
+    current_selected_item = list_len-1;
+    current_starting_index = list_len - cur_theme->items_per_page;
+    if (current_starting_index < 0) {
+		current_starting_index = 0;
+	}
   }
   else {
     current_selected_item -= amount;
@@ -301,7 +305,10 @@ static void menu_increment(int amount) {
   }
   current_selected_item += amount;
   if (current_selected_item >= list_len) {
-    current_selected_item = list_len - 1;
+    current_selected_item = 0;
+    current_starting_index = 0;
+    navigate_timeout = INPUT_TIMEOUT;
+    return;
   }
   if (current_selected_item >= current_starting_index + cur_theme->items_per_page) {
     current_starting_index += amount;

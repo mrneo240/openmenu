@@ -331,7 +331,7 @@ static void menu_up(int amount) {
 
   while (amount--)
     menu_row_up();
-
+   
   setup_highlight_animation();
   kill_large_art_animation();
 
@@ -346,7 +346,7 @@ static void menu_down(int amount) {
 
   while (amount--)
     menu_row_down();
-
+    
   setup_highlight_animation();
   kill_large_art_animation();
 
@@ -361,13 +361,25 @@ static void menu_left(void) {
 
   screen_column--;
   if (current_selected() < 0) {
-    screen_column = 0;
+    //screen_column = 0;
+    int temp = (list_len - (COLUMNS * ROWS)) / COLUMNS;
+    if ((list_len - (COLUMNS * ROWS)) % COLUMNS) {
+		temp++;
+	}
+    current_starting_index = temp * COLUMNS;
+    
+    if (current_starting_index < 0 || list_len <= (COLUMNS * ROWS)) {
+		current_starting_index = 0;
+	}
+    
+    screen_row = (list_len - 1 - current_starting_index) / COLUMNS;
+    screen_column = (list_len - 1 - current_starting_index) % COLUMNS;
   }
   if (screen_column < 0) {
     screen_column = COLUMNS - 1;
     menu_row_up();
   }
-
+  
   setup_highlight_animation();
   kill_large_art_animation();
 
@@ -381,13 +393,14 @@ static void menu_right(void) {
   }
   screen_column++;
   if (current_selected() >= list_len) {
-    screen_column--;
+    //screen_column--;
+    screen_row = screen_column = current_starting_index = 0;
   }
   if (screen_column >= COLUMNS) {
     screen_column = 0;
     menu_row_down();
   }
-
+  
   setup_highlight_animation();
   kill_large_art_animation();
 
