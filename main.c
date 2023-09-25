@@ -330,7 +330,12 @@ void exit_to_bios(void) {
   openmenu_settings* cur = settings_get();
   
   bloader_config->enable_wide = cur->aspect;
-  bloader_config->enable_3d = 1;
+  if (!strncmp("Dreamcast Fishing Controller", maple_enum_type(0, MAPLE_FUNC_CONTROLLER)->info.product_name, 28)) {
+    bloader_config->enable_3d = 0;
+  }
+  else {
+	bloader_config->enable_3d = 1;
+  }
   
   arch_exec_at(bloader_data, bloader_size, 0xacf00000);
 }
