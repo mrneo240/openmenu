@@ -691,7 +691,7 @@ void draw_multidisc_tr(void) {
       const int disc_num = list_multidisc[i]->disc[0] - '0';
       strncpy(temp_game_name, list_multidisc[i]->name, sizeof(temp_game_name) - 1);
       temp_game_name[sizeof(temp_game_name) - 1] = '\0';
-      snprintf(temp_game_num, sizeof(temp_game_name), "%d", disc_num);
+      snprintf(temp_game_num, sizeof(temp_game_name), "#%d", disc_num);
       string_outer_concat(line_buf, temp_game_name, temp_game_num, 39);
       font_bmp_draw_main(x_item, cur_y, line_buf);
     }
@@ -714,7 +714,7 @@ void draw_multidisc_tr(void) {
     font_bmf_begin_draw();
     font_bmf_set_height_default();
 
-    font_bmf_draw(x_item, cur_y, text_color, "Multidisc");
+    font_bmf_draw_centered(x+width/2, cur_y, text_color, "Multidisc");
 
     cur_y += line_height / 4;
 
