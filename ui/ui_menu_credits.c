@@ -362,17 +362,13 @@ static void menu_accept_multidisc(void) {
   dreamcast_launch_disc(list_multidisc[current_choice]);
 }
 
-static void menu_exit_left(void) {
-}
-static void menu_exit_right(void) {
-}
 static void menu_exit(void) {
   if (*input_timeout_ptr > 0) {
     return;
   }
+  
   /* Probably should change this */
-  extern void arch_menu(void);
-  arch_menu();
+  exit_to_bios();
 }
 
 void handle_input_menu(enum control input) {
@@ -434,12 +430,6 @@ void handle_input_multidisc(enum control input) {
 
 void handle_input_exit(enum control input) {
   switch (input) {
-    case LEFT:
-      menu_exit_left();
-      break;
-    case RIGHT:
-      menu_exit_right();
-      break;
     case B:
       menu_leave();
       break;
@@ -738,4 +728,25 @@ void draw_exit_op(void) {
 }
 
 void draw_exit_tr(void) {
+	z_set_cond(205.0f);
+	
+	/* Draw a popup in the middle of the screen */
+    draw_popup_menu(160, 120, 180, 80);
+    
+	if (settings->ui == UI_SCROLL) {
+		font_bmp_begin_draw();
+		font_bmp_set_color(text_color);
+
+		font_bmp_draw_main(200, 122, "Exit to BIOS");
+		font_bmp_set_color(highlight_color);
+		font_bmp_draw_main(168, 158, "A - exit, B - cancel");
+	}
+	else {
+		font_bmf_begin_draw();
+		font_bmf_set_height(24.0);
+
+		font_bmf_draw(200, 122, text_color, "Exit to BIOS");
+		font_bmf_draw(168, 158, highlight_color, "A - exit, B - cancel");
+	}
 }
+

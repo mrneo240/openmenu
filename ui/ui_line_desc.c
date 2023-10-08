@@ -335,6 +335,15 @@ static void update_data(void) {
   frames_focused++;
 }
 
+static void menu_exit(void) {
+  if (navigate_timeout > 0) {
+    return;
+  }
+
+  draw_current = DRAW_EXIT;
+  popup_setup(&draw_current, &region_themes[region_current].colors, &navigate_timeout);
+}
+
 /* Base UI Methods */
 
 FUNCTION(UI_NAME, init) {
@@ -432,7 +441,7 @@ static void handle_input_ui(enum control input) {
       menu_settings();
       break;
     case Y:
-      exit_to_bios();
+      menu_exit();
       break;
 
       /* These dont do anything */

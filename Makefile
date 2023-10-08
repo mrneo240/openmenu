@@ -42,3 +42,6 @@ clean:
 
 clean-elf:
 	-@$(RM) -f $(TARGET)
+	
+run: $(TARGET)
+	$(KOS_LOADER) $(TARGET)

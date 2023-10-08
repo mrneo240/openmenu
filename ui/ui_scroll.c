@@ -380,6 +380,15 @@ static void menu_settings(void) {
   menu_setup(&draw_current, &cur_theme->colors, &navigate_timeout);
 }
 
+static void menu_exit(void) {
+  if (navigate_timeout > 0) {
+    return;
+  }
+
+  draw_current = DRAW_EXIT;
+  popup_setup(&draw_current, &cur_theme->colors, &navigate_timeout);
+}
+
 FUNCTION(UI_NAME, init) {
   texman_clear();
   /* @Note: these exist but do we really care? Naturally this will happen without forcing it and old data doesn't matter */
@@ -433,7 +442,7 @@ static void handle_input_ui(enum control input) {
       menu_settings();
       break;
     case Y: {
-      exit_to_bios();
+      menu_exit();
     } break;
 
       /* These dont do anything */

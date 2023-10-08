@@ -500,6 +500,15 @@ static void menu_show_large_art(void) {
   }
 }
 
+static void menu_exit(void) {
+  if (navigate_timeout > 0) {
+    return;
+  }
+
+  draw_current = DRAW_EXIT;
+  popup_setup(&draw_current, current_theme_colors, &navigate_timeout);
+}
+
 /* Base UI Methods */
 
 FUNCTION(UI_NAME, init) {
@@ -594,7 +603,7 @@ static void handle_input_ui(enum control input) {
       menu_settings();
       break;
     case Y: {
-      exit_to_bios();
+      menu_exit();
     } break;
     case X:
       menu_show_large_art();
