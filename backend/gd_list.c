@@ -170,16 +170,33 @@ static int struct_cmp_by_name(const void *a, const void *b) {
   return strcmp(ia->name, ib->name);
 }
 
-static int struct_cmp_by_date(const void *a, const void *b) {
+static int struct_cmp_by_region(const void *a, const void *b) {
   const gd_item *ia = *(const gd_item **)a;
   const gd_item *ib = *(const gd_item **)b;
-  return strcmp(ia->date, ib->date);
+  return strcmp(ia->region, ib->region);
 }
 
-static int struct_cmp_by_product(const void *a, const void *b) {
+static int struct_cmp_by_genre(const void *a, const void *b) {
+  db_item *temp_meta, *temp_meta1;
   const gd_item *ia = *(const gd_item **)a;
   const gd_item *ib = *(const gd_item **)b;
-  return strcmp(ia->product, ib->product);
+  
+  if (db_get_meta(ia->product, &temp_meta)) {
+	  return -1;
+  }
+  
+  if (db_get_meta(ib->product, &temp_meta1)) {
+	  return 1;
+  }
+  
+  if (temp_meta->genre > temp_meta1->genre) {
+	  return 1;
+  }
+  else if (temp_meta->genre < temp_meta1->genre) {
+	  return -1;
+  }
+  
+  return 0;
 }
 
 const gd_item **list_get_sort_name(void) {
@@ -190,19 +207,19 @@ const gd_item **list_get_sort_name(void) {
   return (const gd_item **)list_temp;
 }
 
-const gd_item **list_get_sort_date(void) {
+const gd_item **list_get_sort_region(void) {
   list_temp_reset();
 
-  /* Sort according to name alphabetically */
-  qsort(list_temp, num_items_temp, sizeof(gd_item *), struct_cmp_by_date);
+  /* Sort according to region */
+  qsort(list_temp, num_items_temp, sizeof(gd_item *), struct_cmp_by_region);
   return (const gd_item **)list_temp;
 }
 
-const gd_item **list_get_sort_product(void) {
+const gd_item **list_get_sort_genre(void) {
   list_temp_reset();
 
-  /* Sort according to name alphabetically */
-  qsort(list_temp, num_items_temp, sizeof(gd_item *), struct_cmp_by_product);
+  /* Sort according to genre */
+  qsort(list_temp, num_items_temp, sizeof(gd_item *), struct_cmp_by_genre);
   return (const gd_item **)list_temp;
 }
 
@@ -220,10 +237,8 @@ const struct gd_item **list_get_multidisc(void) {
   return (const gd_item **)list_multidisc;
 }
 
-const struct gd_item **list_get_genre(int genre) {
+const struct gd_item **list_get_genre(int matching_genre) {
 #if !defined(STANDALONE_BINARY)
-  FLAGS_GENRE matching_genre = (1 << genre);
-
   int base_idx, temp_idx = 0;
 
   int hide_multidisc = settings_get()->multidisc;
@@ -250,18 +265,19 @@ const struct gd_item **list_get_genre(int genre) {
 }
 
 const struct gd_item **list_get_genre_sort(int genre, int sort) {
-  list_get_genre(genre);
+  FLAGS_GENRE matching_genre = (1 << genre);
+  list_get_genre(matching_genre);
 
   switch (sort) {
     case 1:
       qsort(list_temp, num_items_temp, sizeof(gd_item *), struct_cmp_by_name);
       break;
     case 2:
-      qsort(list_temp, num_items_temp, sizeof(gd_item *), struct_cmp_by_date);
+      qsort(list_temp, num_items_temp, sizeof(gd_item *), struct_cmp_by_region);
       break;
     case 3:
-      qsort(list_temp, num_items_temp, sizeof(gd_item *), struct_cmp_by_product);
-      break;
+/*      qsort(list_temp, num_items_temp, sizeof(gd_item *), struct_cmp_by_genre);
+      break;*/
 
     default:
     case 0:

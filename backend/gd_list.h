@@ -21,8 +21,8 @@ void list_print(const struct gd_item **list);
 /* simple sorting methods */
 const struct gd_item **list_get(void);
 const struct gd_item **list_get_sort_name(void);
-const struct gd_item **list_get_sort_date(void);
-const struct gd_item **list_get_sort_product(void);
+const struct gd_item **list_get_sort_region(void);
+const struct gd_item **list_get_sort_genre(void);
 const struct gd_item **list_get_sort_default(void);
 /* complex filtering and sorting */
 const struct gd_item **list_get_genre(int genre);

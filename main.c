@@ -117,11 +117,11 @@ static int init(void) {
 		  break;
 		  
 	    case SORT_DATE:
-		  list_get_sort_date();
+		  list_get_sort_region();
 		  break;
 		  
 	    case SORT_PRODUCT:
-		  list_get_sort_product();
+		  list_get_sort_genre();
 		  break;
 		  
 	    default:

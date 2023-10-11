@@ -27,11 +27,11 @@ static const char* region_choice_text[] = {"NTSC-U", "NTSC-J", "PAL"};
 static const char* region_choice_text1[] = {"GDMENU"};
 static const char* aspect_choice_text[] = {"4:3", "16:9"};
 static const char* beep_choice_text[] = {"Off", "On"};
-static const char* sort_choice_text[] = {"Default", "Name", "Date", "Product"};
+static const char* sort_choice_text[] = {"Default", "Name", "Region", "Genre"};
 static const char* filter_choice_text[] = {
     "All", "Action", "Racing", "Simulation", "Sports", "Lightgun",
     "Fighting", "Shooter", "Survival", "Adventure", "Platformer", "RPG",
-    "Shmup", "Strategy", "Puzzle", "Arcade", "Music"};
+    "Shmup", "Strategy", "Puzzle", "Arcade", "Music" };
 static const char* multidisc_choice_text[] = {"Show", "Hide"};
 static const char* save_choice_text[] = {"Save", "Apply"};
 static const char* credits_text[] = {"Credits"};
@@ -222,10 +222,10 @@ static void menu_accept(void) {
           list_get_sort_name();
           break;
         case SORT_DATE:
-          list_get_sort_date();
+          list_get_sort_region();
           break;
         case SORT_PRODUCT:
-		  list_get_sort_product();
+		  list_get_sort_genre();
 		  break;
         default:
         case SORT_DEFAULT:
