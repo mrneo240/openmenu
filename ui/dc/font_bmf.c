@@ -133,6 +133,8 @@ typedef struct __attribute__((__packed__)) bm_font {
 
 static bm_font font_basilea;
 static int font_loaded = 0;
+static float current_scale = 1.0;
+static unsigned int current_color;
 
 static int BMF_parse_info(file_t fd, size_t block_size, bm_font *font) {
   DBG_PRINT("BMF found info block!\n");
@@ -368,9 +370,6 @@ int BMF_adjust_kerning(unsigned char first, unsigned char second, bm_font *font)
 
 /* Drawing */
 
-static float current_scale;
-static unsigned int current_color;
-
 void font_bmf_set_height_default(void) {
   current_scale = 1.0f;
 }
@@ -582,9 +581,8 @@ static void _font_bmf_draw_string(int x1, int y1, uint32_t color, const char *st
 }
 
 static float _font_bmf_calculate_length_full(const char *str, int length) {
-  font_bmf_set_height_default();
   /* Not sure if its worth calculating kerning for this */
-  float width = 0.0;
+  float width = 0;
   char prev = 0;
   bm_font *font = &font_basilea;
   int cursor = 0;
@@ -607,13 +605,14 @@ static float _font_bmf_calculate_length(const char *str) {
 }
 
 void font_bmf_draw_auto_size(int x1, int y1, uint32_t color, const char *str, int width) {
-  
+  float save_scale = current_scale;
   float temp = _font_bmf_calculate_length(str);
-  if (temp > (float) width) {
+  if (temp > width) {
     const float scale = ((float)width / temp);
     font_bmf_set_scale(scale);
   }
   _font_bmf_draw_string(x1, y1, color, str);
+  current_scale = save_scale;
 }
 
 void font_bmf_draw_centered(int x1, int y1, uint32_t color, const char *str) {
@@ -622,12 +621,14 @@ void font_bmf_draw_centered(int x1, int y1, uint32_t color, const char *str) {
 }
 
 void font_bmf_draw_centered_auto_size(int x1, int y1, uint32_t color, const char *str, int width) {
+  float save_scale = current_scale;
   float temp = _font_bmf_calculate_length(str);
   if (temp > (float) width) {
     const float scale = ((float)width / temp);
     font_bmf_set_scale(scale);
   }
-  _font_bmf_draw_string(x1 - (temp / 2), y1, color, str);
+  _font_bmf_draw_string(x1 - ((int) temp / 2), y1, color, str);
+  current_scale = save_scale;
 }
 
 void font_bmf_draw(int x1, int y1, uint32_t color, const char *str) {

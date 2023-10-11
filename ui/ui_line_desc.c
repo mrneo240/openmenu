@@ -163,7 +163,7 @@ static void draw_game_meta(void) {
 
   /* Game Title */
   font_bmf_begin_draw();
-  font_bmf_set_height_default();
+  font_bmf_set_height(16.0f);
   if (list_len <= 0) {
     font_bmf_draw_auto_size((SCR_WIDTH / 2 - 4) * X_SCALE, 92 - 20, current_theme_colors->text_color, "Empty Game List", (SCR_WIDTH / 2 - 10) * X_SCALE);
     return;
@@ -193,12 +193,20 @@ static void draw_game_meta(void) {
     font_bmf_set_height(FONT_SYNOP_SIZE);
     font_bmf_draw_sub_wrap(316, 136 - 20 - 8, current_theme_colors->text_color, synopsis, 640 - 316 - 10);
 
-    font_bmf_set_height(12.0f);
+    font_bmf_set_height(14.0f);
     font_bmf_draw_centered(326 + (20 / 2), 282 + 12, current_theme_colors->text_color, db_format_nplayers_str(current_meta->num_players));
-    // font_bmf_draw_centered(396 + (16 / 2), 282 + 12, region_themes[region_current].text_color, "VMU");
-    font_bmf_draw_centered(396 + (16 / 2), 282 + 12, current_theme_colors->text_color, db_format_vmu_blocks_str(current_meta->vmu_blocks));
-    font_bmf_draw_centered(460 + (34 / 2), 282 + 12, current_theme_colors->text_color, "Jump Pack");
-    font_bmf_draw_centered(534 + (22 / 2), 282 + 12, current_theme_colors->text_color, "Modem");
+    
+    if(current_meta->vmu_blocks) {
+		font_bmf_draw_centered(396 + (16 / 2), 282 + 12, current_theme_colors->text_color, db_format_vmu_blocks_str(current_meta->vmu_blocks));
+	}
+	
+	if(current_meta->accessories & ACCESORIES_JUMP_PACK) {
+		font_bmf_draw_centered(460 + (34 / 2), 282 + 12, current_theme_colors->text_color, "Jump Pack");
+	}
+	
+	if(current_meta->accessories & (ACCESORIES_BBA | ACCESORIES_MODEM)) {
+		font_bmf_draw_centered(534 + (22 / 2), 282 + 12, current_theme_colors->text_color, "Modem");
+	}
 
     /* Draw Icons */
     {
@@ -206,17 +214,20 @@ static void draw_game_meta(void) {
       const dimen_RECT uv_controller = {.x = 0, .y = 0, .w = 42, .h = 42};
       draw_draw_sub_image(326, 254 + 12, 20 * X_SCALE, 20, current_theme_colors->icon_color, txr_icons_current, &uv_controller);  // 20x20
     }
-    {
+    
+    if(current_meta->vmu_blocks) {
       // 388x282
       const dimen_RECT uv_vmu = {.x = 42, .y = 0, .w = 26, .h = 42};
       draw_draw_sub_image(396, 254 + 12, 16 * X_SCALE, 22, current_theme_colors->icon_color, txr_icons_current, &uv_vmu);  // 16x22
     }
-    {
+    
+    if(current_meta->accessories & ACCESORIES_JUMP_PACK) {
       // 448x282
       const dimen_RECT uv_rumble = {.x = 0, .y = 42, .w = 64, .h = 44};
       draw_draw_sub_image(458, 254 + 12, 34 * X_SCALE, 24, current_theme_colors->icon_color, txr_icons_current, &uv_rumble);  // 34x24
     }
-    {
+    
+    if(current_meta->accessories & (ACCESORIES_BBA | ACCESORIES_MODEM)) {
       // 524x282
       const dimen_RECT uv_modem = {.x = 0, .y = 86, .w = 42, .h = 42};
       draw_draw_sub_image(534, 254 + 12, 22 * X_SCALE, 22, current_theme_colors->icon_color, txr_icons_current, &uv_modem);  // 22x22
