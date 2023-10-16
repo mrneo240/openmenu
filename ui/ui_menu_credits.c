@@ -40,6 +40,7 @@ const char* custom_theme_text[10] = {0};
 static theme_custom* custom_themes;
 static theme_scroll* custom_scroll;
 static int num_custom_themes;
+int cb_multidisc = 0;
 
 #define MENU_OPTIONS ((int)(sizeof(menu_choice_text) / sizeof(menu_choice_text)[0]))
 #define MENU_CHOICES (MENU_OPTIONS) /* Only those with selectable options */
@@ -359,7 +360,13 @@ static void menu_accept_multidisc(void) {
     return;
   }
   const gd_item** list_multidisc = list_get_multidisc();
-  dreamcast_launch_disc(list_multidisc[current_choice]);
+  
+  if (!cb_multidisc){
+	  dreamcast_launch_disc(list_multidisc[current_choice]);
+  }
+  else{
+	  dreamcast_launch_cb(list_multidisc[current_choice]);
+  }
 }
 
 static void menu_exit(void) {

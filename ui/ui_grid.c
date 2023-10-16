@@ -412,7 +412,11 @@ static void menu_cb(void) {
   if ((navigate_timeout > 0) || (list_len <= 0)) {
     return;
   }
-
+  
+  if (!strncmp(list_current[current_selected()]->disc, "PS1", 3)) {
+    return;
+  }
+  
   /* grab the disc number and if there is more than one */
   int disc_set = list_current[current_selected()]->disc[2] - '0';
 
@@ -422,13 +426,10 @@ static void menu_cb(void) {
 
   /* prepare to show multidisc chooser menu */
   if (hide_multidisc && (disc_set > 1)) {
+	cb_multidisc = 1;
     draw_current = DRAW_MULTIDISC;
     popup_setup(&draw_current, current_theme_colors, &navigate_timeout);
     list_set_multidisc(list_current[current_selected()]->product);
-    return;
-  }
-  
-  if (!strncmp(list_current[current_selected()]->disc, "PS1", 3)) {
     return;
   }
   
@@ -449,6 +450,7 @@ static void menu_accept(void) {
 
   /* prepare to show multidisc chooser menu */
   if (hide_multidisc && (disc_set > 1)) {
+	cb_multidisc = 0;
     draw_current = DRAW_MULTIDISC;
     popup_setup(&draw_current, current_theme_colors, &navigate_timeout);
     list_set_multidisc(list_current[current_selected()]->product);

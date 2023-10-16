@@ -14,6 +14,7 @@
 #include <stdio.h>
 
 extern void exit_to_bios(void);
+extern int cb_multidisc;
 
 typedef enum CFG_REGION {
   REGION_START = 0,
