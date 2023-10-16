@@ -278,6 +278,12 @@ static void menu_cb(void) {
     return;
   }
   
+  start_cb = 0;
+  draw_current = DRAW_CODEBREAKER;
+  menu_setup(&draw_current, &region_themes[region_current].colors, &navigate_timeout);
+}
+
+static void run_cb(void) {
   /* grab the disc number and if there is more than one */
   int disc_set = list_current[current_selected_item]->disc[2] - '0';
 
@@ -456,8 +462,6 @@ static void handle_input_ui(enum control input) {
     case Y:
       menu_exit();
       break;
-
-      /* These dont do anything */
     case B:
       menu_cb();
       break;
@@ -497,6 +501,12 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
     case DRAW_EXIT: {
       handle_input_exit(input_current);
     } break;
+    case DRAW_CODEBREAKER: {
+      handle_input_codebreaker(input_current);
+      if (start_cb) {
+		  run_cb();
+	  }
+    } break;
     default:
     case DRAW_UI: {
       handle_input_ui(input_current);
@@ -525,6 +535,10 @@ FUNCTION(UI_NAME, drawOP) {
     case DRAW_EXIT: {
       /* Exit popup on top */
       draw_exit_op();
+    } break;
+    case DRAW_CODEBREAKER: {
+      /* CodeBreaker popup on top */
+      draw_codebreaker_op();
     } break;
     default:
     case DRAW_UI: {
@@ -557,6 +571,10 @@ FUNCTION(UI_NAME, drawTR) {
     case DRAW_EXIT: {
       /* Exit popup on top */
       draw_exit_tr();
+    } break;
+    case DRAW_CODEBREAKER: {
+      /* CodeBreaker popup on top */
+      draw_codebreaker_tr();
     } break;
     default:
     case DRAW_UI: {

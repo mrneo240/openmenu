@@ -41,6 +41,7 @@ static theme_custom* custom_themes;
 static theme_scroll* custom_scroll;
 static int num_custom_themes;
 int cb_multidisc = 0;
+int start_cb = 0;
 
 #define MENU_OPTIONS ((int)(sizeof(menu_choice_text) / sizeof(menu_choice_text)[0]))
 #define MENU_CHOICES (MENU_OPTIONS) /* Only those with selectable options */
@@ -448,6 +449,22 @@ void handle_input_exit(enum control input) {
   }
 }
 
+void handle_input_codebreaker(enum control input) {
+  switch (input) {
+    case B:
+      menu_leave();
+      break;
+    case A:
+	  if (*input_timeout_ptr > 0) {
+		return;
+	  }
+      start_cb = 1;
+      break;
+    default:
+      break;
+  }
+}
+
 void draw_menu_op(void) {
   /* might be useless */
 }
@@ -757,3 +774,29 @@ void draw_exit_tr(void) {
 	}
 }
 
+void draw_codebreaker_op(void) {
+  /* Again nothing...Still...Ugh... */
+}
+
+void draw_codebreaker_tr(void) {
+	z_set_cond(205.0f);
+	
+	/* Draw a popup in the middle of the screen */
+    draw_popup_menu(160, 120, 190, 80);
+    
+	if (settings->ui == UI_SCROLL) {
+		font_bmp_begin_draw();
+		font_bmp_set_color(text_color);
+
+		font_bmp_draw_main(200, 122, "Run CodeBreaker");
+		font_bmp_set_color(highlight_color);
+		font_bmp_draw_main(178, 158, "A - run, B - cancel");
+	}
+	else {
+		font_bmf_begin_draw();
+		font_bmf_set_height(24.0);
+
+		font_bmf_draw(170, 122, text_color, "Run CodeBreaker");
+		font_bmf_draw(178, 158, highlight_color, "A - run,  B - cancel");
+	}
+}

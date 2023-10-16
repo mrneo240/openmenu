@@ -15,6 +15,7 @@
 
 extern void exit_to_bios(void);
 extern int cb_multidisc;
+extern int start_cb;
 
 typedef enum CFG_REGION {
   REGION_START = 0,
@@ -127,7 +128,8 @@ enum draw_state { DRAW_UI = 0,
                   DRAW_MULTIDISC,
                   DRAW_EXIT,
                   DRAW_MENU,
-                  DRAW_CREDITS };
+                  DRAW_CREDITS,
+                  DRAW_CODEBREAKER };
 
 void settings_init(void);
 void settings_load(void);
