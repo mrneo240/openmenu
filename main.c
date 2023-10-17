@@ -305,7 +305,6 @@ int main(int argc, char *argv[]) {
   //gdemu_set_img_num(1);
   //thd_sleep(500);
   
-  //arch_set_exit_path(ARCH_EXIT_REBOOT);
   fflush(stdout);
   setbuf(stdout, NULL);
   init_gfx_pvr();

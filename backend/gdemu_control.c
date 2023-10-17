@@ -107,7 +107,8 @@ void dreamcast_launch_disc(gd_item *disc) {
   if (!strncmp((char*)0x8c0007CC, "1.004", 5)) {
 	  ((uint32_t *) 0xAC000E20)[0] = 0;
   }
-  else if (!strncmp((char*)0x8c0007CC, "1.01d", 5)) {
+  else if (!strncmp((char*)0x8c0007CC, "1.01d", 5) ||
+		   !strncmp((char*)0x8c0007CC, "1.01c", 5)) {
 	  ((uint32_t *) 0xAC000E1C)[0] = 0;
   }
   
