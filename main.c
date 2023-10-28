@@ -113,24 +113,26 @@ static int init(void) {
 	 switch (cur->sort)
 	 {
 	    case SORT_NAME:
-		  list_get_sort_name();
+		  list_set_sort_name();
 		  break;
 		  
 	    case SORT_DATE:
-		  list_get_sort_region();
+		  list_set_sort_region();
 		  break;
 		  
 	    case SORT_PRODUCT:
-		  list_get_sort_genre();
+		  list_set_sort_genre();
 		  break;
 		  
 	    default:
+	    case SORT_DEFAULT:
+          list_set_sort_default();
 		  break;
 	 }
   }
   else
   {
-	 list_get_genre_sort((FLAGS_GENRE)cur->filter - 1, cur->sort);
+	 list_set_genre_sort((FLAGS_GENRE)cur->filter - 1, cur->sort);
   }
   
 
@@ -321,7 +323,8 @@ int main(int argc, char *argv[]) {
     if(need_reload_ui) {
 	  ui_set_choice(settings_get()->ui);
 	}
-    draw();
+	else
+      draw();
   }
 
   return 0;

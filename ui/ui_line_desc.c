@@ -62,6 +62,7 @@ static image txr_icons_white /*, txr_icons_black*/;
 static image *txr_icons_current;
 
 extern image img_empty_boxart;
+extern image img_dir_boxart;
 
 /* Our actual gdemu items */
 static const gd_item **list_current;
@@ -119,7 +120,6 @@ static void draw_big_box(void) {
   // centers (640x480) = 320, (854x480) = 427, 50%
   // 4:3  (640x480) right edge at 300, 20 pixels left of center or 3.125%
   // 16:9 (854x480) right edge at 400, 26 pixels left of center or 3.125%
-
   draw_draw_image(right_edge - width, y_pos, width, height, COLOR_WHITE, &txr_focus);
 }
 
@@ -139,7 +139,15 @@ static void draw_small_boxes(void) {
   }
 
   for (i = 0; (i < num_icons) && (i + starting_icon_idx < list_len); i++) {
-    txr_get_small(list_current[starting_icon_idx + i]->product, &txr_icon_list[i]);
+	if (!strncmp(list_current[starting_icon_idx + i]->disc, "DIR", 3) &&
+	    !strncmp(list_current[starting_icon_idx + i]->name, "Back", 4)) {
+	  txr_icon_list[i].texture = img_dir_boxart.texture;
+      txr_icon_list[i].width   = img_dir_boxart.width;
+      txr_icon_list[i].height  = img_dir_boxart.height;
+      txr_icon_list[i].format  = img_dir_boxart.format;
+    } else {
+      txr_get_small(list_current[starting_icon_idx + i]->product, &txr_icon_list[i]);
+    }
     draw_draw_image((x_start + (ICON_SIZE_X + ICON_SPACING) * i) * X_SCALE, y_pos, ICON_SIZE_X * X_SCALE, ICON_SIZE_Y, COLOR_WHITE, &txr_icon_list[i]);
   }
 }
@@ -156,7 +164,12 @@ static void draw_game_meta(void) {
   /* grab the disc number and if there is more than one */
   int disc_num = list_current[current_selected_item]->disc[0] - '0';
   int disc_set = list_current[current_selected_item]->disc[2] - '0';
-
+  
+  if (!strncmp(list_current[current_selected_item]->disc, "PS1", 3) ||
+	  !strncmp(list_current[current_selected_item]->disc, "DIR", 3)) {
+	  disc_num = disc_set = 1;
+  }
+  
   /* Get multidisc settings */
   openmenu_settings *settings = settings_get();
   int hide_multidisc = settings->multidisc;
@@ -274,7 +287,8 @@ static void menu_cb(void) {
     return;
   }
   
-  if (!strncmp(list_current[current_selected_item]->disc, "PS1", 3)) {
+  if (!strncmp(list_current[current_selected_item]->disc, "PS1", 3) ||
+	  !strncmp(list_current[current_selected_item]->disc, "DIR", 3)) {
     return;
   }
   
@@ -307,7 +321,39 @@ static void menu_accept(void) {
   if ((navigate_timeout > 0) || (list_len <= 0)) {
     return;
   }
+  
+  if (!strncmp(list_current[current_selected_item]->disc, "DIR", 3)) {
+	if (!strcmp(list_current[current_selected_item]->name, "Back")) {
+		switch (list_current[current_selected_item]->product[0]) {
+			case 'A':
+				list_set_sort_name();
+				break;
+			case 'G':
+				list_set_sort_genre();
+				break;
+			case 'R':
+				list_set_sort_region();
+				break;
+			default:
+				list_set_sort_default();
+		}
+	}
+	else {
+		list_set_sort_filter(list_current[current_selected_item]->product[0], list_current[current_selected_item]->slot_num);
+	}
+	
+	list_current = list_get();
+    list_len = list_length();
 
+    current_selected_item = 0;
+    frames_focused = 0;
+    draw_current = DRAW_UI;
+
+    navigate_timeout = INPUT_TIMEOUT * 2;
+    menu_changed_item();
+	return;
+  }
+  
   /* grab the disc number and if there is more than one */
   int disc_set = list_current[current_selected_item]->disc[2] - '0';
 
@@ -342,13 +388,21 @@ static void menu_settings(void) {
 }
 
 static void update_data(void) {
-  if (frames_focused > FOCUSED_HIRES_FRAMES) {
-    txr_get_large(list_current[current_selected_item]->product, &txr_focus);
-    if (txr_focus.texture == img_empty_boxart.texture) {
+  if (!strncmp(list_current[current_selected_item]->disc, "DIR", 3) &&
+      !strncmp(list_current[current_selected_item]->name, "Back", 4)) {
+	txr_focus.texture = img_dir_boxart.texture;
+    txr_focus.width   = img_dir_boxart.width;
+    txr_focus.height  = img_dir_boxart.height;
+    txr_focus.format  = img_dir_boxart.format;  
+  } else {
+    if (frames_focused > FOCUSED_HIRES_FRAMES) {
+      txr_get_large(list_current[current_selected_item]->product, &txr_focus);
+      if (txr_focus.texture == img_empty_boxart.texture) {
+        txr_get_small(list_current[current_selected_item]->product, &txr_focus);
+      }
+    } else {
       txr_get_small(list_current[current_selected_item]->product, &txr_focus);
     }
-  } else {
-    txr_get_small(list_current[current_selected_item]->product, &txr_focus);
   }
 
   frames_focused++;
@@ -367,7 +421,8 @@ static void menu_exit(void) {
 
 FUNCTION(UI_NAME, init) {
   texman_clear();
-
+  txr_empty_small_pool();
+  txr_empty_large_pool();
   /* Set region from preferences */
   openmenu_settings *settings = settings_get();
   region_current = settings->region;
@@ -388,6 +443,10 @@ FUNCTION(UI_NAME, init) {
   uint32_t temp = texman_create();
   draw_load_texture_buffer("EMPTY.PVR", &img_empty_boxart, texman_get_tex_data(temp));
   texman_reserve_memory(img_empty_boxart.width, img_empty_boxart.height, 2 /* 16Bit */);
+  
+  temp = texman_create();
+  draw_load_texture_buffer("DIR.PVR", &img_dir_boxart, texman_get_tex_data(temp));
+  texman_reserve_memory(img_dir_boxart.width, img_dir_boxart.height, 2 /* 16Bit */);
 
   temp = texman_create();
   draw_load_texture_buffer("THEME/SHARED/HIGHLIGHT.PVR", &txr_highlight, texman_get_tex_data(temp));
@@ -430,7 +489,7 @@ FUNCTION(UI_NAME, init) {
   
   font_bmf_init("FONT/BASILEA.FNT", "FONT/BASILEA_W.PVR", settings->aspect);
 
-  printf("Texture scratch free: %d/%d KB (%d/%d bytes)\n", texman_get_space_available() / 1024, (1024 * 1024) / 1024, texman_get_space_available(), (1024 * 1024));
+  printf("Texture scratch free: %d/%d KB (%d/%d bytes)\n", texman_get_space_available() / 1024, TEXMAN_BUFFER_SIZE / 1024, texman_get_space_available(), TEXMAN_BUFFER_SIZE);
 }
 
 static void handle_input_ui(enum control input) {

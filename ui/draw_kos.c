@@ -19,6 +19,7 @@
 extern int round(float x);
 
 image img_empty_boxart;
+image img_dir_boxart;
 
 static int current_list;
 void draw_set_list(int list) {

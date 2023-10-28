@@ -88,6 +88,7 @@ static image txr_highlight; /* Highlight square */
 static image txr_bg_left, txr_bg_right;
 
 extern image img_empty_boxart;
+extern image img_dir_boxart;
 
 /* Our actual gdemu items */
 static const gd_item **list_current;
@@ -146,14 +147,16 @@ static inline int current_selected(void) {
 static void draw_large_art(void) {
   if (anim_active(&anim_large_art_scale.time)) {
     txr_get_large(list_current[current_selected()]->product, &txr_focus);
-    if (txr_focus.texture == img_empty_boxart.texture) {
+    if (txr_focus.texture == img_empty_boxart.texture || !strncmp(list_current[current_selected()]->disc, "DIR", 3)) {
       /* Only draw if large is present */
       return;
     }
     /* Always draw on top */
     float z = z_get();
     z_set(512.0f);
-    draw_draw_image_centered(anim_large_art_pos.cur.x, anim_large_art_pos.cur.y, anim_large_art_scale.cur.x, anim_large_art_scale.cur.y, COLOR_WHITE, &txr_focus);
+    draw_draw_image_centered(anim_large_art_pos.cur.x  , anim_large_art_pos.cur.y, 
+							 anim_large_art_scale.cur.x, anim_large_art_scale.cur.y, 
+							 COLOR_WHITE, &txr_focus);
     z_set(z);
   }
 }
@@ -201,8 +204,16 @@ static void draw_grid_boxes(void) {
       float y_pos = GUTTER_TOP + ((VERTICAL_SPACING + TILE_SIZE_Y) * row);       /* 20 + ((10 + 120)*{0,1,2}) */
 
       x_pos *= X_SCALE;
-
-      txr_get_small(list_current[current_starting_index + idx]->product, &txr_icon_list[idx]);
+      
+      if (!strncmp(list_current[current_starting_index + idx]->disc, "DIR", 3) &&
+	      !strncmp(list_current[current_starting_index + idx]->name, "Back", 4)) {
+		  txr_icon_list[idx].texture = img_dir_boxart.texture;
+          txr_icon_list[idx].width   = img_dir_boxart.width;
+          txr_icon_list[idx].height  = img_dir_boxart.height;
+          txr_icon_list[idx].format  = img_dir_boxart.format;
+	  } else {
+        txr_get_small(list_current[current_starting_index + idx]->product, &txr_icon_list[idx]);
+	  }
       draw_draw_image((int)x_pos, (int)y_pos, TILE_SIZE_X * X_SCALE, TILE_SIZE_Y, COLOR_WHITE, &txr_icon_list[idx]);
 
       /* Highlight */
@@ -233,7 +244,10 @@ static void draw_grid_boxes(void) {
         break;
       }
 
-      const int disc_set = list_current[current_selected()]->disc[2] - '0';
+      int disc_set = list_current[current_selected()]->disc[2] - '0';
+      if (!strncmp(list_current[current_selected()]->disc, "DIR", 3)) {
+		  disc_set = 1;
+	  }
 
       /* Disc # above name, position 316x33 */
       if (((current_starting_index + idx) == current_selected()) && (hide_multidisc) && (disc_set > 1)) {
@@ -413,7 +427,8 @@ static void menu_cb(void) {
     return;
   }
   
-  if (!strncmp(list_current[current_selected()]->disc, "PS1", 3)) {
+  if (!strncmp(list_current[current_selected()]->disc, "PS1", 3) ||
+	  !strncmp(list_current[current_selected()]->disc, "DIR", 3)) {
     return;
   }
   
@@ -446,7 +461,44 @@ static void menu_accept(void) {
   if ((navigate_timeout > 0) || (list_len <= 0)) {
     return;
   }
+  
+  int current_selected_item = current_selected();
+  
+  if (!strncmp(list_current[current_selected_item]->disc, "DIR", 3)) {
+	if (!strcmp(list_current[current_selected_item]->name, "Back")) {
+		switch (list_current[current_selected_item]->product[0]) {
+			case 'A':
+				list_set_sort_name();
+				break;
+			case 'G':
+				list_set_sort_genre();
+				break;
+			case 'R':
+				list_set_sort_region();
+				break;
+			default:
+				list_set_sort_default();
+		}
+	}
+	else {
+		list_set_sort_filter(list_current[current_selected_item]->product[0], list_current[current_selected_item]->slot_num);
+	}
+	
+	list_current = list_get();
+    list_len = list_length();
+	
+    screen_column = screen_row = 0;
+    current_starting_index = 0;
+    draw_current = DRAW_UI;
 
+    navigate_timeout = INPUT_TIMEOUT * 2;
+
+    anim_clear(&anim_highlight);
+    anim_clear(&anim_large_art_pos);
+    anim_clear(&anim_large_art_scale);
+	return;
+  }
+  
   /* grab the disc number and if there is more than one */
   int disc_set = list_current[current_selected()]->disc[2] - '0';
 
@@ -521,7 +573,8 @@ static void menu_exit(void) {
 
 FUNCTION(UI_NAME, init) {
   texman_clear();
-
+  txr_empty_small_pool();
+  txr_empty_large_pool();
   /* Set region from preferences */
   openmenu_settings *settings = settings_get();
   region_current = settings->region;
@@ -542,7 +595,11 @@ FUNCTION(UI_NAME, init) {
   unsigned int temp = texman_create();
   draw_load_texture_buffer("EMPTY.PVR", &img_empty_boxart, texman_get_tex_data(temp));
   texman_reserve_memory(img_empty_boxart.width, img_empty_boxart.height, 2 /* 16Bit */);
-
+  
+  temp = texman_create();
+  draw_load_texture_buffer("DIR.PVR", &img_dir_boxart, texman_get_tex_data(temp));
+  texman_reserve_memory(img_dir_boxart.width, img_dir_boxart.height, 2 /* 16Bit */);
+  
   temp = texman_create();
   draw_load_texture_buffer("THEME/SHARED/HIGHLIGHT.PVR", &txr_highlight, texman_get_tex_data(temp));
   texman_reserve_memory(txr_highlight.width, txr_highlight.height, 2 /* 16Bit */);
@@ -572,7 +629,7 @@ FUNCTION(UI_NAME, init) {
   
   font_bmf_init("FONT/BASILEA.FNT", "FONT/BASILEA_W.PVR", settings->aspect);
 
-  printf("Texture scratch free: %d/%d KB (%d/%d bytes)\n", texman_get_space_available() / 1024, (1024 * 1024) / 1024, texman_get_space_available(), (1024 * 1024));
+  printf("Texture scratch free: %d/%d KB (%d/%d bytes)\n", texman_get_space_available() / 1024, TEXMAN_BUFFER_SIZE / 1024, texman_get_space_available(), TEXMAN_BUFFER_SIZE);
 }
 
 static void handle_input_ui(enum control input) {

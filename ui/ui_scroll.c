@@ -82,7 +82,7 @@ static const theme_scroll default_theme = {
 	COLOR_WHITE
   },
   "FONT/GDMNUFNT.PVR",
-  PVR_PACK_ARGB(255, 29, 44, 66),
+  PVR_PACK_ARGB(255, 33, 56, 82),
   PVR_PACK_ARGB(255, 100, 255, 225),
   404,
   20,
@@ -122,6 +122,8 @@ static theme_scroll *custom = NULL;
 /* Our actual gdemu items */
 static const gd_item **list_current;
 static int list_len;
+static uint8_t cusor_alpha = 255;
+static char cusor_step  = -5;
 
 /*static theme_color gdemu_colors = {
     .text_color = color_main_default,
@@ -135,6 +137,7 @@ static int list_len;
 
 static image txr_focus;
 extern image img_empty_boxart;
+extern image img_dir_boxart;
 
 #define INPUT_TIMEOUT (5)
 
@@ -161,9 +164,10 @@ static void draw_gamelist(void) {
   const int Y_ADJUST_CRSR = 3; /* 2 pixels higher than text */
   font_bmp_begin_draw();
   if (list_len <= 0) {
-    draw_draw_quad(cur_theme->pos_gameslist_x, cur_theme->pos_gameslist_y + Y_ADJUST_TEXT + (0 * 21) - Y_ADJUST_CRSR, cur_theme->cursor_width, cur_theme->cursor_height, cur_theme->cursor_color);
+    draw_draw_quad(cur_theme->pos_gameslist_x, cur_theme->pos_gameslist_y + Y_ADJUST_TEXT - Y_ADJUST_CRSR, 
+				   cur_theme->cursor_width, cur_theme->cursor_height, cur_theme->cursor_color);
     font_bmp_set_color(cur_theme->colors.highlight_color);
-    font_bmp_draw_main(cur_theme->pos_gameslist_x + X_ADJUST_TEXT, cur_theme->pos_gameslist_y + Y_ADJUST_TEXT + (0 * 21), "Empty Game List");
+    font_bmp_draw_main(cur_theme->pos_gameslist_x + X_ADJUST_TEXT, cur_theme->pos_gameslist_y + Y_ADJUST_TEXT, "Empty Game List");
   }
 
   for (int i = 0; i < cur_theme->items_per_page; i++) {
@@ -176,6 +180,10 @@ static void draw_gamelist(void) {
     if ((current_starting_index + i) == current_selected_item) {
       /* grab the disc number and if there is more than one */
       int disc_set = list_current[current_selected_item]->disc[2] - '0';
+      
+      if (disc_set > 9) {
+		  disc_set = 1;
+	  }
 
       /* Get multidisc settings */
       openmenu_settings *settings = settings_get();
@@ -185,9 +193,16 @@ static void draw_gamelist(void) {
       if (hide_multidisc && (disc_set > 1)) {
         highlight_text_color = cur_theme->multidisc_color;
       }
-      
+      uint32_t cursor_color = (cur_theme->cursor_color & 0x00FFFFFF) | PVR_PACK_ARGB(cusor_alpha, 0, 0, 0);
       draw_draw_quad(cur_theme->pos_gameslist_x, cur_theme->pos_gameslist_y + Y_ADJUST_TEXT + (i * 21) - Y_ADJUST_CRSR, 
-					 cur_theme->cursor_width, cur_theme->cursor_height, cur_theme->cursor_color);
+					 cur_theme->cursor_width, cur_theme->cursor_height, cursor_color);
+      if (cusor_alpha == 255) {
+		 cusor_step = -5;
+	  }
+	  else if (!cusor_alpha) {
+		  cusor_step = 5;
+	  }
+      cusor_alpha += cusor_step;
       font_bmp_set_color(highlight_text_color);
     } else {
       font_bmp_set_color(cur_theme->colors.text_color);
@@ -227,9 +242,9 @@ static const char *region_code_to_readable(const char *in) {
     case 'E':
       return STR_PAL;
     default:
-      return STR_FREE;
+      break;
   }
-  return STR_FREE;
+  return " ";
 }
 
 static void draw_gameinfo(void) {
@@ -246,7 +261,8 @@ static void draw_gameinfo(void) {
   string_outer_concat(line_buf, STR_REGION, region_code_to_readable(list_current[current_selected_item]->region), INFO_STR_LEN);
   font_bmp_draw_main(cur_theme->pos_gameinfo_x, cur_theme->pos_gameinfo_region_y, line_buf);
   // VGA
-  string_outer_concat(line_buf, STR_VGA, (list_current[current_selected_item]->vga[0] == '1' ? STR_YES : STR_NO), INFO_STR_LEN);
+  string_outer_concat(line_buf, STR_VGA, (list_current[current_selected_item]->vga[0] == '1' ? STR_YES : 
+										  list_current[current_selected_item]->vga[0] == '0' ? STR_NO  : "   "), INFO_STR_LEN);
   font_bmp_draw_main(cur_theme->pos_gameinfo_x, cur_theme->pos_gameinfo_vga_y, line_buf);
   // DISC
   string_outer_concat(line_buf, STR_DISC, list_current[current_selected_item]->disc, INFO_STR_LEN);
@@ -263,16 +279,25 @@ static void draw_gameart(void) {
   if ((current_selected_item >= list_len) || (list_len <= 0)) {
     return;
   }
-
-  txr_get_large(list_current[current_selected_item]->product, &txr_focus);
-  if (txr_focus.texture == img_empty_boxart.texture) {
-    txr_get_small(list_current[current_selected_item]->product, &txr_focus);
+  
+  if (!strncmp(list_current[current_selected_item]->disc, "DIR", 3) &&
+      !strncmp(list_current[current_selected_item]->name, "Back", 4)) {
+    txr_focus.texture = img_dir_boxart.texture;
+    txr_focus.width   = img_dir_boxart.width;
+    txr_focus.height  = img_dir_boxart.height;
+    txr_focus.format  = img_dir_boxart.format;
+  } else {
+    txr_get_large(list_current[current_selected_item]->product, &txr_focus);
+    if (txr_focus.texture == img_empty_boxart.texture) {
+      txr_get_small(list_current[current_selected_item]->product, &txr_focus);
+    }
   }
+  
   if (txr_focus.texture == img_empty_boxart.texture) {
     /* Only draw if image is present */
     return;
   }
-
+  
   draw_draw_image(cur_theme->pos_gametxr_x, cur_theme->pos_gametxr_y, 210, 210, COLOR_WHITE, &txr_focus);
 }
 
@@ -321,7 +346,8 @@ static void menu_cb(void) {
     return;
   }
   
-  if (!strncmp(list_current[current_selected_item]->disc, "PS1", 3)) {
+  if (!strncmp(list_current[current_selected_item]->disc, "PS1", 3) ||
+	  !strncmp(list_current[current_selected_item]->disc, "DIR", 3)) {
     return;
   }
   
@@ -354,7 +380,37 @@ static void menu_accept(void) {
   if ((navigate_timeout > 0) || (list_len <= 0)) {
     return;
   }
-
+  
+  if (!strncmp(list_current[current_selected_item]->disc, "DIR", 3)) {
+	if (!strcmp(list_current[current_selected_item]->name, "Back")) {
+		switch (list_current[current_selected_item]->product[0]) {
+			case 'A':
+				list_set_sort_name();
+				break;
+			case 'G':
+				list_set_sort_genre();
+				break;
+			case 'R':
+				list_set_sort_region();
+				break;
+			default:
+				list_set_sort_default();
+		}
+	}
+	else {
+		list_set_sort_filter(list_current[current_selected_item]->product[0], list_current[current_selected_item]->slot_num);
+	}
+	
+	list_current = list_get();
+    list_len = list_length();
+	
+    current_selected_item = 0;
+    current_starting_index = 0;
+    navigate_timeout = INPUT_TIMEOUT * 2;
+    draw_current = DRAW_UI;
+	return;
+  }
+  
   /* grab the disc number and if there is more than one */
   int disc_set = list_current[current_selected_item]->disc[2] - '0';
 
@@ -400,8 +456,8 @@ static void menu_exit(void) {
 FUNCTION(UI_NAME, init) {
   texman_clear();
   /* @Note: these exist but do we really care? Naturally this will happen without forcing it and old data doesn't matter */
-  // txr_empty_small_pool();
-  // txr_empty_large_pool();
+  txr_empty_small_pool();
+  txr_empty_large_pool();
   openmenu_settings *settings = settings_get();
   if (settings->custom_theme) {
 	int custom_theme_num = 0;
@@ -419,14 +475,18 @@ FUNCTION(UI_NAME, init) {
   unsigned int temp = texman_create();
   draw_load_texture_buffer(cur_theme->bg_left, &txr_bg_left, texman_get_tex_data(temp));
   texman_reserve_memory(txr_bg_left.width, txr_bg_left.height, 2 /* 16Bit */);
-
+  
+  temp = texman_create();
+  draw_load_texture_buffer("DIR.PVR", &img_dir_boxart, texman_get_tex_data(temp));
+  texman_reserve_memory(img_dir_boxart.width, img_dir_boxart.height, 2 /* 16Bit */);
+  
   temp = texman_create();
   draw_load_texture_buffer(cur_theme->bg_right, &txr_bg_right, texman_get_tex_data(temp));
   texman_reserve_memory(txr_bg_right.width, txr_bg_right.height, 2 /* 16Bit */);
 
   font_bmp_init(cur_theme->font, 8, 16);
 
-  printf("Texture scratch free: %d/%d KB (%d/%d bytes)\n", texman_get_space_available() / 1024, (1024 * 1024) / 1024, texman_get_space_available(), (1024 * 1024));
+  printf("Texture scratch free: %d/%d KB (%d/%d bytes)\n", texman_get_space_available() / 1024, TEXMAN_BUFFER_SIZE / 1024, texman_get_space_available(), TEXMAN_BUFFER_SIZE);
 }
 
 static void handle_input_ui(enum control input) {
@@ -508,7 +568,6 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
 
 FUNCTION(UI_NAME, drawOP) {
   draw_bg_layers();
-  draw_gameart();
 
   switch (draw_current) {
     case DRAW_MENU: {
@@ -541,7 +600,8 @@ FUNCTION(UI_NAME, drawOP) {
 FUNCTION(UI_NAME, drawTR) {
   draw_gamelist();
   draw_gameinfo();
-
+  draw_gameart();
+  
   switch (draw_current) {
     case DRAW_MENU: {
       /* Menu on top */

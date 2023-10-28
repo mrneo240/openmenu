@@ -43,11 +43,15 @@ int DAT_init(dat_file *bin) {
 }
 
 int DAT_load_parse(dat_file *bin, const char *path) {
+#ifndef STANDALONE_BINARY
   file_t bin_fd;
+#else
+  FILE *bin_fd;
+#endif
   bin_header file_header;
 
 #ifdef STANDALONE_BINARY
-  bin_fd = fs_open(path, O_RDONLY);
+  bin_fd = fopen(path, "rb");
   const char *filename_safe = path;
 #else
   char filename_safe[128];
@@ -57,14 +61,23 @@ int DAT_load_parse(dat_file *bin, const char *path) {
   bin_fd = fs_open(filename_safe, O_RDONLY);
 #endif
 
-  if (bin_fd == -1) {
+#ifndef STANDALONE_BINARY
+  if (bin_fd == -1) 
+#else
+  if (!bin_fd) 
+#endif
+  {
     printf("DAT:Error Cant read input %s!\n", filename_safe);
     return 1;
   }
 
   printf("DAT:Open %s (%s)\n", filename_safe, path);
 
+#ifndef STANDALONE_BINARY
   fs_read(bin_fd, &file_header, sizeof(bin_header));
+#else
+  fread(&file_header, sizeof(bin_header), 1, bin_fd);
+#endif
   if (file_header.magic.rich.version != 1) {
     printf("DAT:Error Incorrect input file format!\n");
     return 1;
@@ -83,13 +96,20 @@ int DAT_load_parse(dat_file *bin, const char *path) {
 
   /* Parse file table to Hash table */
   for (unsigned int i = 0; i < file_header.num_chunks; i++) {
+#ifndef STANDALONE_BINARY	
     fs_read(bin->handle, &bin->items[i], sizeof(bin_item_raw));
+#else
+    fread(&bin->items[i], sizeof(bin_item_raw), 1, bin->handle);
+#endif    
     HASH_ADD_STR(bin->hash, ID, &bin->items[i]);
   }
 
   /* Leave our handle in a handy place in case we need to read after */
+#ifndef STANDALONE_BINARY
   fs_seek(bin->handle, bin->items[0].offset * bin->chunk_size, SEEK_SET);
-
+#else
+  fseek(bin->handle, bin->items[0].offset * bin->chunk_size, SEEK_SET);
+#endif   
   return 0;
 }
 
@@ -132,8 +152,13 @@ uint32_t DAT_get_index_by_ID(const dat_file *bin, const char *ID) {
 int DAT_read_file_by_ID(const dat_file *bin, const char *ID, void *buf) {
   uint32_t offset = DAT_get_offset_by_ID(bin, ID);
   if (offset) {
+#ifndef STANDALONE_BINARY
     fs_seek(bin->handle, offset, SEEK_SET);
     fs_read(bin->handle, buf, bin->chunk_size);
+#else
+    fseek(bin->handle, offset, SEEK_SET);
+    fread(buf, bin->chunk_size, 1, bin->handle);
+#endif
     return 1;
   } else {
     return 0;
@@ -143,8 +168,13 @@ int DAT_read_file_by_ID(const dat_file *bin, const char *ID, void *buf) {
 int DAT_read_file_by_num(const dat_file *bin, uint32_t chunk_num, void *buf) {
   uint32_t offset = chunk_num * bin->chunk_size;
   if (chunk_num <= bin->num_chunks) {
+#ifndef STANDALONE_BINARY
     fs_seek(bin->handle, offset, SEEK_SET);
     fs_read(bin->handle, buf, bin->chunk_size);
+#else
+    fseek(bin->handle, offset, SEEK_SET);
+    fread(buf, bin->chunk_size, 1, bin->handle);
+#endif
     return 1;
   } else {
     return 0;

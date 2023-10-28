@@ -17,6 +17,7 @@
 #include <strings.h>
 #endif
 
+#include <ctype.h>
 #include "../external/ini.h"
 #include "db_item.h"
 #include "db_list.h"
@@ -43,11 +44,140 @@ static gd_item *gd_slots_BASE = NULL;
 static int num_items_temp = -1;
 static gd_item **list_temp = NULL;
 
+static int num_items_current = -1;
+static gd_item **list_current = NULL;
+
+static int num_items_alphabet = 27;
+static const struct gd_item list_alphabet_tmp[27] = 
+{
+	{ "#", "", "A0", "DIR", "", "",  0, {' '} },
+	{ "A", "", "AA", "DIR", "", "",  1, {' '} },
+	{ "B", "", "AB", "DIR", "", "",  2, {' '} },
+	{ "C", "", "AC", "DIR", "", "",  3, {' '} },
+	{ "D", "", "AD", "DIR", "", "",  4, {' '} },
+	{ "E", "", "AE", "DIR", "", "",  5, {' '} },
+	{ "F", "", "AF", "DIR", "", "",  6, {' '} },
+	{ "G", "", "AG", "DIR", "", "",  7, {' '} },
+	{ "H", "", "AH", "DIR", "", "",  8, {' '} },
+	{ "I", "", "AI", "DIR", "", "",  9, {' '} },
+	{ "J", "", "AJ", "DIR", "", "", 10, {' '} },
+	{ "K", "", "AK", "DIR", "", "", 11, {' '} },
+	{ "L", "", "AL", "DIR", "", "", 12, {' '} },
+	{ "M", "", "AM", "DIR", "", "", 13, {' '} },
+	{ "N", "", "AN", "DIR", "", "", 14, {' '} },
+	{ "O", "", "AO", "DIR", "", "", 15, {' '} },
+	{ "P", "", "AP", "DIR", "", "", 16, {' '} },
+	{ "Q", "", "AQ", "DIR", "", "", 17, {' '} },
+	{ "R", "", "AR", "DIR", "", "", 18, {' '} },
+	{ "S", "", "AS", "DIR", "", "", 19, {' '} },
+	{ "T", "", "AT", "DIR", "", "", 20, {' '} },
+	{ "U", "", "AU", "DIR", "", "", 21, {' '} },
+	{ "V", "", "AV", "DIR", "", "", 22, {' '} },
+	{ "W", "", "AW", "DIR", "", "", 23, {' '} },
+	{ "X", "", "AX", "DIR", "", "", 24, {' '} },
+	{ "Y", "", "AY", "DIR", "", "", 25, {' '} },
+	{ "Z", "", "AZ", "DIR", "", "", 26, {' '} }
+};
+
+static const struct gd_item *list_alphabet[27] =
+{
+	&list_alphabet_tmp[ 0],
+	&list_alphabet_tmp[ 1],
+	&list_alphabet_tmp[ 2],
+	&list_alphabet_tmp[ 3],
+	&list_alphabet_tmp[ 4],
+	&list_alphabet_tmp[ 5],
+	&list_alphabet_tmp[ 6],
+	&list_alphabet_tmp[ 7],
+	&list_alphabet_tmp[ 8],
+	&list_alphabet_tmp[ 9],
+	&list_alphabet_tmp[10],
+	&list_alphabet_tmp[11],
+	&list_alphabet_tmp[12],
+	&list_alphabet_tmp[13],
+	&list_alphabet_tmp[14],
+	&list_alphabet_tmp[15],
+	&list_alphabet_tmp[16],
+	&list_alphabet_tmp[17],
+	&list_alphabet_tmp[18],
+	&list_alphabet_tmp[19],
+	&list_alphabet_tmp[20],
+	&list_alphabet_tmp[21],
+	&list_alphabet_tmp[22],
+	&list_alphabet_tmp[23],
+	&list_alphabet_tmp[24],
+	&list_alphabet_tmp[25],
+	&list_alphabet_tmp[26]
+};
+
+static int num_items_region = 4;
+static const struct gd_item list_region_tmp[4] = 
+{
+	{ "NTSC-J", "", "RJ", "DIR", "", "", 0, {' '} },
+	{ "NTSC-U", "", "RU", "DIR", "", "", 1, {' '} },
+	{ "PAL"   , "", "RP", "DIR", "", "", 2, {' '} },
+	{ "FREE"  , "", "RF", "DIR", "", "", 3, {' '} }
+};
+
+static const struct gd_item *list_region[4] = 
+{
+	&list_region_tmp[0],
+	&list_region_tmp[1],
+	&list_region_tmp[2],
+	&list_region_tmp[3]
+};
+
+static int num_items_genre = 17;
+static const struct gd_item list_genre_tmp[17] = 
+{
+	{ "Action"       , "", "GACT", "DIR", "", "",  0, {' '} },
+	{ "Racing"       , "", "GRAC", "DIR", "", "",  1, {' '} },
+	{ "Simulation"   , "", "GSIM", "DIR", "", "",  2, {' '} },
+	{ "Sports"       , "", "GSPO", "DIR", "", "",  3, {' '} },
+	{ "Lightgun"     , "", "GLIG", "DIR", "", "",  4, {' '} },
+	{ "Fighting"     , "", "GFIG", "DIR", "", "",  5, {' '} },
+	{ "Shooter"      , "", "GSHO", "DIR", "", "",  6, {' '} },
+	{ "Survival"     , "", "GSUR", "DIR", "", "",  7, {' '} },
+	{ "Adventure"    , "", "GADV", "DIR", "", "",  8, {' '} },
+	{ "Platformer"   , "", "GPLA", "DIR", "", "",  9, {' '} },
+	{ "RPG"          , "", "GRPG", "DIR", "", "", 10, {' '} },
+	{ "Shmup"        , "", "GSHM", "DIR", "", "", 11, {' '} },
+	{ "Strategy"     , "", "GSTR", "DIR", "", "", 12, {' '} },
+	{ "Puzzle"       , "", "GPUZ", "DIR", "", "", 13, {' '} },
+	{ "Arcade"       , "", "GARC", "DIR", "", "", 14, {' '} },
+	{ "Music"        , "", "GMUS", "DIR", "", "", 15, {' '} },
+	{ "No genre"     , "", "GNG" , "DIR", "", "", 16, {' '} }
+};
+
+static const struct gd_item *list_genre[17] = 
+{
+	&list_genre_tmp[ 0],
+	&list_genre_tmp[ 1],
+	&list_genre_tmp[ 2],
+	&list_genre_tmp[ 3],
+	&list_genre_tmp[ 4],
+	&list_genre_tmp[ 5],
+	&list_genre_tmp[ 6],
+	&list_genre_tmp[ 7],
+	&list_genre_tmp[ 8],
+	&list_genre_tmp[ 9],
+	&list_genre_tmp[10],
+	&list_genre_tmp[11],
+	&list_genre_tmp[12],
+	&list_genre_tmp[13],
+	&list_genre_tmp[14],
+	&list_genre_tmp[15],
+	&list_genre_tmp[16]
+};
+
+static struct gd_item back_button = { "Back", "", " ", "DIR", "", "", 0, {' '} };
+
 /* Temporary list for holding all multidisc games in a set */
 #define MULTIDISC_MAX_GAMES_PER_SET (4)
 static int num_items_multidisc = -1;
 static gd_item *list_multidisc[MULTIDISC_MAX_GAMES_PER_SET] = {NULL};
 
+#ifndef STANDALONE_BINARY
 static inline long int filelength(file_t f) {
   long int end;
   fs_seek(f, 0, SEEK_END);
@@ -56,6 +186,16 @@ static inline long int filelength(file_t f) {
 
   return end;
 }
+#else
+static inline long int filelength(FILE *f) {
+  long int end;
+  fseek(f, 0, SEEK_END);
+  end = ftell(f);
+  fseek(f, 0, SEEK_SET);
+
+  return end;
+}
+#endif
 
 static int read_openmenu_ini(void *user, const char *section, const char *name, const char *value) {
   /* unused */
@@ -176,68 +316,103 @@ static int struct_cmp_by_region(const void *a, const void *b) {
   return strcmp(ia->region, ib->region);
 }
 
-static int struct_cmp_by_genre(const void *a, const void *b) {
-  db_item *temp_meta, *temp_meta1;
-  const gd_item *ia = *(const gd_item **)a;
-  const gd_item *ib = *(const gd_item **)b;
-  
-  if (db_get_meta(ia->product, &temp_meta)) {
-	  return -1;
-  }
-  
-  if (db_get_meta(ib->product, &temp_meta1)) {
-	  return 1;
-  }
-  
-  if (temp_meta->genre > temp_meta1->genre) {
-	  return 1;
-  }
-  else if (temp_meta->genre < temp_meta1->genre) {
-	  return -1;
-  }
-  
-  return 0;
+void list_set_sort_name(void) {
+  list_temp_reset();
+  list_current = (gd_item **) list_alphabet;
+  num_items_current = num_items_alphabet;
 }
 
-const gd_item **list_get_sort_name(void) {
+void list_set_sort_region(void) {
   list_temp_reset();
-
-  /* Sort according to name alphabetically */
-  qsort(list_temp, num_items_temp, sizeof(gd_item *), struct_cmp_by_name);
-  return (const gd_item **)list_temp;
+  list_current = (gd_item **) list_region;
+  num_items_current = num_items_region;
 }
 
-const gd_item **list_get_sort_region(void) {
+void list_set_sort_genre(void) {
   list_temp_reset();
-
-  /* Sort according to region */
-  qsort(list_temp, num_items_temp, sizeof(gd_item *), struct_cmp_by_region);
-  return (const gd_item **)list_temp;
+  list_current = (gd_item **) list_genre;
+  num_items_current = num_items_genre;
 }
 
-const gd_item **list_get_sort_genre(void) {
+void list_set_sort_default(void) {
   list_temp_reset();
-
-  /* Sort according to genre */
-  qsort(list_temp, num_items_temp, sizeof(gd_item *), struct_cmp_by_genre);
-  return (const gd_item **)list_temp;
+  list_current = list_temp;
+  num_items_current = num_items_temp;
 }
 
-const gd_item **list_get_sort_default(void) {
-  list_temp_reset();
+void list_set_sort_filter(const char type, int num) {
+#ifdef _arch_dreamcast
+  int base_idx, temp_idx = 1;
+  int hide_multidisc = settings_get()->multidisc;
 
-  return (const gd_item **)list_temp;
+  FLAGS_GENRE matching_genre = (1 << num);
+  
+  list_temp[0] = &back_button;
+  back_button.product[0] = type;
+  
+  /* Skip openMenu itself */
+  for (base_idx = 1; base_idx < num_items_BASE; base_idx++) {
+    int disc_num = gd_slots_BASE[base_idx].disc[0] - '0';
+    int disc_set = gd_slots_BASE[base_idx].disc[2] - '0';
+    if (hide_multidisc && disc_num > 1 && disc_set > 1) {
+      continue;
+    }
+
+    gd_item *temp_item = &gd_slots_BASE[base_idx];
+    db_item *temp_meta;
+    
+    switch (type)
+	{
+		case 'G':
+			if (!db_get_meta(temp_item->product, &temp_meta)) {
+			  if(num == 16 && !temp_meta->genre) {
+				  list_temp[temp_idx++] = temp_item;
+			  } else if (temp_meta->genre & matching_genre) {
+				list_temp[temp_idx++] = temp_item;
+			  }
+			} else if(num == 16) {
+				list_temp[temp_idx++] = temp_item;
+			}
+			break;
+		case 'R':
+			
+			if (num == 0 && !strcmp(temp_item->region, "J")) {
+				list_temp[temp_idx++] = temp_item;
+			} else if (num == 1 && !strcmp(temp_item->region, "U")) {
+				list_temp[temp_idx++] = temp_item;
+			} else if (num == 2 && !strcmp(temp_item->region, "E")) {
+				list_temp[temp_idx++] = temp_item;
+			} else if (num == 3 && !strncmp(temp_item->region, "JUE", 3)) {
+				list_temp[temp_idx++] = temp_item;
+			}
+			break;
+		default:
+			if (num != 0) {
+				if (toupper(temp_item->name[0]) == (num + '@')) {
+					list_temp[temp_idx++] = temp_item;
+				}
+			}
+			else if (!isalpha((int) temp_item->name[0])) {
+				list_temp[temp_idx++] = temp_item;
+			}
+	}
+  }
+  
+  qsort(&list_temp[1], temp_idx-1, sizeof(gd_item *), struct_cmp_by_name);
+  list_current = list_temp;
+  num_items_current = num_items_temp = temp_idx;
+#endif
 }
 
 const struct gd_item **list_get(void) {
-  return (const gd_item **)list_temp;
+  return (const gd_item **)list_current;
 }
 
 const struct gd_item **list_get_multidisc(void) {
   return (const gd_item **)list_multidisc;
 }
 
-const struct gd_item **list_get_genre(int matching_genre) {
+void list_set_genre(int matching_genre) {
 #if !defined(STANDALONE_BINARY)
   int base_idx, temp_idx = 0;
 
@@ -260,13 +435,12 @@ const struct gd_item **list_get_genre(int matching_genre) {
   }
 
   num_items_temp = temp_idx;
-  return (const gd_item **)list_temp;
 #endif
 }
 
-const struct gd_item **list_get_genre_sort(int genre, int sort) {
+void list_set_genre_sort(int genre, int sort) {
   FLAGS_GENRE matching_genre = (1 << genre);
-  list_get_genre(matching_genre);
+  list_set_genre(matching_genre);
 
   switch (sort) {
     case 1:
@@ -275,17 +449,13 @@ const struct gd_item **list_get_genre_sort(int genre, int sort) {
     case 2:
       qsort(list_temp, num_items_temp, sizeof(gd_item *), struct_cmp_by_region);
       break;
-    case 3:
-/*      qsort(list_temp, num_items_temp, sizeof(gd_item *), struct_cmp_by_genre);
-      break;*/
-
     default:
-    case 0:
       /* @Note: no sort, strange codeflow */
       break;
   }
-
-  return (const gd_item **)list_temp;
+  
+  list_current = list_temp;
+  num_items_current = num_items_temp;
 }
 
 void list_set_multidisc(const char *product_id) {
@@ -302,7 +472,7 @@ void list_set_multidisc(const char *product_id) {
 }
 
 int list_length(void) {
-  return num_items_temp;
+  return num_items_current;
 }
 
 int list_multidisc_length(void) {
@@ -379,8 +549,14 @@ static void fix_sega_serials(void) {
 
 int list_read(const char *filename) {
   /* Always LD/cdrom */
+#ifndef STANDALONE_BINARY
   file_t ini = fs_open(filename, O_RDONLY);
-  if (ini == -1) {
+  if (ini == -1)
+#else
+  FILE *ini = fopen(filename, "rb");
+  if (!ini)
+#endif
+  {
     printf("INI:Error opening %s!\n", filename);
     fflush(stdout);
     /*exit or something */
@@ -395,8 +571,13 @@ int list_read(const char *filename) {
 	  printf("%s no free memory\n", __func__);
 	  return -1;
   }
+#ifndef STANDALONE_BINARY
   fs_read(ini, ini_buffer, ini_size);
   fs_close(ini);
+#else
+  fread(ini_buffer, ini_size, 1, ini);
+  fclose(ini);
+#endif
   /* Add newline */
   ini_buffer[ini_size + 0] = '\n';
   ini_buffer[ini_size + 1] = '\0';
@@ -440,7 +621,7 @@ void list_destroy(void) {
 
 const gd_item *list_item_get(int idx) {
   if ((idx >= 0) && (idx < num_items_temp))
-    return (const gd_item *)list_temp[idx];
+    return (const gd_item *)list_current[idx];
 
   return NULL;
 }

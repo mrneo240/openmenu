@@ -221,22 +221,22 @@ static void menu_accept(void) {
     if (!choices[CHOICE_FILTER]) {
       switch ((CFG_SORT)choices[CHOICE_SORT]) {
         case SORT_NAME:
-          list_get_sort_name();
+          list_set_sort_name();
           break;
         case SORT_DATE:
-          list_get_sort_region();
+          list_set_sort_region();
           break;
         case SORT_PRODUCT:
-		  list_get_sort_genre();
+		  list_set_sort_genre();
 		  break;
         default:
         case SORT_DEFAULT:
-          list_get_sort_default();
+          list_set_sort_default();
           break;
       }
     } else {
       /* If filtering, filter down to only genre then sort */
-      list_get_genre_sort((FLAGS_GENRE)choices[CHOICE_FILTER] - 1, choices[CHOICE_SORT]);
+      list_set_genre_sort((FLAGS_GENRE)choices[CHOICE_FILTER] - 1, choices[CHOICE_SORT]);
     }
 
     if (choices[CHOICE_SAVE] == 0 /* Save */){
