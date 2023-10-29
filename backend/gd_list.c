@@ -307,7 +307,7 @@ static void list_temp_reset(void) {
 static int struct_cmp_by_name(const void *a, const void *b) {
   const gd_item *ia = *(const gd_item **)a;
   const gd_item *ib = *(const gd_item **)b;
-  return strcmp(ia->name, ib->name);
+  return strcasecmp(ia->name, ib->name);
 }
 
 static int struct_cmp_by_region(const void *a, const void *b) {
