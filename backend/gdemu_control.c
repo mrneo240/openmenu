@@ -3,11 +3,13 @@
 #include <kos.h>
 #include <kos/thread.h>
 
+#include "inc/vm2_api.h"
 #include "backend/gd_item.h"
 #include "gdemu_sdk.h"
 #include "gdmenu_binary.h"
 #include "cb_loader.h"
 #include "controls.p1.h"
+extern maple_device_t *vm2_dev;
 
 static void wait_cd_ready(void) {
   for (int i = 0; i < 500; i++) {
@@ -89,6 +91,11 @@ void dreamcast_launch_disc(gd_item *disc) {
   gdemu_set_img_num((uint16_t)disc->slot_num);
   //thd_sleep(500);
   
+  if (vm2_dev)
+  {
+	  vm2_set_id(vm2_dev, disc->product);
+  }
+  
   wait_cd_ready();
   
   int status = 0, disc_type = 0;
@@ -123,6 +130,9 @@ void dreamcast_launch_cb(gd_item *disc) {
   file_t fd;
   uint32_t cb_size;
   uint8_t *cb_buf;
+  uint32_t cheat_size = 0;
+  uint8_t *cheat_buf;
+  char cheat_name[32];
   
   fd = fs_open("/cd/PELICAN.BIN", O_RDONLY);
   
@@ -138,8 +148,50 @@ void dreamcast_launch_cb(gd_item *disc) {
   fs_read(fd, cb_buf, cb_size);
   fs_close(fd);
   
+  sprintf(cheat_name, "/cd/cheats/%s.bin", disc->product);
+  
+  if ((fd = fs_open(cheat_name, O_RDONLY)) == -1)
+  {
+	  fd = fs_open("/cd/cheats/FCDCHEATS.BIN", O_RDONLY);
+  }
+  
+  if (fd != -1) {
+
+	  fs_seek(fd, 0, SEEK_END);
+	  cheat_size = fs_tell(fd);
+	  fs_seek(fd, 0, SEEK_SET);
+	  
+	  cheat_buf = (uint8_t*) malloc(cheat_size+32);
+	  cheat_buf = (uint8_t*) (((uint32_t) cheat_buf & 0xffffffe0) + 0x20);
+	  
+	  fs_read(fd, cheat_buf, 16);
+	  
+	  if (!strncmp((const char *) cheat_buf, "XploderDC Cheats", 16))
+	  {
+		  fs_seek(fd, 640, SEEK_SET);
+		  cheat_size -= 640;
+		  fs_read(fd, cheat_buf, cheat_size);
+		  
+		  if (!((uint32_t *) cheat_buf)[0])
+		  {
+			  cheat_size = 0;
+		  }
+	  }
+	  else
+	  {
+		  cheat_size = 0;
+	  }
+	  
+	  fs_close(fd);
+  }
+  
   gdemu_set_img_num((uint16_t)disc->slot_num);
   //thd_sleep(500);
+  
+  if (vm2_dev)
+  {
+	  vm2_set_id(vm2_dev, disc->product);
+  }
   
   wait_cd_ready();
   
@@ -148,6 +200,22 @@ void dreamcast_launch_cb(gd_item *disc) {
   int status = 0, disc_type = 0;
   
   cdrom_get_status(&status, &disc_type);
+  
+  if (cheat_size)
+  {
+	  uint16_t *pelican = (uint16_t *) cb_buf;
+	  
+	  pelican[128] = 0;
+	  pelican[129] = 0x90;
+	  
+	  pelican[10818] = (uint16_t) cheat_size;
+	  pelican[10819] = (cheat_size >> 16);
+	  
+	  pelican[10820] = 0;
+	  pelican[10821] = 0x8CD0;
+	  
+	  memcpy((void*)0xACD00000, cheat_buf, cheat_size);
+  }
   
   if (disc_type != CD_GDROM) {
 	  CDROM_TOC toc;

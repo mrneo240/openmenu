@@ -564,7 +564,8 @@ static void menu_exit(void) {
   if (navigate_timeout > 0) {
     return;
   }
-
+  
+  set_cur_game_id(list_current[current_selected()]->product);
   draw_current = DRAW_EXIT;
   popup_setup(&draw_current, current_theme_colors, &navigate_timeout);
 }

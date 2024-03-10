@@ -25,6 +25,8 @@
 #include "ui/dc/input.h"
 #include "ui/draw_prototypes.h"
 #include "ui/global_settings.h"
+#include "ui/ui_menu_credits.h"
+#include "inc/vm2_api.h"
 
 /* UI Collection */
 #include "ui/ui_grid.h"
@@ -37,6 +39,8 @@
 #include "texture/txr_manager.h"
 
 #include "inc/bloader.h"
+
+maple_device_t *vm2_dev = NULL;
 
 void (*current_ui_init)(void);
 void (*current_ui_setup)(void);
@@ -292,7 +296,8 @@ static void init_gfx_pvr(void) {
       256 * 1024,                                                                    /* 256kb Vertex buffer  */
       0,                                                                             /* No DMA, but maybe? */
       0,                                                                             /* No FSAA */
-      0                                                                              /* Disable TR autosort */
+      0,                                                                             /* Disable TR autosort */
+      0
   };
 
   pvr_init(&params);
@@ -306,6 +311,13 @@ int main(int argc, char *argv[]) {
   
   //gdemu_set_img_num(1);
   //thd_sleep(500);
+  maple_device_t * vmu = maple_enum_type(0, MAPLE_FUNC_MEMCARD);
+  
+  if (vmu && check_vm2_present(vmu))
+  {
+	  vm2_set_id(vmu, "openmenu");
+	  vm2_dev = vmu;
+  }
   
   fflush(stdout);
   setbuf(stdout, NULL);
@@ -340,6 +352,11 @@ void exit_to_bios(void) {
   }
   else {
 	bloader_config->enable_3d = 1;
+  }
+  
+  if (vm2_dev)
+  {
+	  vm2_set_id(vm2_dev, get_cur_game_id());
   }
   
   arch_exec_at(bloader_data, bloader_size, 0xacf00000);

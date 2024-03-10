@@ -42,6 +42,8 @@ static theme_scroll* custom_scroll;
 static int num_custom_themes;
 int cb_multidisc = 0;
 int start_cb = 0;
+static const char * cur_game_pid = NULL;
+
 
 #define MENU_OPTIONS ((int)(sizeof(menu_choice_text) / sizeof(menu_choice_text)[0]))
 #define MENU_CHOICES (MENU_OPTIONS) /* Only those with selectable options */
@@ -107,6 +109,16 @@ static uint32_t highlight_color;
 static uint32_t menu_bkg_color;
 static uint32_t menu_bkg_border_color;
 static openmenu_settings* settings = NULL;
+
+void set_cur_game_id(const char *id)
+{
+	cur_game_pid = id;
+}
+
+const char *get_cur_game_id()
+{
+	return cur_game_pid;
+}
 
 static void common_setup(enum draw_state* state, theme_color* _colors, int* timeout_ptr) {
   /* Ensure color themeing is consistent */
