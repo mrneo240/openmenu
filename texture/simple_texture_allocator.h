@@ -14,7 +14,7 @@
 #include <stdint.h>
 
 /* 1mb buffer */
-#define TEXMAN_BUFFER_SIZE (1 * 1024 * 1024)
+#define TEXMAN_BUFFER_SIZE (2 * 1024 * 1024)
 
 struct Simple_Texture {
   unsigned char *location;

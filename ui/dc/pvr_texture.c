@@ -136,15 +136,20 @@ pvr_ptr_t load_pvr_from_buffer(const void* input, uint32_t* w, uint32_t* h, uint
 void* pvr_get_internal_buffer(void) {
   if (!_internal_buf) {
     _internal_buf = malloc(512 * 512 * 2);
+    if (!_internal_buf) {
+	  printf("%s no free memory\n", __func__);
+	  return NULL;
+    }
   }
   return _internal_buf;
 }
 
 static void pvr_read_to_internal(const char* filename) {
-  unsigned int texSize;
-  FD_TYPE tex_fd = (FD_TYPE)NULL;
-  memcpy(filename_safe, DISC_PREFIX, strlen(DISC_PREFIX) + 1);
-  strcat(filename_safe, filename);
+  uint32_t texSize;
+  file_t tex_fd;
+  //memcpy(filename_safe, DISC_PREFIX, strlen(DISC_PREFIX) + 1);
+  //strcat(filename_safe, filename);
+  snprintf(filename_safe, 127, "%s%s", DISC_PREFIX, filename);
 
   /* replace all - with _ */
   char* iter = filename_safe;
@@ -156,18 +161,29 @@ static void pvr_read_to_internal(const char* filename) {
   unsigned char* texBuf = pvr_get_internal_buffer();
   memset(texBuf, '\0', PVR_HDR_SIZE);
 
-  tex_fd = fopen(filename_safe, "rb");
-  if (!tex_fd) {
+  tex_fd = fs_open(filename_safe, O_RDONLY);
+  if (tex_fd == -1) {
     printf("PVR:Error opening %s!\n", filename_safe);
     return;
   }
 
-  fseek(tex_fd, 0, SEEK_END);
-  texSize = ftell(tex_fd);
+  fs_seek(tex_fd, 0, SEEK_END);
+  texSize = fs_tell(tex_fd);
 
-  fseek(tex_fd, 0, SEEK_SET);
-  fread(texBuf, texSize, 1, tex_fd);
-  fclose(tex_fd);
+  fs_seek(tex_fd, 0, SEEK_SET);
+  fs_read(tex_fd, texBuf, PVR_HDR_SIZE/2);
+  
+  if (!strncmp((char *)texBuf,"GBIX", 4))
+  {
+	   fs_read(tex_fd, texBuf+(PVR_HDR_SIZE/2), texSize - (PVR_HDR_SIZE/2));
+  }
+  else
+  {
+	  fs_seek(tex_fd, 0, SEEK_SET);
+	  fs_read(tex_fd, texBuf+(PVR_HDR_SIZE/2), texSize);
+  }
+  
+  fs_close(tex_fd);
 }
 
 pvr_ptr_t load_pvr(const char* filename, uint32_t* w, uint32_t* h, uint32_t* txrFormat) {

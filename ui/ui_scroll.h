@@ -1,5 +1,5 @@
 /*
- * File: ui_gdmenu.h
+ * File: ui_scroll.h
  * Project: ui
  * File Created: Sunday, 13th June 2021 12:33:33 pm
  * Author: Hayden Kowalchuk
@@ -10,7 +10,7 @@
 
 #pragma once
 
-#define UI_NAME GDMENU_EMU
+#define UI_NAME SCROLL
 
 #define MAKE_FN(name, func) void name##_##func(void)
 #define FUNCTION(signal, func) MAKE_FN(signal, func)

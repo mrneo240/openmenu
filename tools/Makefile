@@ -4,7 +4,7 @@ INCS := -I../
 DEFINES := -DSTANDALONE_BINARY=1
 CFLAGS_COSMO := -g -Os -static -nostdlib -nostdinc -fno-pie -no-pie -mno-red-zone -fno-omit-frame-pointer -pg -mnop-mcount -DCOSMO $(INCS) $(DEFINES)
 LDFLAGS_COSMO := -fuse-ld=bfd -Wl,-T,cosmo/ape.lds -include cosmo/cosmopolitan.h cosmo/crt.o cosmo/ape.o cosmo/cosmopolitan.a
-CFLAGS := -O2 -s $(INCS) $(DEFINES)
+CFLAGS := -O2 -s $(INCS) $(DEFINES) -Wno-unused-result
 
 all: datread datpack metapack datstrip tsv2ini renamecsv menufaker
 

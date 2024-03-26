@@ -28,8 +28,12 @@ int db_load_DAT(void) {
 
   /* Read DAT to db, but use Hash table to quickly search */
   db = malloc(dat_meta.num_chunks * sizeof(db_item));
-  fread(db, sizeof(db_item), dat_meta.num_chunks, (FD_TYPE)dat_meta.handle);
-  fclose((FD_TYPE)dat_meta.handle);
+  if (!db) {
+	  printf("%s no free memory\n", __func__);
+	  return 0;
+  }
+  fs_read(dat_meta.handle, db, dat_meta.num_chunks * sizeof(db_item));
+  fs_close(dat_meta.handle);
 
   DAT_info(&dat_meta);
 

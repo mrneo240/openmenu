@@ -20,13 +20,14 @@ void list_print(const struct gd_item **list);
 
 /* simple sorting methods */
 const struct gd_item **list_get(void);
-const struct gd_item **list_get_sort_name(void);
-const struct gd_item **list_get_sort_date(void);
-const struct gd_item **list_get_sort_product(void);
-const struct gd_item **list_get_sort_default(void);
+void list_set_sort_name(void);
+void list_set_sort_region(void);
+void list_set_sort_genre(void);
+void list_set_sort_default(void);
 /* complex filtering and sorting */
-const struct gd_item **list_get_genre(int genre);
-const struct gd_item **list_get_genre_sort(int genre, int sort);
+void list_set_genre(int genre);
+void list_set_genre_sort(int genre, int sort);
+void list_set_sort_filter(const char type, int num);
 /* Grab multidisc games */
 void list_set_multidisc(const char *product_id);
 const struct gd_item **list_get_multidisc(void);

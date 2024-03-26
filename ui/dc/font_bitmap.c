@@ -57,7 +57,7 @@ void font_bmp_begin_draw() {
   pvr_sprite_compile(&font_header, &tmp);
 #else
   pvr_poly_cxt_t tmp;
-  pvr_poly_cxt_txr(&tmp, draw_get_list(), font.texture.format, font.texture.width, font.texture.height, font.texture.texture, PVR_FILTER_NONE);
+  pvr_poly_cxt_txr(&tmp, draw_get_list(), font.texture.format, font.texture.width, font.texture.height, font.texture.texture, PVR_FILTER_BILINEAR);
   pvr_poly_compile(&font_header, &tmp);
 #endif
 

@@ -133,7 +133,7 @@ void settings_validate(void) {
   }
 
   if ((savedata.custom_theme < THEME_START) || (savedata.custom_theme > THEME_END)) {
-    savedata.custom_theme_num = THEME_OFF;
+    savedata.custom_theme_num = (CFG_CUSTOM_THEME_NUM) THEME_OFF;
   }
 
   if ((savedata.custom_theme_num < THEME_NUM_START) || (savedata.custom_theme_num > THEME_NUM_END)) {

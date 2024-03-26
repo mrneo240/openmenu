@@ -35,7 +35,11 @@ typedef struct bin_header {
 typedef struct dat_file {
   uint32_t chunk_size; /* Size of each chunk in the file */
   uint32_t num_chunks; /* How many chunks are present in this bin */
-  void *handle;        /* Open File Handle, commonly FILE* */
+#ifdef STANDALONE_BINARY
+  FILE *handle;
+#else
+  file_t handle;        /* Open File Handle, commonly FILE* */
+#endif
   bin_item *items;     /* Holds actual data */
   bin_item *hash;      /* Hash table for above */
 } dat_file;

@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../texture/txr_manager.h"
 
 static struct Simple_Texture textures[32];
 static void *tex_buffer = NULL;
@@ -29,6 +30,8 @@ int texman_inited(void) {
 }
 
 void texman_reset(void *buf, uint32_t size) {
+  //txr_empty_small_pool();
+  //txr_empty_large_pool();
   memset(textures, 0, sizeof(textures));
   tex_number = 0;
   tex_buffer = tex_buffer_start = buf;

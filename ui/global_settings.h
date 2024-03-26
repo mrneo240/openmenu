@@ -13,6 +13,10 @@
 #include <stdint.h>
 #include <stdio.h>
 
+extern void exit_to_bios(void);
+extern int cb_multidisc;
+extern int start_cb;
+
 typedef enum CFG_REGION {
   REGION_START = 0,
   REGION_NTSC_U = REGION_START,
@@ -32,8 +36,8 @@ typedef enum CFG_UI {
   UI_START = 0,
   UI_LINE_DESC = UI_START,
   UI_GRID3,
-  UI_GDMENU,
-  UI_END = UI_GDMENU
+  UI_SCROLL,
+  UI_END = UI_SCROLL
 } CFG_UI;
 
 typedef enum CFG_SORT {
@@ -124,7 +128,8 @@ enum draw_state { DRAW_UI = 0,
                   DRAW_MULTIDISC,
                   DRAW_EXIT,
                   DRAW_MENU,
-                  DRAW_CREDITS };
+                  DRAW_CREDITS,
+                  DRAW_CODEBREAKER };
 
 void settings_init(void);
 void settings_load(void);
