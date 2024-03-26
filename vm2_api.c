@@ -5,7 +5,7 @@
 #include <dc/maple.h>
 #include "inc/vm2_api.h"
 
-static uint8_t recv_buff[128];
+static uint8_t recv_buff[196];
 
 static void vbl_allinfo_callback(maple_frame_t * frm)
 {
@@ -17,15 +17,16 @@ static void vbl_allinfo_callback(maple_frame_t * frm)
 	if (resp->response == MAPLE_RESPONSE_ALLINFO)
 	{
 		/* Copy in the new buff */
-		memcpy(recv_buff, resp, 128);
+		memcpy(recv_buff, resp, 196);
 	} 
 	else
 	{
 		printf("maple: bad response %d on device\n",resp->response); 
-		memcpy(recv_buff, resp, 128);
+		memcpy(recv_buff, resp, 196);
 	}
 	
 	maple_frame_unlock(frm);
+	genwait_wake_all(frm);
 }
 
 /* Send a ALLINFO command for the given port/unit */
@@ -56,7 +57,7 @@ static int send_allinfo(int p, int u)
 		{
 			/* It's probably never coming back, so just unlock the frame */
 			dev->frame.state = MAPLE_FRAME_VACANT;
-			dbglog(DBG_ERROR, "send_allinfo: timeout to unit %c%c\n", dev->port + 'A', dev->unit + '0');
+			/*dbglog(DBG_ERROR, */printf("send_allinfo: timeout to unit %c%c\n", dev->port + 'A', dev->unit + '0');
 			return MAPLE_ETIMEOUT;
 		}
 	}
@@ -83,6 +84,7 @@ static void vm2_reply(maple_frame_t * frm)
 	memcpy(recv_buff, resp, 4);
 	
 	maple_frame_unlock(frm);
+	genwait_wake_all(frm);
 }
 
 int vm2_set_id(maple_device_t * dev, const char *ID)
@@ -136,7 +138,7 @@ wait_vm2:
 int check_vm2_present(maple_device_t * dev)
 {
 	/* Clear the old buffer */
-	memset(recv_buff, 0, 128);
+	memset(recv_buff, 0, 196);
 	
 	if (send_allinfo(dev->port, dev->unit) != MAPLE_EOK)
 	{
@@ -145,10 +147,13 @@ int check_vm2_present(maple_device_t * dev)
 	
 	maple_alldevinfo_t *info = (maple_alldevinfo_t *) &recv_buff[4];
 	
-	if (!strncasecmp(info->extended, "VM2 by Dreamware", 16))
+	if (!strncasecmp(info->extended, "VM2 by Dreamware", 16) ||
+		!strncasecmp(info->extended, "USB RP2040 EMU  ", 16))
 	{
 		return 1;
 	}
+	
+	printf("check_vm2_present ERROR: %s", info->extended);
 	
 	return 0;
 }

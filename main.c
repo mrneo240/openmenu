@@ -315,8 +315,20 @@ int main(int argc, char *argv[]) {
   
   if (vmu && check_vm2_present(vmu))
   {
+	  int port, unit;
+	  
+	  port = vmu->port;
+	  unit = vmu->unit;
+	  
 	  vm2_set_id(vmu, "openmenu");
 	  vm2_dev = vmu;
+	  
+	  thd_sleep(200);
+	  
+	  while (!maple_enum_dev(port, unit))
+	  {
+		  thd_pass();
+	  }
   }
   
   fflush(stdout);
