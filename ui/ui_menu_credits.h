@@ -12,6 +12,7 @@
 
 #include "common.h"
 #include "global_settings.h"
+#include "backend/gd_item.h"
 
 struct theme_color;
 
@@ -39,5 +40,5 @@ void draw_exit_tr(void);
 void draw_codebreaker_op(void);
 void draw_codebreaker_tr(void);
 
-void set_cur_game_id(const char *id);
-const char *get_cur_game_id();
+void set_cur_game_item(const gd_item *id);
+const gd_item *get_cur_game_item();

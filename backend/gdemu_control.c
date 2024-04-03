@@ -93,7 +93,7 @@ void dreamcast_launch_disc(gd_item *disc) {
   
   if (vm2_dev)
   {
-	  vm2_set_id(vm2_dev, disc->product);
+	  vm2_set_id(vm2_dev, disc->product, disc->name);
   }
   
   wait_cd_ready();
@@ -190,7 +190,7 @@ void dreamcast_launch_cb(gd_item *disc) {
   
   if (vm2_dev)
   {
-	  vm2_set_id(vm2_dev, disc->product);
+	  vm2_set_id(vm2_dev, disc->product, disc->name);
   }
   
   wait_cd_ready();

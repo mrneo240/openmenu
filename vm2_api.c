@@ -19,11 +19,12 @@ static void vbl_allinfo_callback(maple_frame_t * frm)
 		/* Copy in the new buff */
 		memcpy(recv_buff, resp, 196);
 	} 
-	else
+	/*else
 	{
 		printf("maple: bad response %d on device\n",resp->response); 
 		memcpy(recv_buff, resp, 196);
-	}
+		
+	}*/
 	
 	maple_frame_unlock(frm);
 	genwait_wake_all(frm);
@@ -87,7 +88,7 @@ static void vm2_reply(maple_frame_t * frm)
 	genwait_wake_all(frm);
 }
 
-int vm2_set_id(maple_device_t * dev, const char *ID)
+int vm2_set_id(maple_device_t * dev, const char *ID, const char *name)
 {
 	maple_response_t *resp;
 	uint32_t *send_buf;
@@ -100,11 +101,15 @@ wait_vm2:
     maple_frame_init(&dev->frame);
     send_buf = (uint32_t *)dev->frame.recv_buf;
     send_buf[0] = MAPLE_FUNC_MEMCARD;
-    strncpy((char *) &dev->frame.recv_buf[4], ID, 11);
+    strncpy((char *) &dev->frame.recv_buf[4], ID, 12);
+    if (name)
+	{
+		strncpy((char *) &dev->frame.recv_buf[16], name, 128);
+	}
     dev->frame.cmd = 33;
     dev->frame.dst_port = dev->port;
     dev->frame.dst_unit = dev->unit;
-    dev->frame.length = 4;
+    dev->frame.length = name ? 36 : 4;
     dev->frame.callback = vm2_reply;
     dev->frame.send_buf = send_buf;
     maple_queue_frame(&dev->frame);
@@ -153,7 +158,7 @@ int check_vm2_present(maple_device_t * dev)
 		return 1;
 	}
 	
-	printf("check_vm2_present ERROR: %s", info->extended);
+	printf("check_vm2_present ERROR: %s\n", info->extended);
 	
 	return 0;
 }

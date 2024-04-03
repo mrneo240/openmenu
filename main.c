@@ -311,23 +311,28 @@ int main(int argc, char *argv[]) {
   
   //gdemu_set_img_num(1);
   //thd_sleep(500);
-  maple_device_t * vmu = maple_enum_type(0, MAPLE_FUNC_MEMCARD);
-  
-  if (vmu && check_vm2_present(vmu))
+  for (int i = 0; i < 8; i++)
   {
-	  int port, unit;
+	  maple_device_t * vmu = maple_enum_type(i, MAPLE_FUNC_MEMCARD);
 	  
-	  port = vmu->port;
-	  unit = vmu->unit;
-	  
-	  vm2_set_id(vmu, "openmenu");
-	  vm2_dev = vmu;
-	  
-	  thd_sleep(200);
-	  
-	  while (!maple_enum_dev(port, unit))
+	  if (vmu && check_vm2_present(vmu))
 	  {
-		  thd_pass();
+		  int port, unit;
+		  
+		  port = vmu->port;
+		  unit = vmu->unit;
+		  
+		  vm2_set_id(vmu, "openmenu", NULL);
+		  vm2_dev = vmu;
+		  
+		  thd_sleep(200);
+		  
+		  while (!maple_enum_dev(port, unit))
+		  {
+			  thd_pass();
+		  }
+		  
+		  break;
 	  }
   }
   
@@ -368,7 +373,8 @@ void exit_to_bios(void) {
   
   if (vm2_dev)
   {
-	  vm2_set_id(vm2_dev, get_cur_game_id());
+	  const gd_item *item = get_cur_game_item();
+	  vm2_set_id(vm2_dev, item->product, item->name);
   }
   
   arch_exec_at(bloader_data, bloader_size, 0xacf00000);

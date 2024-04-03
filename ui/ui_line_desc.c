@@ -413,7 +413,7 @@ static void menu_exit(void) {
     return;
   }
   
-  set_cur_game_id(list_current[current_selected_item]->product);
+  set_cur_game_item(list_current[current_selected_item]);
   draw_current = DRAW_EXIT;
   popup_setup(&draw_current, &region_themes[region_current].colors, &navigate_timeout);
 }
