@@ -20,3 +20,4 @@ typedef struct gd_item {
   unsigned int slot_num;
   char vga[1];
 } gd_item;
+

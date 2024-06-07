@@ -1,6 +1,7 @@
 *.ini
 *.o
 *.bin
+*.BIN
 *.elf
 *.map
 *loader*
@@ -9,4 +10,15 @@ gdrom
 tools/*.exe
 tools/*.dbg
 tools/*.com
+tools/*.ini
 tools/cosmo
+tools/*.DAT
+tools/BOX
+tools/ICON
+tools/datpack
+tools/datread
+tools/datstrip
+tools/menufaker
+tools/metapack
+tools/renamecsv
+tools/tsv2ini

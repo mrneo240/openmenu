@@ -31,7 +31,15 @@ void pool_create(block_pool *pool, void *buffer, unsigned int size, unsigned int
   pool->slots = slots;
   pool->slot_size = size / slots;
   pool->state = malloc(state_size);
+  if (!pool->state) {
+	  printf("%s no free memory\n", __func__);
+	  return;
+  }
   pool->format = malloc(format_size);
+  if (!pool->format) {
+	  printf("%s no free memory\n", __func__);
+	  return;
+  }
   memset(pool->state, '\0', state_size);
   memset(pool->format, '\0', format_size);
 }

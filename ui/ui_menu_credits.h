@@ -12,6 +12,7 @@
 
 #include "common.h"
 #include "global_settings.h"
+#include "backend/gd_item.h"
 
 struct theme_color;
 
@@ -22,6 +23,7 @@ void handle_input_menu(enum control input);
 void handle_input_credits(enum control input);
 void handle_input_multidisc(enum control input);
 void handle_input_exit(enum control input);
+void handle_input_codebreaker(enum control input);
 
 void draw_menu_op(void);
 void draw_menu_tr(void);
@@ -34,3 +36,9 @@ void draw_multidisc_tr(void);
 
 void draw_exit_op(void);
 void draw_exit_tr(void);
+
+void draw_codebreaker_op(void);
+void draw_codebreaker_tr(void);
+
+void set_cur_game_item(const gd_item *id);
+const gd_item *get_cur_game_item();

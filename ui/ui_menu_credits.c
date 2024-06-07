@@ -22,27 +22,32 @@
 #pragma region Settings_Menu
 
 static const char* menu_choice_text[] = {"Style", "Theme", "Aspect", "Beep", "Sort", "Filter", "Multidisc"};
-static const char* theme_choice_text[] = {"LineDesc", "Grid3", "GDMENU"};
+static const char* theme_choice_text[] = {"LineDesc", "Grid3", "Scroll"};
 static const char* region_choice_text[] = {"NTSC-U", "NTSC-J", "PAL"};
+static const char* region_choice_text1[] = {"GDMENU"};
 static const char* aspect_choice_text[] = {"4:3", "16:9"};
 static const char* beep_choice_text[] = {"Off", "On"};
-static const char* sort_choice_text[] = {"Default", "Name", "Date", "Product"};
+static const char* sort_choice_text[] = {"Default", "Name", "Region", "Genre"};
 static const char* filter_choice_text[] = {
     "All", "Action", "Racing", "Simulation", "Sports", "Lightgun",
     "Fighting", "Shooter", "Survival", "Adventure", "Platformer", "RPG",
-    "Shmup", "Strategy", "Puzzle", "Arcade", "Music"};
+    "Shmup", "Strategy", "Puzzle", "Arcade", "Music" };
 static const char* multidisc_choice_text[] = {"Show", "Hide"};
 static const char* save_choice_text[] = {"Save", "Apply"};
 static const char* credits_text[] = {"Credits"};
 
 const char* custom_theme_text[10] = {0};
 static theme_custom* custom_themes;
+static theme_scroll* custom_scroll;
 static int num_custom_themes;
+int cb_multidisc = 0;
+int start_cb = 0;
+static const gd_item * cur_game_item = NULL;
 
 #define MENU_OPTIONS ((int)(sizeof(menu_choice_text) / sizeof(menu_choice_text)[0]))
 #define MENU_CHOICES (MENU_OPTIONS) /* Only those with selectable options */
 #define THEME_CHOICES (sizeof(theme_choice_text) / sizeof(theme_choice_text)[0])
-#define REGION_CHOICES (sizeof(region_choice_text) / sizeof(region_choice_text)[0])
+static int REGION_CHOICES = (sizeof(region_choice_text) / sizeof(region_choice_text)[0]);
 #define ASPECT_CHOICES (sizeof(aspect_choice_text) / sizeof(aspect_choice_text)[0])
 #define BEEP_CHOICES (sizeof(beep_choice_text) / sizeof(beep_choice_text)[0])
 #define SORT_CHOICES (sizeof(sort_choice_text) / sizeof(sort_choice_text)[0])
@@ -66,7 +71,7 @@ typedef enum MENU_CHOICE {
 #define INPUT_TIMEOUT (10)
 
 static int choices[MENU_CHOICES + 1];
-static int choices_max[MENU_CHOICES + 1] = {THEME_CHOICES, REGION_CHOICES, ASPECT_CHOICES, BEEP_CHOICES, SORT_CHOICES, FILTER_CHOICES, MULTIDISC_CHOICES, 2 /* Apply/Save */};
+static int choices_max[MENU_CHOICES + 1] = {THEME_CHOICES, 3, ASPECT_CHOICES, BEEP_CHOICES, SORT_CHOICES, FILTER_CHOICES, MULTIDISC_CHOICES, 2 /* Apply/Save */};
 static const char** menu_choice_array[MENU_CHOICES] = {theme_choice_text, region_choice_text, aspect_choice_text, beep_choice_text, sort_choice_text, filter_choice_text, multidisc_choice_text};
 static int current_choice = CHOICE_START;
 static int* input_timeout_ptr = NULL;
@@ -80,7 +85,7 @@ typedef struct credit_pair {
 } credit_pair;
 
 static const credit_pair credits[] = {
-    (credit_pair){"megavolt85", "gdemu sdk"},
+    (credit_pair){"megavolt85", "gdemu sdk, coder"},
     (credit_pair){"u/westhinksdifferent/", "UI Mockups"},
     (credit_pair){"FlorreW", "Metadata DB"},
     (credit_pair){"hasnopants", "Metadata DB"},
@@ -102,7 +107,17 @@ static uint32_t text_color;
 static uint32_t highlight_color;
 static uint32_t menu_bkg_color;
 static uint32_t menu_bkg_border_color;
-static openmenu_settings* settings;
+static openmenu_settings* settings = NULL;
+
+void set_cur_game_item(const gd_item *id)
+{
+	cur_game_item = id;
+}
+
+const gd_item *get_cur_game_item()
+{
+	return cur_game_item;
+}
 
 static void common_setup(enum draw_state* state, theme_color* _colors, int* timeout_ptr) {
   /* Ensure color themeing is consistent */
@@ -130,14 +145,39 @@ void menu_setup(enum draw_state* state, theme_color* _colors, int* timeout_ptr) 
   choices[CHOICE_FILTER] = settings->filter;
   choices[CHOICE_BEEP] = settings->beep;
   choices[CHOICE_MULTIDISC] = settings->multidisc;
-
-  /* Grab custom themes if we have them */
-  custom_themes = theme_get_custom(&num_custom_themes);
-  if (num_custom_themes > 0) {
-    choices_max[CHOICE_REGION] = REGION_CHOICES + num_custom_themes;
-    for (int i = 0; i < num_custom_themes; i++) {
-      custom_theme_text[i] = custom_themes[i].name;
+  
+  if (choices[CHOICE_THEME] != UI_SCROLL) {
+    menu_choice_array[CHOICE_REGION] = region_choice_text;
+    REGION_CHOICES = (sizeof(region_choice_text) / sizeof(region_choice_text)[0]);
+    choices_max[CHOICE_REGION] = REGION_CHOICES;
+    /* Grab custom themes if we have them */
+    custom_themes = theme_get_custom(&num_custom_themes);
+    if (num_custom_themes > 0) {
+      for (int i = 0; i < num_custom_themes; i++) {
+	    choices_max[CHOICE_REGION]++;
+        custom_theme_text[i] = custom_themes[i].name;
+      }
     }
+  }
+  else
+  {
+    menu_choice_array[CHOICE_REGION] = region_choice_text1;
+    REGION_CHOICES = 1;
+    choices_max[CHOICE_REGION] = 1;
+    custom_scroll = theme_get_scroll(&num_custom_themes);
+    if (num_custom_themes > 0) {
+      for (int i = 0; i < num_custom_themes; i++) {
+	    choices_max[CHOICE_REGION]++;
+        custom_theme_text[i] = custom_scroll[i].name;
+      }
+      if (settings->custom_theme == THEME_ON) {
+		  choices[CHOICE_REGION] = settings->custom_theme_num + 1;
+	  }
+    }
+  }
+  
+  if (choices[CHOICE_REGION] >= choices_max[CHOICE_REGION]) {
+	choices[CHOICE_REGION] = choices_max[CHOICE_REGION] - 1;
   }
 }
 
@@ -176,11 +216,14 @@ static void menu_accept(void) {
     settings->filter = choices[CHOICE_FILTER];
     settings->beep = choices[CHOICE_BEEP];
     settings->multidisc = choices[CHOICE_MULTIDISC];
-    if (settings->region > REGION_END) {
+    if (choices[CHOICE_THEME] != UI_SCROLL && settings->region > REGION_END) {
       settings->custom_theme = THEME_ON;
       int num_default_themes = 0;
       theme_get_default(settings->aspect, &num_default_themes);
       settings->custom_theme_num = settings->region - num_default_themes;
+    } else if (choices[CHOICE_THEME] == UI_SCROLL && settings->region > 0) {
+      settings->custom_theme = THEME_ON;
+      settings->custom_theme_num = settings->region - 1;
     } else {
       settings->custom_theme = THEME_OFF;
     }
@@ -189,23 +232,27 @@ static void menu_accept(void) {
     if (!choices[CHOICE_FILTER]) {
       switch ((CFG_SORT)choices[CHOICE_SORT]) {
         case SORT_NAME:
-          list_get_sort_name();
+          list_set_sort_name();
           break;
         case SORT_DATE:
-          list_get_sort_date();
+          list_set_sort_region();
           break;
+        case SORT_PRODUCT:
+		  list_set_sort_genre();
+		  break;
         default:
         case SORT_DEFAULT:
-          list_get_sort_default();
+          list_set_sort_default();
           break;
       }
     } else {
       /* If filtering, filter down to only genre then sort */
-      list_get_genre_sort((FLAGS_GENRE)choices[CHOICE_FILTER] - 1, choices[CHOICE_SORT]);
+      list_set_genre_sort((FLAGS_GENRE)choices[CHOICE_FILTER] - 1, choices[CHOICE_SORT]);
     }
 
-    if (choices[CHOICE_SAVE] == 0 /* Save */)
+    if (choices[CHOICE_SAVE] == 0 /* Save */){
       settings_save();
+    }
     extern void reload_ui(void);
     reload_ui();
   }
@@ -237,6 +284,38 @@ static void menu_choice_next(void) {
   *input_timeout_ptr = INPUT_TIMEOUT;
 }
 
+static void menu_region_adj(void) {
+  if (choices[CHOICE_THEME] != UI_SCROLL) {
+    menu_choice_array[CHOICE_REGION] = region_choice_text;
+    REGION_CHOICES = (sizeof(region_choice_text) / sizeof(region_choice_text)[0]);
+    choices_max[CHOICE_REGION] = REGION_CHOICES;
+    /* Grab custom themes if we have them */
+    custom_themes = theme_get_custom(&num_custom_themes);
+    if (num_custom_themes > 0) {
+      for (int i = 0; i < num_custom_themes; i++) {
+	    choices_max[CHOICE_REGION]++;
+        custom_theme_text[i] = custom_themes[i].name;
+      }
+    }
+  }
+  else {
+    menu_choice_array[CHOICE_REGION] = region_choice_text1;
+    REGION_CHOICES = (sizeof(region_choice_text1) / sizeof(region_choice_text1)[0]);
+    choices_max[CHOICE_REGION] = REGION_CHOICES;
+    custom_scroll = theme_get_scroll(&num_custom_themes);
+    if (num_custom_themes > 0) {
+      for (int i = 0; i < num_custom_themes; i++) {
+	    choices_max[CHOICE_REGION]++;
+        custom_theme_text[i] = custom_scroll[i].name;
+      }
+    }
+  }
+  
+  if (choices[CHOICE_REGION] >= choices_max[CHOICE_REGION]) {
+	choices[CHOICE_REGION] = choices_max[CHOICE_REGION] - 1;
+  }
+}
+
 static void menu_choice_left(void) {
   if ((*input_timeout_ptr > 0) || (current_choice >= CHOICE_CREDITS)) {
     return;
@@ -245,8 +324,12 @@ static void menu_choice_left(void) {
   if (choices[current_choice] < 0) {
     choices[current_choice] = 0;
   }
+  if (current_choice == CHOICE_THEME) {
+	  menu_region_adj();
+  }
   *input_timeout_ptr = INPUT_TIMEOUT;
 }
+
 static void menu_choice_right(void) {
   if ((*input_timeout_ptr > 0) || (current_choice >= CHOICE_CREDITS)) {
     return;
@@ -254,6 +337,9 @@ static void menu_choice_right(void) {
   choices[current_choice]++;
   if (choices[current_choice] >= choices_max[current_choice]) {
     choices[current_choice]--;
+  }
+  if (current_choice == CHOICE_THEME) {
+	  menu_region_adj();
   }
   *input_timeout_ptr = INPUT_TIMEOUT;
 }
@@ -286,20 +372,22 @@ static void menu_accept_multidisc(void) {
     return;
   }
   const gd_item** list_multidisc = list_get_multidisc();
-  dreamcast_launch_disc(list_multidisc[current_choice]);
+  
+  if (!cb_multidisc){
+	  dreamcast_launch_disc(list_multidisc[current_choice]);
+  }
+  else{
+	  dreamcast_launch_cb(list_multidisc[current_choice]);
+  }
 }
 
-static void menu_exit_left(void) {
-}
-static void menu_exit_right(void) {
-}
 static void menu_exit(void) {
   if (*input_timeout_ptr > 0) {
     return;
   }
+  
   /* Probably should change this */
-  extern void arch_menu(void);
-  arch_menu();
+  exit_to_bios();
 }
 
 void handle_input_menu(enum control input) {
@@ -361,17 +449,27 @@ void handle_input_multidisc(enum control input) {
 
 void handle_input_exit(enum control input) {
   switch (input) {
-    case LEFT:
-      menu_exit_left();
-      break;
-    case RIGHT:
-      menu_exit_right();
-      break;
     case B:
       menu_leave();
       break;
     case A:
       menu_exit();
+      break;
+    default:
+      break;
+  }
+}
+
+void handle_input_codebreaker(enum control input) {
+  switch (input) {
+    case B:
+      menu_leave();
+      break;
+    case A:
+	  if (*input_timeout_ptr > 0) {
+		return;
+	  }
+      start_cb = 1;
       break;
     default:
       break;
@@ -395,7 +493,11 @@ static void draw_popup_menu(int x, int y, int width, int height) {
   draw_draw_quad(x - border_width, y - border_width, width + (2 * border_width), height + (2 * border_width), menu_bkg_border_color);
   draw_draw_quad(x, y, width, height, menu_bkg_color);
 
-  if (settings->ui == UI_GDMENU) {
+  if (settings == NULL) {
+    settings = settings_get();
+  }
+  
+  if (settings->ui == UI_SCROLL) {
     /* Top header */
     draw_draw_quad(x, y, width, 20, menu_bkg_border_color);
   }
@@ -403,7 +505,7 @@ static void draw_popup_menu(int x, int y, int width, int height) {
 
 void draw_menu_tr(void) {
   z_set_cond(205.0f);
-  if (settings->ui == UI_GDMENU) {
+  if (settings->ui == UI_SCROLL) {
     /* Menu size and placement */
     const int line_height = 24;
     const int width = 320;
@@ -432,7 +534,7 @@ void draw_menu_tr(void) {
       } else {
         font_bmp_set_color(text_color);
       }
-      if (i == CHOICE_REGION && ((unsigned int)choices[i] >= REGION_CHOICES)) {
+      if (i == CHOICE_REGION && (choices[i] >= REGION_CHOICES)) {
         string_outer_concat(line_buf, menu_choice_text[i], custom_theme_text[(int)choices[i] - REGION_CHOICES], 39);
       } else {
         string_outer_concat(line_buf, menu_choice_text[i], menu_choice_array[i][(int)choices[i]], 39);
@@ -486,7 +588,7 @@ void draw_menu_tr(void) {
       }
       font_bmf_draw(x_item, cur_y, temp_color, menu_choice_text[i]);
 
-      if (i == CHOICE_REGION && ((unsigned int)choices[i] >= REGION_CHOICES)) {
+      if (i == CHOICE_REGION && (choices[i] >= REGION_CHOICES)) {
         font_bmf_draw_centered(x_choice, cur_y, temp_color, custom_theme_text[(int)choices[i] - REGION_CHOICES]);
       } else {
         font_bmf_draw_centered(x_choice, cur_y, temp_color, menu_choice_array[i][(int)choices[i]]);
@@ -513,7 +615,7 @@ void draw_credits_op(void) {
 void draw_credits_tr(void) {
   z_set_cond(205.0f);
 
-  if (settings->ui == UI_GDMENU) {
+  if (settings->ui == UI_SCROLL) {
     /* Menu size and placement */
     const int line_height = 24;
     const int width = 320;
@@ -581,7 +683,7 @@ void draw_multidisc_tr(void) {
   int multidisc_len = list_multidisc_length();
 
   z_set_cond(205.0f);
-  if (settings->ui == UI_GDMENU) {
+  if (settings->ui == UI_SCROLL) {
     /* Menu size and placement */
     const int line_height = 24;
     const int width = 320;
@@ -614,7 +716,7 @@ void draw_multidisc_tr(void) {
       const int disc_num = list_multidisc[i]->disc[0] - '0';
       strncpy(temp_game_name, list_multidisc[i]->name, sizeof(temp_game_name) - 1);
       temp_game_name[sizeof(temp_game_name) - 1] = '\0';
-      snprintf(temp_game_num, sizeof(temp_game_name), "%d", disc_num);
+      snprintf(temp_game_num, sizeof(temp_game_name), "#%d", disc_num);
       string_outer_concat(line_buf, temp_game_name, temp_game_num, 39);
       font_bmp_draw_main(x_item, cur_y, line_buf);
     }
@@ -637,7 +739,7 @@ void draw_multidisc_tr(void) {
     font_bmf_begin_draw();
     font_bmf_set_height_default();
 
-    font_bmf_draw(x_item, cur_y, text_color, "Multidisc");
+    font_bmf_draw_centered(x+width/2, cur_y, text_color, "Multidisc");
 
     cur_y += line_height / 4;
 
@@ -661,4 +763,51 @@ void draw_exit_op(void) {
 }
 
 void draw_exit_tr(void) {
+	z_set_cond(205.0f);
+	
+	/* Draw a popup in the middle of the screen */
+    draw_popup_menu(160, 120, 180, 80);
+    
+	if (settings->ui == UI_SCROLL) {
+		font_bmp_begin_draw();
+		font_bmp_set_color(text_color);
+
+		font_bmp_draw_main(200, 122, "Exit to BIOS");
+		font_bmp_set_color(highlight_color);
+		font_bmp_draw_main(168, 158, "A - exit, B - cancel");
+	}
+	else {
+		font_bmf_begin_draw();
+		font_bmf_set_height(24.0);
+
+		font_bmf_draw(200, 122, text_color, "Exit to BIOS");
+		font_bmf_draw(168, 158, highlight_color, "A - exit, B - cancel");
+	}
+}
+
+void draw_codebreaker_op(void) {
+  /* Again nothing...Still...Ugh... */
+}
+
+void draw_codebreaker_tr(void) {
+	z_set_cond(205.0f);
+	
+	/* Draw a popup in the middle of the screen */
+    draw_popup_menu(160, 120, 190, 80);
+    
+	if (settings->ui == UI_SCROLL) {
+		font_bmp_begin_draw();
+		font_bmp_set_color(text_color);
+
+		font_bmp_draw_main(200, 122, "Run CodeBreaker");
+		font_bmp_set_color(highlight_color);
+		font_bmp_draw_main(178, 158, "A - run, B - cancel");
+	}
+	else {
+		font_bmf_begin_draw();
+		font_bmf_set_height(24.0);
+
+		font_bmf_draw(170, 122, text_color, "Run CodeBreaker");
+		font_bmf_draw(178, 158, highlight_color, "A - run,  B - cancel");
+	}
 }

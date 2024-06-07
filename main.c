@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <arch/exec.h>
 
 #include "backend/db_list.h"
 #include "backend/gd_list.h"
@@ -24,16 +25,22 @@
 #include "ui/dc/input.h"
 #include "ui/draw_prototypes.h"
 #include "ui/global_settings.h"
+#include "ui/ui_menu_credits.h"
+#include "inc/vm2_api.h"
 
 /* UI Collection */
 #include "ui/ui_grid.h"
 #undef UI_NAME
 #include "ui/ui_line_desc.h"
 #undef UI_NAME
-#include "ui/ui_gdmenu.h"
+#include "ui/ui_scroll.h"
 #undef UI_NAME
 
 #include "texture/txr_manager.h"
+
+#include "inc/bloader.h"
+
+maple_device_t *vm2_dev = NULL;
 
 void (*current_ui_init)(void);
 void (*current_ui_setup)(void);
@@ -57,13 +64,14 @@ typedef struct ui_template {
 static ui_template ui_choices[] = {
     UI_TEMPLATE(LIST_DESC),
     UI_TEMPLATE(GRID_3),
-    UI_TEMPLATE(GDMENU_EMU),
+    UI_TEMPLATE(SCROLL),
 };
 
 static const int num_ui_choices = sizeof(ui_choices) / sizeof(ui_template);
-static int ui_choice_current = 0;
+static int need_reload_ui = 0;
 
 static void ui_set_choice(int choice) {
+  need_reload_ui = 0;
   if (choice < UI_START || choice >= num_ui_choices) {
     choice = UI_START;
   }
@@ -72,8 +80,6 @@ static void ui_set_choice(int choice) {
   current_ui_draw_OP = ui_choices[choice].drawOP;
   current_ui_draw_TR = ui_choices[choice].drawTR;
   current_ui_handle_input = ui_choices[choice].handle_input;
-
-  ui_choice_current = choice;
 
   /* Call init & setup */
   (*current_ui_init)();
@@ -88,8 +94,7 @@ int round( float x) {
 }
 
 void reload_ui(void) {
-  openmenu_settings *settings = settings_get();
-  ui_set_choice(settings->ui);
+  need_reload_ui = 1;
 }
 
 static int init(void) {
@@ -104,12 +109,42 @@ static int init(void) {
   ret += list_read_default();
   ret += db_load_DAT();
   ret += theme_manager_load();
+  
+  openmenu_settings* cur = settings_get();
+  
+  if(!cur->filter)
+  {
+	 switch (cur->sort)
+	 {
+	    case SORT_NAME:
+		  list_set_sort_name();
+		  break;
+		  
+	    case SORT_DATE:
+		  list_set_sort_region();
+		  break;
+		  
+	    case SORT_PRODUCT:
+		  list_set_sort_genre();
+		  break;
+		  
+	    default:
+	    case SORT_DEFAULT:
+          list_set_sort_default();
+		  break;
+	 }
+  }
+  else
+  {
+	 list_set_genre_sort((FLAGS_GENRE)cur->filter - 1, cur->sort);
+  }
+  
 
   /* setup internal memory zones */
   draw_init();
 
   /* Load UI */
-  reload_ui();
+  ui_set_choice(cur->ui);
 
   return ret;
 }
@@ -167,8 +202,16 @@ static void processInput(void) {
   _input.axes_2 = ((uint8_t)(state->joyy) + 128);
 
   /* TRIGGERS */
-  _input.trg_left = (uint8_t)state->ltrig & 255;
-  _input.trg_right = (uint8_t)state->rtrig & 255;
+  if (!strncmp("Dreamcast Fishing Controller", cont->info.product_name, 28))
+  {
+	 _input.trg_left = 0;
+	 _input.trg_right = 0;
+  }
+  else
+  {
+	 _input.trg_left = (uint8_t)state->ltrig & 255;
+	 _input.trg_right = (uint8_t)state->rtrig & 255;
+  }
 
   INPT_ReceiveFromHost(_input);
 }
@@ -229,31 +272,6 @@ static int translate_input(void) {
   return NONE;
 }
 
-void reset_gdrom_drive(void) {
-  int status;
-  int disc_type;
-
-  do {
-    cdrom_get_status(&status, &disc_type);
-
-    if (status == CD_STATUS_PAUSED || status == CD_STATUS_STANDBY || status == CD_STATUS_PLAYING) {
-      break;
-    }
-  } while (1);
-
-  cdrom_init();
-  void gd_reset_handles(void);
-  gd_reset_handles();
-
-  do {
-    cdrom_get_status(&status, &disc_type);
-
-    if (status == CD_STATUS_PAUSED || status == CD_STATUS_STANDBY || status == CD_STATUS_PLAYING) {
-      break;
-    }
-  } while (1);
-}
-
 static void init_gfx_pvr(void) {
   /* BlueCrab (c) 2014,
     This assumes that the video mode is initialized as KOS
@@ -278,7 +296,8 @@ static void init_gfx_pvr(void) {
       256 * 1024,                                                                    /* 256kb Vertex buffer  */
       0,                                                                             /* No DMA, but maybe? */
       0,                                                                             /* No FSAA */
-      0                                                                              /* Disable TR autosort */
+      0,                                                                             /* Disable TR autosort */
+      0
   };
 
   pvr_init(&params);
@@ -289,12 +308,37 @@ int main(int argc, char *argv[]) {
   /* unused */
   (void)argc;
   (void)argv;
-
+  
+  //gdemu_set_img_num(1);
+  //thd_sleep(500);
+  for (int i = 0; i < 8; i++)
+  {
+	  maple_device_t * vmu = maple_enum_type(i, MAPLE_FUNC_MEMCARD);
+	  
+	  if (vmu && check_vm2_present(vmu))
+	  {
+		  int port, unit;
+		  
+		  port = vmu->port;
+		  unit = vmu->unit;
+		  
+		  vm2_set_id(vmu, "openmenu", NULL);
+		  vm2_dev = vmu;
+		  
+		  thd_sleep(200);
+		  
+		  while (!maple_enum_dev(port, unit))
+		  {
+			  thd_pass();
+		  }
+		  
+		  break;
+	  }
+  }
+  
   fflush(stdout);
   setbuf(stdout, NULL);
   init_gfx_pvr();
-
-  reset_gdrom_drive();
 
   if (init()) {
     puts("Init error.");
@@ -303,10 +347,36 @@ int main(int argc, char *argv[]) {
 
   for (;;) {
     z_reset();
-    enum control input = translate_input();
-    (*current_ui_handle_input)(input);
-    draw();
+    (*current_ui_handle_input)(translate_input());
+    vid_waitvbl();
+    if(need_reload_ui) {
+	  ui_set_choice(settings_get()->ui);
+	}
+	else
+      draw();
   }
 
   return 0;
 }
+
+void exit_to_bios(void) {
+  bloader_cfg_t *bloader_config = (bloader_cfg_t *) &bloader_data[bloader_size-sizeof(bloader_cfg_t)];
+  openmenu_settings* cur = settings_get();
+  
+  bloader_config->enable_wide = cur->aspect;
+  if (!strncmp("Dreamcast Fishing Controller", maple_enum_type(0, MAPLE_FUNC_CONTROLLER)->info.product_name, 28)) {
+    bloader_config->enable_3d = 0;
+  }
+  else {
+	bloader_config->enable_3d = 1;
+  }
+  
+  if (vm2_dev)
+  {
+	  const gd_item *item = get_cur_game_item();
+	  vm2_set_id(vm2_dev, item->product, item->name);
+  }
+  
+  arch_exec_at(bloader_data, bloader_size, 0xacf00000);
+}
+
