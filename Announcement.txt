@@ -1,0 +1,117 @@
+Generic Folder Links:
+https://github.com/mrneo240/openmenu/releases/
+https://github.com/mrneo240/GDMENUCardManager/releases/
+https://www.mediafire.com/folder/ocj3noyzuq5t7/DAT_latest
+https://www.mediafire.com/folder/r09mjrs31k6nl/releases
+https://github.com/mrneo240/GDMENUCardManager/wiki/Instructions
+
+Discord:
+** openMenu - Public alpha Release (2021-12-5) **
+**Notes:**
+* Catalogs 466 known USA+PAL retail games with Metadata & Boxart (covers 99%+)
+* Catalogs ~85 popular JA​P retail games with Metadata & Boxart.
+* Catalogs 27 ported Atomiswave games with Metadata & Boxart.
+* Higher compatibility loading using GDMENU loader for gd-rom + cdi.
+* custom user themes + saving theme settings
+* manually fix bad serial info from sega
+
+Latest openMenu Release:
+<https://github.com/mrneo240/openmenu/releases>
+
+Latest DATs (Box Art + Metadata)
+<https://www.mediafire.com/folder/ocj3noyzuq5t7/DAT_latest>
+
+Latest GDMENUCardManager Release:
+<https://github.com/mrneo240/GDMENUCardManager/releases/>
+
+Instructions:
+<https://github.com/mrneo240/GDMENUCardManager/wiki/Instructions>
+
+Dc-Talk:
+[b]openMenu - Public alpha Release (2021-12-5)[/b]
+
+[b]New Features:[/b]
+[list]
+[*] using GDMENU loader for higher compatibility of gd-rom + cdi
+[*] custom user themes + saving theme settings
+[*] manually fix bad serial info from sega
+[/list]
+[b]Notes:[/b]
+[list]
+[*] Catalogs 466 known USA+PAL retail games with Metadata & Boxart.
+[*] Catalogs ~85 popular JAP retail games with Metadata & Boxart.
+[*] Catalogs 27 ported Atomiswave games with Metadata & Boxart.
+[/list]
+
+Latest openMenu Release:
+[url=https://github.com/mrneo240/openmenu/releases]https://github.com/mrneo240/openmenu/releases[/url]
+
+Latest DATs (Box Art + Metadata):
+[url=https://www.mediafire.com/folder/ocj3noyzuq5t7/DAT_latest]https://www.mediafire.com/folder/ocj3noyzuq5t7/DAT_latest[/url]
+
+Latest GDMENUCardManager Release:
+[url=https://github.com/mrneo240/GDMENUCardManager/releases]https://github.com/mrneo240/GDMENUCardManager/releases[/url]
+
+Instructions:
+[url=https://github.com/mrneo240/GDMENUCardManager/wiki/Instructions]https://github.com/mrneo240/GDMENUCardManager/wiki/Instructions[/url]
+
+Github Release Message (openMenu):
+# Public alpha Release (2021-12-5)
+
+**New Features:**
+* using GDMENU loader for higher compatibility of gd-rom + cdi
+* custom user themes + saving theme settings
+* manually fix bad serial info from sega
+
+## General Controls:
+A - Launch
+START - Open preferences menu
+Y - return to bios
+
+## Specific UI Controls:
+**LineDesc:**
+LEFT - 1 item left
+RIGHT - 1 item right
+UP - 10 items left
+DOWN - 10 items right
+LTRIG - 25 items left
+RTRIG - 25 items right
+
+**Grid3:**
+DPAD - Navigation
+LTRIG - Page up
+RTRIG - Page down
+X - Show large cover art
+
+**GDMENU:**
+UP - Previous Item
+DOWN - Next Item
+LTRIG - Move 5 Items Up
+RTRIG - Move 5 Items Down
+
+## Installation (Read before attempting):
+* Install [GDMENUCardManager](https://github.com/mrneo240/GDMENUCardManager) as per [Instructions](https://github.com/mrneo240/GDMENUCardManager/wiki/Instructions)
+* Delete all files under in `tools/menu_data`  folder where you installed [GDMENUCardManager](https://github.com/mrneo240/GDMENUCardManager)
+* Extract all files from this release `tools/menu_data` and ensure you also extract the **[Asset Pack](https://www.mediafire.com/folder/ocj3noyzuq5t7/DAT_latest)** into the same folder
+  *  Ensure you have `1ST_READ.BIN`, `META.DAT`, `BOX.DAT`, `ICON.DAT`, `EMPTY.PVR` files and the `font` and `theme` folders.
+* Use GDMENUCardManager normally
+
+## Notes:
+* Current Metadata DB and Boxart DB should feature completed NTSC-U, PAL & Atomiswave games.
+* If you have an NTSC or PAL game that is missing Boxart or Metadata please file an issue here!
+* Work has started to add JAP & Homebrew games Boxart + Metadata.
+
+## Issues:
+* Some users are reporting an issue with black screen and freeze. If this happens please turn off console, remove VMU from controller 1 and try again. 
+  * Please also file an issue describing your setup and what happened. This is a very tricky bug affecting a very small percent of users.
+
+github Release Message (GDMENUCardManager):
+
+## GDMENUCardManager for openMenu Alpha
+
+* Includes openMenu version `2021-7-05_alpha` Link: [https://github.com/mrneo240/openmenu/releases/tag/2021-7-05_alpha](https://github.com/mrneo240/openmenu/releases/tag/2021-7-05_alpha)
+* Still need to install Latest Asset Pack, Link: [https://www.mediafire.com/folder/ocj3noyzuq5t7/DAT_latest](
+https://www.mediafire.com/folder/ocj3noyzuq5t7/DAT_latest)
+
+## Instructions
+[https://github.com/mrneo240/GDMENUCardManager/wiki/Instructions](https://github.com/mrneo240/GDMENUCardManager/wiki/Instructions)
